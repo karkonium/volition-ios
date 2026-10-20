@@ -203,7 +203,7 @@ shield automatically.
 
 New app-extension target added by mirroring the three existing extensions in
 `project.pbxproj` (same app group + Family Controls entitlement; bundle id
-`dev.bchen.OpenAppLock.Report`). Contents:
+`com.a5karki.volition.Report`). Contents:
 
 - A `DeviceActivityReport.Context` value `.ruleUsage` and a
   `DeviceActivityReportScene` whose `makeConfiguration(representing:)` reads the

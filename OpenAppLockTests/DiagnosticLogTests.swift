@@ -46,15 +46,15 @@ struct DiagnosticLogTests {
 
     @Test("Source is inferred from the bundle identifier suffix")
     func sourceInference() {
-        #expect(LogSource.current(bundleIdentifier: "dev.bchen.OpenAppLock") == .app)
-        #expect(LogSource.current(bundleIdentifier: "dev.bchen.OpenAppLock.Monitor") == .monitor)
+        #expect(LogSource.current(bundleIdentifier: "com.a5karki.volition") == .app)
+        #expect(LogSource.current(bundleIdentifier: "com.a5karki.volition.Monitor") == .monitor)
         #expect(
-            LogSource.current(bundleIdentifier: "dev.bchen.OpenAppLock.ShieldConfig")
+            LogSource.current(bundleIdentifier: "com.a5karki.volition.ShieldConfig")
                 == .shieldConfig)
         #expect(
-            LogSource.current(bundleIdentifier: "dev.bchen.OpenAppLock.ShieldAction")
+            LogSource.current(bundleIdentifier: "com.a5karki.volition.ShieldAction")
                 == .shieldAction)
-        #expect(LogSource.current(bundleIdentifier: "dev.bchen.OpenAppLock.Report") == .report)
+        #expect(LogSource.current(bundleIdentifier: "com.a5karki.volition.Report") == .report)
         #expect(LogSource.current(bundleIdentifier: nil) == .app)
         #expect(LogSource.current(bundleIdentifier: "com.example.other") == .app)
     }

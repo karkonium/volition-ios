@@ -6,7 +6,7 @@
 	<true/>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.dev.bchen.OpenAppLock</string>
+		<string>group.com.a5karki.volition</string>
 	</array>
 </dict>
 </plist>

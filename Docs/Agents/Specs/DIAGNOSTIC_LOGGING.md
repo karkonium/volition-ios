@@ -47,7 +47,7 @@ writes to `os.Logger` (live) *and* appends to a file (durable/exportable).
 ## 3. The persisted store — per-process daily files
 
 Files live in the existing app group container
-(`group.dev.bchen.OpenAppLock`) under `Logs/`:
+(`group.com.a5karki.volition`) under `Logs/`:
 
 ```
 <appgroup>/Logs/<source>-<YYYY-MM-DD>.log
@@ -65,11 +65,11 @@ e.g. `app-2026-06-22.log`, `monitor-2026-06-22.log`, `report-2026-06-22.log`,
 
   | Bundle identifier | Source |
   |---|---|
-  | `dev.bchen.OpenAppLock` | `app` |
-  | `dev.bchen.OpenAppLock.Monitor` | `monitor` |
-  | `dev.bchen.OpenAppLock.ShieldConfig` | `shieldconfig` |
-  | `dev.bchen.OpenAppLock.ShieldAction` | `shieldaction` |
-  | `dev.bchen.OpenAppLock.Report` | `report` |
+  | `com.a5karki.volition` | `app` |
+  | `com.a5karki.volition.Monitor` | `monitor` |
+  | `com.a5karki.volition.ShieldConfig` | `shieldconfig` |
+  | `com.a5karki.volition.ShieldAction` | `shieldaction` |
+  | `com.a5karki.volition.Report` | `report` |
 
   Anything else falls back to the last dot-component lowercased (or `app`). No
   per-extension wiring to forget.

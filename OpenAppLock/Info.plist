@@ -8,7 +8,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>CFBundleURLName</key>
-			<string>dev.bchen.OpenAppLock</string>
+			<string>com.a5karki.volition</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>openapplock</string>

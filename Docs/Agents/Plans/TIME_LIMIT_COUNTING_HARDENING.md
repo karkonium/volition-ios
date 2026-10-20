@@ -13,7 +13,7 @@
 - **Tests:** Swift Testing (`import Testing`, `@Test`, `#expect`), `@MainActor` suites. Reuse `date()`, `utc`, `makeInMemoryContext()` from `OpenAppLockTests/TestSupport.swift`; create isolated `UserDefaults` per test (`UserDefaults(suiteName: "…-\(UUID())")!`).
 - **Build & test:** via the Xcode MCP only (`BuildProject`, `RunSomeTests`, `RunAllTests`) on a **simulator** destination. Never invoke raw `xcodebuild`. `plutil -lint` is allowed for plist/pbxproj syntax checks (read-only).
 - **Style:** value types, `let` over `var`, immutability; small focused files; no `print()` (use `os.Logger` if logging needed).
-- **App group:** `group.dev.bchen.OpenAppLock`. **Report bundle id:** `dev.bchen.OpenAppLock.Report`. **Entitlements:** `com.apple.developer.family-controls` + the app group, on every extension.
+- **App group:** `group.com.a5karki.volition`. **Report bundle id:** `com.a5karki.volition.Report`. **Entitlements:** `com.apple.developer.family-controls` + the app group, on every extension.
 - **Authoritative freshness window:** `120` seconds (named constant, tunable on device).
 - **Commits:** Conventional Commits. End every commit message with:
   ```
@@ -861,7 +861,7 @@ git commit  # "feat: show effective (authoritative-aware) minutes in usage strin
 	<true/>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.dev.bchen.OpenAppLock</string>
+		<string>group.com.a5karki.volition</string>
 	</array>
 </dict>
 </plist>
@@ -869,7 +869,7 @@ git commit  # "feat: show effective (authoritative-aware) minutes in usage strin
 
 - [ ] **Step 3: Add the target to project.pbxproj** — read the file and replicate every `OpenAppLockMonitor` object for a new `OpenAppLockReport` target, with fresh unique 24-hex IDs (the existing extensions use a synthetic `E40000000000000000000001`–`0003` scheme for their build-configuration lists; continue with `…0004` for the report's list and unique hex for the rest). Specifically duplicate and adapt:
   - the `PBXNativeTarget` (productType `com.apple.product-type.app-extension`), its three build phases (Sources, Frameworks, Resources), and its `buildConfigurationList`;
-  - the `XCBuildConfiguration` Debug + Release, setting `PRODUCT_BUNDLE_IDENTIFIER = dev.bchen.OpenAppLock.Report`, `INFOPLIST_FILE = OpenAppLockReport/Info.plist`, `CODE_SIGN_ENTITLEMENTS = OpenAppLockReport/OpenAppLockReport.entitlements`, same `IPHONEOS_DEPLOYMENT_TARGET`/team/`SWIFT_VERSION`/`GENERATE_INFOPLIST_FILE` settings as the monitor, and `INFOPLIST_KEY_CFBundleDisplayName = OpenAppLockReport`;
+  - the `XCBuildConfiguration` Debug + Release, setting `PRODUCT_BUNDLE_IDENTIFIER = com.a5karki.volition.Report`, `INFOPLIST_FILE = OpenAppLockReport/Info.plist`, `CODE_SIGN_ENTITLEMENTS = OpenAppLockReport/OpenAppLockReport.entitlements`, same `IPHONEOS_DEPLOYMENT_TARGET`/team/`SWIFT_VERSION`/`GENERATE_INFOPLIST_FILE` settings as the monitor, and `INFOPLIST_KEY_CFBundleDisplayName = OpenAppLockReport`;
   - the `.appex` `PBXFileReference` (product) and the group entries for the `OpenAppLockReport/` folder + its files;
   - a `PBXBuildFile` + `PBXTargetDependency` so the app target **embeds** the new `.appex` (add it to the app's existing "Embed App Extensions"/Copy Files (Plug-ins) phase and to `dependencies`).
   - the **Sources** build phase must list the report's own Swift files (Task B7) **and** the Shared files they need: `AppGroup.swift`, `RuleKind.swift`, `Weekday.swift`, `RuleSchedule.swift`, `RuleConfiguration.swift`, `RuleSnapshot.swift`, `UsageLedger.swift`, `ShieldController.swift` (for `AppSelectionCodec`), `DeviceActivityReportContext.swift`. (Mirror the Shared files already in the monitor target, plus these.)

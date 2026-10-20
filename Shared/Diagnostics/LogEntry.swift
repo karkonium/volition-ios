@@ -39,10 +39,10 @@ nonisolated enum LogSource: String, Sendable {
 
     static func current(bundleIdentifier: String?) -> LogSource {
         switch bundleIdentifier {
-        case "dev.bchen.OpenAppLock.Monitor": return .monitor
-        case "dev.bchen.OpenAppLock.ShieldConfig": return .shieldConfig
-        case "dev.bchen.OpenAppLock.ShieldAction": return .shieldAction
-        case "dev.bchen.OpenAppLock.Report": return .report
+        case "com.a5karki.volition.Monitor": return .monitor
+        case "com.a5karki.volition.ShieldConfig": return .shieldConfig
+        case "com.a5karki.volition.ShieldAction": return .shieldAction
+        case "com.a5karki.volition.Report": return .report
         default: return .app
         }
     }

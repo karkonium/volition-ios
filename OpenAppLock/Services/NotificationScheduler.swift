@@ -62,7 +62,7 @@ actor NotificationScheduler {
     static let maxPendingScheduleStart = 60
     private static let fingerprintKey = "notificationScheduleFingerprint"
     private static let log = Logger(
-        subsystem: "dev.bchen.OpenAppLock", category: "NotificationScheduler")
+        subsystem: "com.a5karki.volition", category: "NotificationScheduler")
 
     private let center: LocalNotificationScheduling
     private let defaults: UserDefaults

@@ -385,5 +385,5 @@ Gotchas learned the hard way:
   prompts ("Allow with Passcode" works on the simulator).
 - Distribution (App Store) requires Apple's approval for the Family Controls
   entitlement **for the app and each extension bundle ID**
-  (`dev.bchen.OpenAppLock`, `.Monitor`, `.ShieldConfig`, `.ShieldAction`);
+  (`com.a5karki.volition`, `.Monitor`, `.ShieldConfig`, `.ShieldAction`);
   development builds work with the dev entitlement.

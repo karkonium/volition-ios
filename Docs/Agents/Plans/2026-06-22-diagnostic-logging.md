@@ -12,8 +12,8 @@
 
 - **Always-on** logging in every build; Settings exposes Export + Clear only (no enable/disable toggle).
 - **14-day** on-device retention, pruned at app launch.
-- App-group identifier is `group.dev.bchen.OpenAppLock` (`AppGroup.identifier`).
-- Bundle IDs → source: `dev.bchen.OpenAppLock`→`app`, `.Monitor`→`monitor`, `.ShieldConfig`→`shieldconfig`, `.ShieldAction`→`shieldaction`, `.Report`→`report`.
+- App-group identifier is `group.com.a5karki.volition` (`AppGroup.identifier`).
+- Bundle IDs → source: `com.a5karki.volition`→`app`, `.Monitor`→`monitor`, `.ShieldConfig`→`shieldconfig`, `.ShieldAction`→`shieldaction`, `.Report`→`report`.
 - Line format (one entry per line): `<UTC-ISO8601-ms> [<LEVEL>] [<source>/<category>] <message> [<File.swift>:<line> <function>]`, e.g. `2026-06-22T14:03:11.482Z [EVENT] [app/enforcer] applied shield rule-ABC [RuleEnforcer.swift:104 refresh(rules:at:calendar:)]`. The timestamp is **UTC** (sortable); the **file's day bucket uses the local calendar** (`UsageLedger.dayKey`). Every entry carries its **source location** (`#fileID`/`#line`/`#function`) so a log line traces back to the exact code.
 - **Verbosity:** the enforcement sites log inputs, the decision, and the outcome — including the "why-not" branches (rule considered but not shielded and why; usage/threshold event rejected as stale; before→after shield state per refresh; whether a save re-enforced). Reading a day back must show exactly what happened and let anomalies be traced to code.
 - Levels: `debug · info · event · error` (`event` → `os` `.default`/notice).
@@ -104,11 +104,11 @@ struct DiagnosticLogTests {
 
     @Test("Source is inferred from the bundle identifier suffix")
     func sourceInference() {
-        #expect(LogSource.current(bundleIdentifier: "dev.bchen.OpenAppLock") == .app)
-        #expect(LogSource.current(bundleIdentifier: "dev.bchen.OpenAppLock.Monitor") == .monitor)
-        #expect(LogSource.current(bundleIdentifier: "dev.bchen.OpenAppLock.ShieldConfig") == .shieldConfig)
-        #expect(LogSource.current(bundleIdentifier: "dev.bchen.OpenAppLock.ShieldAction") == .shieldAction)
-        #expect(LogSource.current(bundleIdentifier: "dev.bchen.OpenAppLock.Report") == .report)
+        #expect(LogSource.current(bundleIdentifier: "com.a5karki.volition") == .app)
+        #expect(LogSource.current(bundleIdentifier: "com.a5karki.volition.Monitor") == .monitor)
+        #expect(LogSource.current(bundleIdentifier: "com.a5karki.volition.ShieldConfig") == .shieldConfig)
+        #expect(LogSource.current(bundleIdentifier: "com.a5karki.volition.ShieldAction") == .shieldAction)
+        #expect(LogSource.current(bundleIdentifier: "com.a5karki.volition.Report") == .report)
         #expect(LogSource.current(bundleIdentifier: nil) == .app)
         #expect(LogSource.current(bundleIdentifier: "com.example.other") == .app)
     }
@@ -177,10 +177,10 @@ enum LogSource: String, Sendable {
 
     static func current(bundleIdentifier: String?) -> LogSource {
         switch bundleIdentifier {
-        case "dev.bchen.OpenAppLock.Monitor": return .monitor
-        case "dev.bchen.OpenAppLock.ShieldConfig": return .shieldConfig
-        case "dev.bchen.OpenAppLock.ShieldAction": return .shieldAction
-        case "dev.bchen.OpenAppLock.Report": return .report
+        case "com.a5karki.volition.Monitor": return .monitor
+        case "com.a5karki.volition.ShieldConfig": return .shieldConfig
+        case "com.a5karki.volition.ShieldAction": return .shieldAction
+        case "com.a5karki.volition.Report": return .report
         default: return .app
         }
     }
@@ -568,7 +568,7 @@ final class LogFileWriter: @unchecked Sendable {
         self.directory = directory
         self.source = source
         self.calendar = calendar
-        self.queue = DispatchQueue(label: "dev.bchen.OpenAppLock.log.\(source.rawValue)")
+        self.queue = DispatchQueue(label: "com.a5karki.volition.log.\(source.rawValue)")
     }
 
     /// Appends `line` (a single, newline-free record) to the file for `day`.
@@ -681,7 +681,7 @@ enum Diag {
     private static let lock = NSLock()
     nonisolated(unsafe) private static var writer: LogFileWriter?
     nonisolated(unsafe) private static var loggers: [LogCategory: Logger] = [:]
-    private static let subsystem = "dev.bchen.OpenAppLock"
+    private static let subsystem = "com.a5karki.volition"
 
     /// The process this build is running as, inferred once from the bundle id.
     static let source = LogSource.current(bundleIdentifier: Bundle.main.bundleIdentifier)
