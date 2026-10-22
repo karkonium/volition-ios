@@ -13,6 +13,7 @@ import SwiftUI
 /// multitasking) and a left sidebar (`MainSidebarView`) in regular width
 /// (full-screen iPad) — and owns the app-level enforcement lifecycle so it runs
 /// regardless of which layout is showing and which section is selected.
+/// Incoming app URLs return to Chat and reconcile the pending shield request.
 ///
 /// The lifecycle is a 30 s `refresh` loop, a reconcile on any blocking-relevant
 /// rule change, and a reconcile whenever the app becomes active (so Uninstall
@@ -30,7 +31,6 @@ struct MainView: View {
     @State private var needsSetup = false
     @State private var preparationError = false
     @State private var retry = UUID()
-    @State private var capturedURL: URL? = nil
 
     var body: some View {
         Group {
@@ -45,10 +45,6 @@ struct MainView: View {
                 VolitionAppsView { needsSetup = false; conversation.selectedSection = .chat }
             } else { layout }
         }
-            .environment(\.capturedURL, capturedURL)
-            .environment(\.captureURL) {
-                capturedURL = nil
-            }
             .task(id: retry) {
                 do {
                     preparationError = false
@@ -79,9 +75,10 @@ struct MainView: View {
                     refreshEnforcement()
                 }
             }
-            .onOpenURL { url in
-                Diag.log(.lifecycle, "handling URL open \(url)")
-                capturedURL = url
+            .onOpenURL { _ in
+                Diag.log(.lifecycle, "handling URL open: coach")
+                conversation.selectedSection = .chat
+                refreshEnforcement()
             }
     }
 

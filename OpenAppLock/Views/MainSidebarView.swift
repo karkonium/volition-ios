@@ -41,7 +41,7 @@ struct MainSidebarView: View {
     @ViewBuilder
     private func detail(for section: AppSection) -> some View {
         switch section {
-        case .home, .rules, .apps:
+        case .apps:
             VolitionAppsView()
         case .chat: ConversationView()
         case .settings:

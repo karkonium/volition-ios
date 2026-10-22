@@ -45,7 +45,7 @@ surrounding comments, can correctly infer behavior. If a name needs a comment
 to not be confusing, rename it rather than annotate it.
 
 > **Project note:** this does not apply to the feature-spec doc comments
-> indexed by AGENTS.md → "Rules feature map" — those `///` comments *are* the
+> indexed by AGENTS.md → "Architecture" — those `///` comments *are* the
 > behavior spec, not restatements of what the code already says, and remain
 > required (kept in sync with the code in the same commit, per the Workflow
 > expectations in AGENTS.md). The rarity guidance targets ordinary inline/
@@ -125,7 +125,7 @@ swift test --enable-code-coverage
 
 > **Project note:** this is an **Xcode project, not a SwiftPM package** — build
 > and run tests through the **Xcode MCP** tools (`BuildProject`, `RunAllTests`,
-> `RunSomeTests`), not `swift test` or raw `xcodebuild`. The scheme destination
+> `RunSomeTests`), not `swift test`. When Xcode MCP is unavailable, use `xcodebuild` instead. The scheme destination
 > must be an iOS **simulator** or runs hang. UI flows are XCUITest
 > (`OpenAppLockUITests`) driven by the launch-argument harness in AGENTS.md.
 

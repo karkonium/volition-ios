@@ -1,99 +1,26 @@
 {
-  "fill" : "system-light",
-  "groups" : [
+  "fill": "system-light",
+  "groups": [
     {
-      "layers" : [
+      "layers": [
         {
-          "blend-mode" : "normal",
-          "fill-specializations" : [
-            {
-              "value" : {
-                "solid" : "srgb:0.00000,0.00000,0.00000,1.00000"
-              }
-            },
-            {
-              "appearance" : "dark",
-              "value" : {
-                "solid" : "extended-gray:0.50000,1.00000"
-              }
-            },
-            {
-              "appearance" : "tinted",
-              "value" : {
-                "solid" : "extended-gray:0.75000,1.00000"
-              }
-            }
-          ],
-          "glass" : true,
-          "image-name" : "openapplock-light layer 2.svg",
-          "name" : "Cross"
+          "glass": false,
+          "image-name": "volition-sunlit-v.png",
+          "name": "Volition Sunlit V"
         }
       ],
-      "name" : "Cross",
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
+      "name": "Volition",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0
       },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
-      }
-    },
-    {
-      "layers" : [
-        {
-          "glass" : false,
-          "image-name" : "Apps.svg",
-          "name" : "Apps"
-        },
-        {
-          "fill-specializations" : [
-            {
-              "value" : {
-                "solid" : "extended-gray:0.50000,0.05000"
-              }
-            },
-            {
-              "appearance" : "tinted",
-              "value" : "none"
-            }
-          ],
-          "glass" : false,
-          "image-name" : "Dock.svg",
-          "name" : "Dock"
-        },
-        {
-          "fill-specializations" : [
-            {
-              "appearance" : "dark",
-              "value" : {
-                "solid" : "extended-gray:0.50000,1.00000"
-              }
-            },
-            {
-              "appearance" : "tinted",
-              "value" : {
-                "solid" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
-              }
-            }
-          ],
-          "glass" : false,
-          "image-name" : "Frame.svg",
-          "name" : "Frame"
-        }
-      ],
-      "name" : "Phone",
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
-      },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
+      "translucency": {
+        "enabled": false,
+        "value": 0
       }
     }
   ],
-  "supported-platforms" : {
-    "squares" : "shared"
+  "supported-platforms": {
+    "squares": "shared"
   }
 }

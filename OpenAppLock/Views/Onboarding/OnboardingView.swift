@@ -52,7 +52,7 @@ struct OnboardingView: View {
     /// The real app icon, shown as a rounded tile so the welcome screen leads
     /// with the app's own identity rather than a generic symbol.
     private var appLogo: some View {
-        Image("AppLogo")
+        Image("VolitionLogo")
             .resizable()
             .scaledToFit()
             .frame(width: 96, height: 96)
