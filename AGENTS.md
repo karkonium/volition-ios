@@ -1,416 +1,132 @@
-# OpenAppLock — Agent Guide
+# Volition — agent guide
 
-Volition (the OpenAppLock Xcode project) is a conversation-first iOS Screen Time
-app. Users save individual apps with a name and intention. The coach can ask,
-deny, approve 1–10 minutes, or enforce a 1–5 minute wait. Only Chat, Apps and
-minimal Settings are exposed. Legacy rule models/enforcement remain for data
-compatibility and are disabled by VolitionApps.prepare before the shell appears.
-The presentation is native SwiftUI, with tabs on iPhone and a sidebar on iPad.
-Grant approval and reconciliation check configured blockers before retaining a
-timer; iOS 26.5+ store discovery repairs orphaned rule stores. Coach activity
-summaries count full-archive grants across apps, and repeat requests require
-stricter duration/stopping-plan judgment. Configured readback is not proof of
-the OS-visible screen; physical-device acceptance remains necessary. Chat and app
-selection remain available during timers. Grants and waits are per app; ending one
-grant preserves other apps’ deadlines. On iOS 26.5+ releases delete the dedicated
-rule store. Debug approval snapshots live in Documents/VolitionSupport/LatestApproval.
+Volition is a conversation-first iOS Screen Time app. The Xcode project and target
+are still named OpenAppLock. Users save individual apps with a name and intention;
+a respectful coach asks, denies, approves 1–10 minutes, or waits 1–5 minutes.
+The product has only Chat, Apps and Settings. iPhone uses tabs; iPad uses a sidebar.
 
-Current feature source: `Docs/Agents/Specs/CONVERSATION_UNLOCK.md`,
-`OpenAppLock/Services/Conversation/VolitionApps.swift`,
-`OpenAppLock/Views/Conversation/VolitionAppsView.swift`, and the Conversation
-coordinator/client/views. The legacy feature map below describes compatibility
-code, not reachable product options.
+## Start here
 
-## Repo layout
+- `Docs/Agents/Specs/CONVERSATION_UNLOCK.md`: current product/enforcement contract.
+- `Docs/Agents/Specs/COMPATIBILITY.md`: why legacy models/services remain.
+- `Docs/Agents/Specs/OPERATIONS.md`: permissions, logs, local config and copy.
+- `Docs/Agents/Specs/BRANDING.md`: logo assets and generation prompt.
+- `Docs/AGENT_SWIFT_GUIDELINES.md`: Swift, concurrency, testing and security rules.
+- Behavior-owning source `///` comments are authoritative; update them with code.
 
-```
-OpenAppLock/                    App target (iOS 26, SwiftUI + SwiftData)
-  Models/                   BlockingRule + AppList (@Model, V4), ConversationArchive, RuleDraft,
-                            RulePreset
-  Logic/                    Pure, heavily unit-tested:
-                            RuleStatus (derived status + labels, usage-aware),
-                            RulePolicy (Hard Mode gating, temporary pause,
-                            app-list lock), UsageDisplay (Usage-section text)
-  Services/                 ScreenTimeAuthorization (FamilyControls behind a
-                            protocol + mock), RuleEnforcer (rules → shields),
-                            RuleScheduler (rules → DeviceActivity monitoring),
-                            AppListMigration, LaunchConfiguration +
-                            SampleRules (UI-test harness)
-  Views/                    Native SwiftUI screens (spec in each view's doc
-                            comment; see "Rules feature map" below)
-Shared/                     Compiled into the app AND all four extensions,
-                            grouped by architectural layer:
-  Models/                   Pure rule-domain value types: RuleKind,
-                            RuleConfiguration, RuleSchedule, Weekday
-  DTOs/                     Codable plain-data mirrors persisted to the app
-                            group (the payloads the extensions read):
-                            RuleSnapshotDTO (rule mirror), RuleUsageDTO
-                            (per-day minutes/opens + authoritative daily total)
-  Enforcement/              Stateless decisions + shield controllers that turn
-                            rules/events into blocks: ScheduleEnforcement,
-                            LimitEnforcement (shared event reactions),
-                            LimitWarningDecision, UninstallProtectionPolicy,
-                            UninstallProtectionEnforcer, ShieldController,
-                            ShieldLookup, ShieldPresentation
-  Stores/                   App-group persistence/accessors: UsageLedger
-                            (reads/writes RuleUsageDTO per day), OpenSessionStore,
-                            DayStartStore (confirmed daily-activity starts),
-                            RuleSnapshotStore (writes the rule mirror),
-                            NotificationPreferences
-  Diagnostics/              Logging subsystem: DiagnosticLog (`Diag` dual-sink
-                            logging facade) + LogEntry/LogMerge/LogRetention/
-                            LogFileWriter (per-process daily log files in the
-                            app group)
-  Platform/                 OS-integration glue / shared identifiers:
-                            AppGroup, MonitoringPlan (activity/event naming),
-                            DeviceActivityReportContext
-OpenAppLockMonitor/         DeviceActivityMonitor extension: midnight resets,
-                            usage-minute checkpoints → shield at the limit,
-                            open-session expiry
-OpenAppLockShieldConfig/    ShieldConfiguration extension: "Opened X of N" +
-                            Open button on open-limit shields
-OpenAppLockShieldAction/    ShieldAction extension: Open press spends an open,
-                            lifts the shield, starts the ~15-min session
-OpenAppLockReport/          DeviceActivityReport extension: computes each
-                            time-limit rule's true daily usage (foreground only)
-                            and writes it to UsageLedger as the authoritative
-                            figure
-OpenAppLockTests/               Swift Testing unit suites (@MainActor — the app
-                            target defaults to MainActor isolation)
-OpenAppLockUITests/             XCUITest flows (see harness below)
-Docs/AGENT_SWIFT_GUIDELINES.md
-                            Swift coding/testing/patterns/security standards
-                            agents must follow on this project (agent-managed).
-Docs/Agents/                Agent working docs — the whole folder is
-                            agent-modifiable. Design specs live under
-                            Docs/Agents/Specs/ (agent-managed).
-```
+## Architecture
 
-## Documentation
-
-Documentation falls into three buckets:
-
-- **Agent-managed** — this `AGENTS.md`, `CLAUDE.md`, any file whose name is
-  prefixed with `AGENT_` (currently `Docs/AGENT_SWIFT_GUIDELINES.md`), and
-  **anything under `Docs/Agents/`** (e.g. design specs in `Docs/Agents/Specs/`,
-  plans in `Docs/Agents/Plans/`) — the folder marks ownership by location, so
-  files inside it need no `AGENT_` prefix. Agents may **read, create, and edit**
-  these and are expected to keep them accurate.
-- **Shared (human + agent)** — the rules feature spec. It lives as doc comments
-  **on the source each behavior owns**; both humans and agents maintain it. The
-  doc comments are the source of truth for behavior — when you change a behavior,
-  update the owning file's doc comment in the same commit. The "Rules feature
-  map" section below indexes where each topic lives; keep it current when a topic
-  moves to a different file.
-- **Human-authored** — every other doc, e.g. `README.md`. Agents may **read**
-  these for context but must **never create or modify** them; flag needed
-  changes for the maintainer instead.
-
-The `AGENT_` prefix marks a file as safe for agents to maintain; any other
-un-prefixed doc remains off-limits to agent edits.
-
-## Domain facts worth knowing
-
-- Times are stored as **minutes from midnight**; `end <= start` means the
-  window crosses midnight (e.g. 22:00→06:00) and belongs to the day it
-  *starts* on. `start == end` = 24h window.
-- Status is always **derived** (`rule.status(at:calendar:)`), never stored:
-  `disabled / dormant / active(until:) / paused(until:) / upcoming(startsAt:)`.
-  Countdown labels round hours **up** (e.g. "Ends in 6h" for a schedule rule,
-  "Resets in 8h" for a limit rule).
-- **Hard Mode**: `RulePolicy` is the single gate — while a hard-mode rule is
-  actively blocking, canEdit/canDisable/canDelete/canPause are all false.
-  Soft schedule/time-limit rules with >15 min left support a **Temporary Pause**
-  (`RulePolicy.pause`): a 15-minute lift (`pausedUntil = now + 15m`), re-armed in
-  the background by a one-shot `pause-<uuid>` DeviceActivity. Open-limit and
-  Hard Mode rules can't be paused.
-- Shields: one `ManagedSettingsStore` per rule (`rule-<uuid>`), tracked in
-  UserDefaults for stray cleanup.
-- `RuleEnforcer.refresh` owns foreground reconciliation; `MainView` runs it on
-  rule changes and a 30s loop in either layout. Background extensions use shared
-  enforcers. Conversation grants additionally use coordinated App Group
-  transactions so approval and expiry agree across processes.
-
-## Rules feature map
-
-The feature behaves as documented in `///` doc comments **on the source each
-topic owns** — this section is the map to them, not a second copy of the spec.
-Concept and per-kind options live in `RuleConfiguration` / `RuleKind` /
-`BlockingRule`; the load-bearing invariants are in "Domain facts" above.
-
-Screens — post-onboarding adaptive shell (`MainView`: a tab bar in compact
-width, a sidebar in regular-width iPad; section labels from one `AppSection`):
-
-```
-Chat      Shared coach + saved app selector           ConversationView
-Apps      Individual apps, names and intentions      VolitionAppsView → VolitionAppEditor
-Settings  Coach/privacy + diagnostic logs             SettingsView
-Setup     Welcome → permission → add apps             OnboardingView → MainView
-
-```
-
-Where each topic is documented:
-
-| Topic | Source (doc comment) |
+| Location | Responsibility |
 |---|---|
-| Rule kinds, sum-type options, Schedule-only rationale | `Shared/Models/RuleConfiguration.swift`, `Shared/Models/RuleKind.swift` |
-| Persisted rule + common attributes; editor draft; cross-process mirror | `OpenAppLock/Models/BlockingRule.swift`, `OpenAppLock/Models/RuleDraft.swift`, `Shared/DTOs/RuleSnapshotDTO.swift` |
-| Derived status & countdown labels (row-context copy per kind/state) | `OpenAppLock/Logic/RuleStatus.swift`, `OpenAppLock/Logic/UsageDisplay.swift`; design spec `Docs/Agents/Specs/RULE_STATUS_LABEL_REDESIGN.md` |
-| Day-of-week picker & summary | `OpenAppLock/Views/Components/DayOfWeekPicker.swift`, `Shared/Models/Weekday.swift` |
-| Presets; editor form; New Rule + in-place detail editing; discard prompt | `OpenAppLock/Models/RulePreset.swift`, `OpenAppLock/Views/Rules/RuleEditorForm.swift` (shared form body), `OpenAppLock/Views/Rules/RuleEditorView.swift` (New Rule wrapper), `OpenAppLock/Views/Rules/RuleDetailSheet.swift` (detail ⇄ editor cross-fade), `OpenAppLock/Logic/RuleEditState.swift` (outstanding-edits check) |
-| App lists (model, picker, library, edit) + legacy migration | `OpenAppLock/Models/AppList.swift`, `OpenAppLock/Views/AppLists/*`, `OpenAppLock/Services/AppListMigration.swift` |
-| Multiple app lists per rule (V3 schema, V2→V3 migration, union selection) | `OpenAppLock/Models/V3/*`, `OpenAppLock/Models/OpenAppLockSchemaMigrationPlan.swift`, `OpenAppLock/Models/BlockingRule+DTO.swift` (`combinedSelectionData`, `appListSummary`), `OpenAppLock/Views/AppLists/AppListLibraryView.swift` (multi-select picker); design spec `Docs/Agents/Specs/MULTI_APP_LIST_RULES.md` |
-| Home: Currently Blocking + Usage, row strings | `OpenAppLock/Views/Home/HomeView.swift`, `OpenAppLock/Logic/UsageDisplay.swift` |
-| Schedule activation / time-window math (incl. midnight crossing) | `Shared/Models/RuleSchedule.swift`, `Shared/Enforcement/ScheduleEnforcement.swift` |
-| Temporary pause / disable / delete / Hard Mode gating | `OpenAppLock/Logic/RulePolicy.swift` |
-| Foreground reconciliation; **overlapping rules → strictest wins** | `OpenAppLock/Services/RuleEnforcer.swift`, `Shared/Enforcement/ShieldController.swift` |
-| Time/open-limit behavior, granted opens, proactive gate | `Shared/Enforcement/LimitEnforcement.swift`, `Shared/Stores/UsageLedger.swift` (+ `Shared/DTOs/RuleUsageDTO.swift`), `Shared/Stores/OpenSessionStore.swift` |
-| Shield text + "Open" button / press handling (incl. which shield wins when rules overlap) | `Shared/Enforcement/ShieldPresentation.swift`, `Shared/Enforcement/ShieldLookup.swift`, `OpenAppLockShieldConfig/ShieldConfigurationExtension.swift`, `OpenAppLockShieldAction/ShieldActionExtension.swift` |
-| DeviceActivity scheduling, naming; background monitor (time limits run **per-day day-keyed** activities) | `OpenAppLock/Services/RuleScheduler.swift`, `Shared/Platform/MonitoringPlan.swift`, `Shared/Models/ScheduledDayPlanner.swift`, `OpenAppLockMonitor/DeviceActivityMonitorExtension.swift`; design spec `Docs/Agents/Specs/TIME_LIMIT_DAY_KEYED_ENFORCEMENT.md` |
-| Authoritative time-limit usage report; confirmed day-start gate | `OpenAppLockReport/RuleUsageReport.swift`, `Shared/Stores/DayStartStore.swift`, `OpenAppLock/Views/MainView.swift` |
-| Uninstall Protection | `OpenAppLock/Views/Settings/SettingsView.swift`, `Shared/Enforcement/UninstallProtectionPolicy.swift`, `Shared/Enforcement/UninstallProtectionEnforcer.swift`, `OpenAppLock/Services/AppSettings.swift` |
-| Notifications (permission + schedule-start & time-limit nudges) | `OpenAppLock/Views/Settings/NotificationSettingsView.swift`, `OpenAppLock/Services/NotificationAuthorization.swift`, `OpenAppLock/Services/NotificationScheduler.swift` (+ `ScheduleStartNotificationPlan.swift`), `Shared/Stores/NotificationPreferences.swift`, `Shared/Enforcement/LimitWarningDecision.swift`, `OpenAppLockMonitor/LimitWarningNotifier.swift`, `Shared/Platform/MonitoringPlan.swift` (`tlwarn-`/`warn-`); design spec `Docs/Agents/Specs/NOTIFICATIONS.md` |
-| About links (GitHub / Website) | `OpenAppLock/Services/AppLinks.swift`, `OpenAppLock/Services/LaunchConfiguration.swift` |
-| Diagnostic logging + daily export | `Shared/Diagnostics/DiagnosticLog.swift`, `Shared/Diagnostics/LogEntry.swift`, `Shared/Diagnostics/LogFileWriter.swift` (+ `LogMerge`/`LogRetention`), `OpenAppLock/Services/LogStore.swift`, `OpenAppLock/Views/Settings/DiagnosticLogsView.swift`; instrumentation lives at each enforcement site; design spec `Docs/Agents/Specs/DIAGNOSTIC_LOGGING.md` |
-| Conversation rules, shared chat, local env API key, tagged diagnostics and per-app grants | `OpenAppLock/Services/Conversation/*`, `OpenAppLock/Views/Conversation/*`, `Shared/Stores/ConversationGrantStore.swift`, `Shared/Enforcement/ConversationEnforcement.swift`; spec `Docs/Agents/Specs/CONVERSATION_UNLOCK.md` (short-expiry device verification pending) |
-| User-facing copy (String Catalog, symbolic keys) | `Shared/Copy/CopyKey.swift`, `Shared/Copy.xcstrings`; design spec `Docs/Agents/Specs/COPY_STRING_CATALOG_MIGRATION.md` |
+| `OpenAppLock/Models/` | SwiftData V1–V4 schemas, migrations, BlockingRule/AppList, ConversationArchive; legacy value models and regression tests remain |
+| `OpenAppLock/Services/Conversation/` | Saved app setup/migration, shared chat/history, OpenAI client, diagnostics, approval support snapshots |
+| `OpenAppLock/Views/Conversation/` | App library/editor, chat and coach settings |
+| `OpenAppLock/Views/` | Root permission gate, onboarding, adaptive shell and diagnostic settings |
+| `OpenAppLock/Services/RuleEnforcer.swift` | Foreground reconciliation, including a 30-second backstop |
+| `OpenAppLock/Services/RuleScheduler.swift` | DeviceActivity registration and removal of retired monitors |
+| `Shared/Stores/ConversationGrantStore.swift` | Coordinated App Group state, independent grants and pending shield target |
+| `Shared/Enforcement/ConversationEnforcement.swift` | Transactional grant registration, shield release, expiry and rollback |
+| `Shared/Enforcement/ShieldController.swift` | Per-rule ManagedSettings stores, orphan cleanup and configured-blocker readback |
+| `Shared/` | Cross-process DTOs, domain logic, stores, diagnostics, copy and platform IDs |
+| `OpenAppLockMonitor/` | Background expiry plus legacy activity callbacks |
+| `OpenAppLockShieldConfig/`, `OpenAppLockShieldAction/` | Shield presentation and Request access → Chat routing |
+| `OpenAppLockReport/` | Legacy usage-report extension; retained for compatibility |
+| `OpenAppLockTests/`, `OpenAppLockUITests/` | Swift Testing domain suites and XCUITest flows |
 
-Not part of the feature: paywall, the Home gem/score UI, a Timer tab (one-off
-sessions). Onboarding (`OpenAppLock/Views/Onboarding/`) now leads into required app setup. The pre-reskin custom-themed design (Hold-to-Commit, rule
-cards, photo preset gallery) is recoverable from git history
-(`Docs/AGENT_RULES_FEATURE_SPEC.md`, removed when the spec was folded into code).
+## Invariants
 
-## Build & test
+- `VolitionApps.prepare` disables legacy rules before the shell appears. Preserve
+  V1–V4 schemas and old callbacks; removing old screens does not remove old data.
+- Each saved app has exactly one app token, a required name and intention. The
+  picker closes on one valid app; cancelling preserves the previous selection.
+- Chat and app selection remain available during timers. Grants/waits are per
+  app. Ending one grant must not change another app’s original deadline.
+- The coach receives cross-app access history, active grants and the selected
+  app’s wait. A local wait prevents early approval but does not disable chat.
+- Approval requires a registered timer, durable state, matching configuration and
+  no configured blocker. Failed activation must not publish a success response.
+- All grant mutations and shield writes use the coordinated App Group transaction.
+  Stale expiry callbacks must never end a replacement or another app’s grant.
+- iOS 26.5+ releases clear/deactivate/delete the dedicated rule store; future blocks
+  recreate it. Enumerate actual stores as well as defaults to find orphaned rules.
+- Configured readback does not prove the OS has dismissed a shield. Real-device
+  acceptance matters. Maps/SoundCloud opening and the native picker are verified;
+  long-run repetition and background/terminated short expiry need observation.
+- Background grants use a 16-minute DeviceActivity interval and an end warning at
+  the 1–10-minute deadline. OS callbacks may be late; do not promise exact expiry.
+- Never remove compatibility schemas, enforcement or extension targets as a
+  cosmetic cleanup. Shared files compile into the app and four extensions.
 
-- **Prefer the Xcode MCP** tools (`BuildProject`, `RunAllTests`, `RunSomeTests`
-  — get the tab id from `XcodeListWindows`) when they're connected in the
-  session — they're the richer option (structured results, build-log
-  severity filtering). **The Xcode MCP is not required, though**: if it isn't
-  active in the session (it's session-scoped and never reachable from
-  subagents dispatched via the Agent tool), fall back to `xcodebuild` on the
-  command line instead of skipping validation. Either way, make sure the
-  destination is an iOS **simulator**; a physical-device destination makes
-  test runs hang or get cancelled.
-  - Scheme: `OpenAppLock` (project: `OpenAppLock.xcodeproj`). Example:
-    `xcodebuild test -project OpenAppLock.xcodeproj -scheme OpenAppLock -destination 'platform=iOS Simulator,id=<UDID>' -only-testing:OpenAppLockTests/<SuiteName>`
-    (drop `-only-testing:` for a full run; use `build` instead of `test` for a
-    compile-only check).
-  - Before picking a destination, follow the global mobile-simulators rule:
-    query what's already booted (`xcrun simctl list devices booted`) and
-    target a simulator that **isn't** in that list — either boot a fresh one
-    or reuse one you know is free — so concurrent agents/worktrees never
-    collide on the same instance (a shared booted simulator under concurrent
-    test runs corrupts the result bundle). `xcodebuild test -destination
-    'platform=iOS Simulator,name=<device>,OS=<version>'` will auto-boot a
-    matching simulator if none is running yet.
-  - `xcodebuild test`/`build` never opens the Simulator GUI on its own (same
-    as `fastlane scan`/`snapshot`), so this is headless by default — no
-    extra flag needed. Don't `open -a Simulator` as part of validation.
-  - Command-line `xcodebuild` writes to `~/Library/Developer/Xcode/DerivedData`,
-    which sits outside the sandbox's writable paths — expect to need
-    `dangerouslyDisableSandbox` for the build/test command itself.
-- The project uses Xcode file-system-synchronized groups: adding/removing
-  `.swift` files on disk is enough, no pbxproj editing.
-- Family Controls entitlement is configured (`OpenAppLock/OpenAppLock.entitlements`).
-  FamilyControls/ManagedSettings compile and run on the simulator, but real
-  blocking behavior is only observable on a device.
+## Build and test
 
-## Workflow expectations (user preference)
+Prefer connected Xcode MCP build/test tools. If unavailable, use `xcodebuild`.
+Scheme: `OpenAppLock`; project: `OpenAppLock.xcodeproj`.
 
-These three are non-negotiable defaults — follow them on every task, not only
-when reminded:
+1. Query `xcrun simctl list devices booted`. Use a fresh/unbooted simulator or one
+   owned by this task; never collide with somebody else’s booted simulator.
+2. Run tests against an iOS simulator, never a physical-device test destination:
 
-- **Always plan before execution.** Think through and lay out the approach (a
-  written plan / plan mode for anything non-trivial) and confirm scope before
-  editing code. Do not start changing files until the plan is clear.
-- **Always use red-green TDD.** Consult the feature spec first for behavior
-  changes — the doc comment on the file you're changing is the source of truth,
-  indexed by the "Rules feature map" above. If a change makes a doc comment
-  inaccurate, update it in the same commit (see Documentation above). Then write
-  the failing test, run it (compile failure counts as red), implement, re-run
-  focused tests, then the full suite. Run tests often and fail fast.
-- **Always attempt to validate the UI manually before committing.** Every
-  change that touches what a screen renders (views, layout, hit targets,
-  strings) must be visually confirmed via the Xcode MCP before committing —
-  either an `xcode_RenderPreview` snapshot of the affected view, or better a
-  `DeviceInteraction*` run on a simulator: build & install the app, drive the
-  affected flow with synthesized taps, and inspect the captured screenshots
-  directly (subagents can drive the simulator; see the `device-interaction`
-  skill). Read the screenshots yourself, don't only trust interaction logs.
-  Manual verification is what catches "the right element exists but the layout
-  looks wrong" failures that tests can't. This step **may be skipped only when
-  such tooling is unavailable** (e.g. the Xcode MCP / a simulator is not
-  reachable in the session) — in that case, say so explicitly and hand the
-  verification back to the user rather than silently skipping it.
-- **Branch and open a PR for every change.** New features and bug fixes do not
-  go directly onto `main`. Create a topic branch (`feat/…`, `fix/…`,
-  `chore/…`), push it, and open a GitHub PR with `gh pr create` for the
-  maintainer (brendan-ch) to review and merge themselves. `main` advances only
-  through reviewed PRs. (The repository remains mirrored to `gitea`; GitHub is
-  the review surface.)
-- Conventional commits (`feat:`, `fix:`, `refactor:` …). **Agent attribution is
-  required**: every commit an agent authors or co-authors must end with a
-  `Co-Authored-By:` trailer naming the specific agent/model that did the work,
-  added manually in the commit message — e.g.
-  `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>` (a
-  non-Claude agent uses its own name/email). Commit only when the user asks.
+   ```sh
+   xcodebuild test -project OpenAppLock.xcodeproj -scheme OpenAppLock \
+     -destination 'platform=iOS Simulator,id=<owned-UDID>' \
+     -only-testing:OpenAppLockTests/<Suite>
+   ```
 
-## UI-test harness
+3. Drop the filter for the full suite. CLI runs are headless; do not open Simulator
+   just to test. Build a signed device artifact with `-destination 'generic/platform=iOS'`.
+4. Screenshots: use Xcode previews/device tools when present; otherwise drive
+   XCUITest, export xcresult attachments and inspect the images yourself.
+5. FamilyControls compiles on the simulator, but actual shields/background callbacks
+   need a phone. The UI harness mocks picker selections; real selection needs real
+   authorization. Report any pending device verification explicitly.
 
-`OpenAppLockApp` reads launch arguments (parsed by `LaunchConfiguration`):
+The project uses file-system-synchronized groups: add/remove Swift files on disk;
+no manual pbxproj source registration is needed.
 
-| Argument | Effect |
-|---|---|
-| `-ui-testing` | In-memory SwiftData store, mock authorization, mock shields |
-| `-onboarding-completed` / `-onboarding-required` | Force the onboarding flag |
-| `-seed-scenario=standard` | Active soft rule "Work Time" + upcoming "Sleep" |
-| `-seed-scenario=hard-mode-active` | Active Hard Mode rule "Locked In" + upcoming "Sleep" |
-| `-github-url=<url>` / `-website-url=<url>` | Override the Settings About links with deterministic URLs |
-| `-seed-logs` | Route diagnostic logs to a wiped per-launch temp dir and seed deterministic `SEED-MARKER` entries (Settings → Diagnostics → Logs export flow) |
+## Workflow and documentation
 
-Use `XCUIApplication.launchOpenAppLock(...)` (UITestSupport.swift), which also
-provides `app.element(_:)` for identifier lookup across element types and
-`waitToAppear()`.
+- Plan nontrivial work and confirm scope before editing; existing user authorization
+  counts. Consult the owning feature contract before behavior changes.
+- Use red-green TDD: failing test first (compile failure counts), implement, focused
+  tests, then the full suite. Keep all compatibility regression coverage.
+- Attempt visual UI verification before committing rendered changes. If preview/
+  interaction tooling is unavailable, explicitly report the limitation and hand
+  real-device acceptance to the user; do not silently claim verification.
+- Use a topic branch and a GitHub PR for maintainer review. Follow an explicit user
+  instruction to merge; otherwise leave main changes to reviewed PRs.
+- Commit only when requested. Use conventional commits and a specific agent/model
+  `Co-Authored-By:` trailer (for example `Codex (GPT-6) <noreply@openai.com>`).
+- Agent-managed docs: this file, CLAUDE.md, `AGENT_*` files and everything under
+  `Docs/Agents/`. Maintain a compact current guide; completed plans live in Git.
+- Other docs are human-authored: read them, but do not create/change them without
+  explicit user authorization. Preserve README/license/project metadata in cleanup.
 
-Key accessibility identifiers (keep stable — tests and future work rely on
-them): `newRuleButton`, `ruleCard-<name>`, `ruleStatus-<name>`,
-`blockedTile-<name>`, `nothingBlockedLabel`, `emptyRulesCard`,
-`closeNewRuleButton`, `ruleKind-<kind>`, `preset-<id>`, `ruleEditorTitle`,
-`fromTimePicker`/`toTimePicker`, `dayToggle-1…7`, `selectedAppsRow`,
-`hardModeToggle`, `dailyLimitStepper(+Value)`,
-`maxOpensStepper(+Value)`, `commitRuleButton`, `doneButton`,
-`toggleEnabledButton`, `deleteRuleButton`, `closeDetailButton`,
-`pauseRuleButton`, `resumeRuleButton`,
-`detailRuleName`, `detailStatusLabel`, `detailRow-<label>`,
-`hardModeLockedNotice`, `sidebarItem-<section>` (current iPad sidebar rows: `chat` /
-`apps` / `settings`), settings About links: `githubLinkButton` /
-`websiteLinkButton`, onboarding: `onboardingContinueButton`,
-`allowScreenTimeButton`, `permissionDeniedLabel`, `openSettingsButton`.
+## Test and platform gotchas
 
-Gotchas learned the hard way:
-- **SwiftData relationships**: never assign a relationship property (e.g.
-  `rule.appList`) inside a model's `init` or on un-inserted instances —
-  insert both models into a context first, then wire them.
-- **SwiftData container churn**: repeatedly creating `ModelContainer`s for
-  this schema traps intermittently (EXC_BREAKPOINT inside SwiftData's
-  configuration setup), which Xcode shows as a test "hang" paused at a
-  breakpoint. Unit tests must go through `makeInMemoryContext()`
-  (TestSupport.swift): one shared container per process, fresh context +
-  data wipe per test.
-- Identifiers on SwiftUI containers need `.accessibilityElement(children:
-  .combine)` (or a Button/control) to be queryable.
-- List/Form section headers render uppercased unless `.textCase(nil)` —
-  tests assert exact header strings.
-- Inside tinted Button rows, hierarchical `.primary`/`.secondary`/`.tertiary`
-  foreground styles resolve to the tint (e.g. blue chevrons); use concrete
-  `Color.primary`/`Color.secondary`/`Color(.tertiaryLabel)`.
-- The pause confirmation dialog is queried via `app.sheets.buttons[...]`
-  (a bare `buttons["Pause for 15 minutes"]` is ambiguous with the
-  `pauseRuleButton` row label). Pause/Resume live on the rule detail overlay;
-  Home's Currently Blocking rows navigate to it.
-- **iPad presentation differs and the UI suite runs on both** (CI matrix:
-  iPhone + iPad). On iPad the shell is a sidebar, not a tab bar — navigate with
-  the idiom-aware `goToHomeTab()/…` and `waitForMainUI()` helpers, never bare
-  `tabBars`. Sheets present as *centered, shorter* form sheets, so: a window-edge
-  swipe-back misses them (use the nav `BackButton`); rows can start below the
-  fold (scroll into view); and span/width assertions measured against the full
-  window only hold on iPhone (gate with `UIDevice.current.userInterfaceIdiom`).
+- SwiftData: insert both models before wiring relationships. Tests use the shared
+  `makeInMemoryContext()` factory; repeated containers can trap inside SwiftData.
+- App target defaults to MainActor isolation. Shared cross-process values must be
+  Sendable/nonisolated; import the defining FamilyControls module for token APIs.
+- SwiftUI container identifiers need `.accessibilityElement(children: .combine)`
+  or a control to be queryable. Section headers need `.textCase(nil)` for exact copy.
+- Use concrete `Color.primary/secondary` inside tinted button rows.
+- iPad sheets are shorter and centered; scroll controls into view and navigate via
+  idiom-aware helpers, not hardcoded tab bars or full-window edge swipes.
+- UI launches use `-ui-testing`, mocked authorization/shields and in-memory storage;
+  `-onboarding-completed`/`-onboarding-required` and `-seed-scenario=conversation` or
+  `conversation-multiple` make flows deterministic. `-seed-logs` seeds diagnostics.
+- Stable IDs include `conversationMessageField`, `conversationSendButton`,
+  `conversationChooseAppButton`, `conversationAppOption`, `conversationCooldown`,
+  `endConversationUnlockButton`, `addVolitionAppButton`, `pickVolitionAppButton`,
+  `volitionAppName`, `volitionAppNameHelp`, `volitionAppIntention`,
+  `saveVolitionAppButton`, `finishVolitionSetupButton`, and `sidebarItem-chat/apps/settings`.
 
-## Known gaps / next steps
+## Credentials
 
-Legacy schedule/limit/notification notes below are historical compatibility work;
-those controls are no longer exposed in Volition.
-
-- **Conversation MVP: device verification pending by user choice.** The fourth
-  rule kind, shared chat, user-key OpenAI client, and individual-app grants are
-  implemented and now form the only exposed blocking flow. Short expiry uses a
-  16-minute DeviceActivity interval with an end warning at the 1–10-minute grant
-  deadline. Shield-to-chat routing was user-verified; live synthetic OpenAI
-  approve/wait requests passed. Verify real background/terminated re-blocking.
-  The timer probe source remains available, but its Settings menu was removed. See
-  `Docs/Agents/Specs/CONVERSATION_UNLOCK.md`.
-
-- **Diagnostic logs are now the primary on-device instrument.** Every process
-  logs how/when blocks execute to `os.Logger` (live in Xcode/Console) and to
-  per-process daily files in the app group, exportable from Settings →
-  Diagnostics → Logs as a per-day `.txt`. Each line carries its
-  `[File.swift:line function]` so behavior traces back to code. When debugging
-  the time-limit / blocking inconsistencies, pull a day's export and read the
-  enforcement timeline (the `event`-level lines and the "drop … (stale …)"
-  rejections in particular). Instrumentation breadth may widen after the first
-  device logs. **Likely bug surfaced while instrumenting:** editing an existing
-  app list saves the new selection but its editor completion handler is a no-op
-  (`AppListLibraryView` `editingList` → `{ _ in }`), so nothing re-enforces
-  until the next 30 s `RuleEnforcer` loop — a strong match for "app-list edits
-  don't register after I save." Not fixed in the logging change; confirm via the
-  logs (an `appList saved … (edit)` line with no following `enforcer refresh`)
-  then address separately.
-- **On-device verification of limit enforcement is pending.** The
-  DeviceActivity monitor + shield extensions and the app group are in place,
-  but real blocking/usage tracking is only observable on a device (the
-  simulator neither tracks usage nor renders custom shields). Verify: time
-  limits accrue in the Usage section and block at the budget; open-limit
-  apps shield immediately with an "Open (N left)" button; an open lasts
-  ~15 minutes (DeviceActivity's minimum interval) before re-shielding.
-- **Time-limit counting hardening** (see
-  `Docs/Agents/Specs/TIME_LIMIT_COUNTING_HARDENING.md`) is implemented but
-  device-verification is pending. Time limits now register a **single**
-  `minutes-<budget>` block event (not a per-minute chain); the monitor records
-  usage only for rules eligible today and only after a **confirmed**
-  daily-activity start (`DayStartStore`), dropping stale cross-midnight
-  flushes. The new **`OpenAppLockReport`** DeviceActivityReport extension
-  computes each rule's true daily total while the app is foreground and writes
-  it to `UsageLedger`; display and the foreground block decision prefer that
-  authoritative figure when fresh. Verify on device: the Usage counter shows
-  the true total on app open (no "stalls at ~14/15m" lag); a maxed-out day
-  does not re-block unused apps the next morning (or clears within one
-  foreground refresh); report attribution covers category/web-domain
-  selections (currently only application tokens are summed); and tune
-  `RuleUsageDTO.authoritativeFreshness` (120s) so the foreground stays fresh.
-- **Time-limit day-keyed enforcement** (see
-  `Docs/Agents/Specs/TIME_LIMIT_DAY_KEYED_ENFORCEMENT.md`) makes each time-limit
-  fire self-dating: the block and warn run on **per-day, non-repeating**
-  activities (`rule-<uuid>-<dayKey>` / `tlwarn-<uuid>-<dayKey>`), armed for the
-  current scheduled day only (N = 1) (`RuleScheduler.dayPlans` +
-  `ScheduledDayPlanner`; see `Docs/Agents/Specs/RULE_HARD_CAP_AND_N1_ARMING.md`),
-  with the total rule count capped at 10 so the worst-case per-rule activity cost
-  fits Apple's ~20 ceiling, and the monitor **drops any fire whose day key isn't
-  today** — closing `TIME_LIMIT_COUNTING_HARDENING.md` §4d's Scenario B false
-  block at the source rather than relying on the (still-unwired) Part B
-  foreground reconciliation. Open limits keep their single repeating activity.
-  Implemented + unit-tested; device-verification pending: the monitor can
-  `startMonitoring` to self-arm the next day at `intervalDidEnd` (now
-  load-bearing under N = 1, with no foreground buffer behind it); full-day
-  capture from a midnight-armed activity; a real cross-midnight flush is dropped;
-  and the per-day activity count stays under DeviceActivity's ~20 ceiling.
-- **Schedule-rule background transitions** are now backed by DeviceActivity:
-  `RuleScheduler` registers a repeating window activity per schedule rule
-  (`sched-<uuid>`, plus `sched2-<uuid>` for midnight-crossing windows) and the
-  monitor extension recomputes + applies/clears the shield on interval
-  start/end. The foreground 30s loop remains as the reconciliation safety net
-  because interval callbacks are unreliable. On-device verification of the
-  background transition is still pending (the simulator does not deliver
-  DeviceActivity callbacks).
-- **Notifications: on-device verification pending.** The Settings →
-  Notifications UI, permission flow, schedule-start scheduling, and warn-activity
-  registration are unit/UI-tested, but two delivery paths are device-only: that a
-  pre-scheduled `UNCalendarNotificationTrigger` actually fires ~5 min before a
-  schedule window, and that the `DeviceActivityMonitor` extension can post the
-  time-limit warn notification from its background process (the simulator
-  delivers no DeviceActivity callbacks). Verify on device: enable both nudges;
-  confirm the schedule warning arrives ~5 min before a window; confirm the
-  "5 minutes left" warning arrives near a time-limit's budget; confirm toggling
-  the time-limit nudge does not reset a partially-used budget (the warn lives in
-  a separate `tlwarn-` activity, so the enforcement activity is never restarted).
-- `FamilyActivityPicker` shows few apps on the simulator; fine on device.
-- `FamilyActivityPicker` **silently ignores selections** (binding never
-  updates, rows still show checkmarks) unless real FamilyControls
-  authorization has been granted — in `-ui-testing` launches authorization
-  is mocked, so picker selections can never be asserted in UI tests. To
-  verify selection flows manually on the simulator, launch without
-  `-ui-testing`, complete onboarding, and approve the system Screen Time
-  prompts ("Allow with Passcode" works on the simulator).
-- Distribution (App Store) requires Apple's approval for the Family Controls
-  entitlement **for the app and each extension bundle ID**
-  (`com.a5karki.volition`, `.Monitor`, `.ShieldConfig`, `.ShieldAction`);
-  development builds work with the dev entitlement.
+`OpenAppLock/Conversation.env` is a personal ignored file bundled for this prototype;
+`Config/Conversation.env.example` is the tracked placeholder. Never print/copy real
+keys into docs, logs, tests or commits. Never distribute a personal-key build.
+Check that a device build still bundles the local config without printing it.
+Old local archival branches may contain keys: never push historical branches
+blindly. Do not bypass GitHub secret protection; preserve remote history and
+sanitize unpublished work before pushing.

@@ -12,6 +12,12 @@ import Testing
 /// layouts can never drift.
 @MainActor
 struct AppSectionTests {
+    @Test("Retired screens cannot become navigation destinations")
+    func retiredDestinations() {
+        #expect(AppSection(rawValue: "home") == nil)
+        #expect(AppSection(rawValue: "rules") == nil)
+    }
+
     @Test("Sections are ordered Chat, Apps, Settings")
     func ordering() {
         #expect(AppSection.allCases == [.chat, .apps, .settings])
@@ -24,22 +30,22 @@ struct AppSectionTests {
 
     @Test("Each section exposes its display title")
     func titles() {
-        #expect(AppSection.home.title == "Home")
-        #expect(AppSection.rules.title == "Rules")
+        #expect(AppSection.chat.title == "Chat")
+        #expect(AppSection.apps.title == "Apps")
         #expect(AppSection.settings.title == "Settings")
     }
 
     @Test("Each section exposes its SF Symbol")
     func symbols() {
-        #expect(AppSection.home.systemImage == "house")
-        #expect(AppSection.rules.systemImage == "shield.lefthalf.filled")
+        #expect(AppSection.chat.systemImage == "bubble.left.and.bubble.right")
+        #expect(AppSection.apps.systemImage == "apps.iphone")
         #expect(AppSection.settings.systemImage == "gearshape")
     }
 
     @Test("Identifiers are the stable raw values")
     func identifiers() {
-        #expect(AppSection.home.id == "home")
-        #expect(AppSection.rules.id == "rules")
+        #expect(AppSection.chat.id == "chat")
+        #expect(AppSection.apps.id == "apps")
         #expect(AppSection.settings.id == "settings")
     }
 }
