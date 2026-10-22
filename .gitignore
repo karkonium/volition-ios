@@ -5,3 +5,8 @@ xcuserdata/
 # Build artifacts
 DerivedData/
 build/
+
+# Personal OpenAI prototype configuration
+Config/*
+!Config/Conversation.env.example
+OpenAppLock/Conversation.env

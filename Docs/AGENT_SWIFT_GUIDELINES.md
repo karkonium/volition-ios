@@ -221,10 +221,13 @@ guard let apiKey, !apiKey.isEmpty else {
 }
 ```
 
-> **Project note:** OpenAppLock has no network backend or API keys today.
-> `UserDefaults` (and the app-group container) is used only for non-sensitive
-> rule mirroring / stray-shield cleanup — keep it that way; do not put secrets
-> there.
+> **Project note:** The personal Conversation prototype calls OpenAI directly.
+> By explicit user choice, its ignored `OpenAppLock/Conversation.env` is bundled
+> into the main app at build time; it replaces in-app credential storage. Never
+> commit real keys or distribute a build containing a personal key. Credentials
+> never enter `UserDefaults`, app-group files, extensions, or diagnostic logs.
+> Temporary conversation diagnostics are gated by `CONVO_LOG_ENABLED` and contain
+> controlled metadata only, never raw errors, response bodies or chat text.
 
 ### Transport security
 

@@ -10,14 +10,18 @@ import Foundation
 
 enum OpenAppLockSchemaMigrationPlan: SchemaMigrationPlan {
     static var stages: [MigrationStage] {
-        [migrateV1toV2, migrateV2toV3]
+        [migrateV1toV2, migrateV2toV3, migrateV3toV4]
     }
 
     static var schemas: [any VersionedSchema.Type] = [
         OpenAppLockSchemaV1.self,
         OpenAppLockSchemaV2.self,
-        OpenAppLockSchemaV3.self
+        OpenAppLockSchemaV3.self,
+        OpenAppLockSchemaV4.self
     ]
+
+    static let migrateV3toV4 = MigrationStage.lightweight(
+        fromVersion: OpenAppLockSchemaV3.self, toVersion: OpenAppLockSchemaV4.self)
 
     static let migrateV1toV2 = MigrationStage.custom(
         fromVersion: OpenAppLockSchemaV1.self,
@@ -99,7 +103,7 @@ enum MigrationHelpers {
     /// strips the legacy column. Required to ensurethat `appList` becomes `nil`
     /// on the rule.
     static func promoteV2RuleAppLists(_ context: ModelContext) throws {
-        let rules = try context.fetch(FetchDescriptor<BlockingRule>())
+        let rules = try context.fetch(FetchDescriptor<OpenAppLockSchemaV3.BlockingRule>())
         var promoted = 0
         for rule in rules where rule.appLists.isEmpty && rule.appList != nil {
             rule.appLists = [rule.appList!]

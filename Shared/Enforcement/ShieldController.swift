@@ -25,11 +25,17 @@ nonisolated protocol ShieldApplying: AnyObject, Sendable {
     /// Uninstall Protection. Independent of per-rule shields: it lives on its
     /// own store so clearing rule shields never disturbs it.
     func setAppRemovalDenied(_ denied: Bool)
+    /// Reads this app's configured shield directives, not the OS-visible screen.
+    func blockingRuleIDs(for token: ApplicationToken, among ruleIDs: Set<UUID>) -> Set<UUID>
 }
 
 /// Real shield enforcement via per-rule `ManagedSettingsStore`s. Store names
 /// are tracked in the shared app-group defaults (ManagedSettings cannot
-/// enumerate stores) so the app and extensions see one consistent set.
+/// enumerate stores before iOS 26.5). Newer systems also enumerate configured
+/// stores, repairing orphaned restrictions if bookkeeping was lost. Cleared stores
+/// are deactivated and deleted on supported systems; later blocking recreates
+/// the store. This relinquishes the rule's store rather than retaining an empty
+/// store after an unlock. Configuration readback cannot verify the OS-visible UI.
 nonisolated final class ManagedSettingsShieldController: ShieldApplying, @unchecked Sendable {
     private static let trackedIDsKey = "shieldedRuleIDs"
     private let defaults: UserDefaults
@@ -43,6 +49,7 @@ nonisolated final class ManagedSettingsShieldController: ShieldApplying, @unchec
         let selection = AppSelectionCodec.decode(selectionData)
         switch mode {
         case .block:
+            store.shield.webDomainCategories = nil
             store.shield.applications =
                 selection.applicationTokens.isEmpty ? nil : selection.applicationTokens
             store.shield.applicationCategories =
@@ -50,6 +57,8 @@ nonisolated final class ManagedSettingsShieldController: ShieldApplying, @unchec
             store.shield.webDomains =
                 selection.webDomainTokens.isEmpty ? nil : selection.webDomainTokens
         case .allowOnly:
+            store.shield.applications = nil
+            store.shield.webDomains = nil
             // `.all(except:)` is itself a *shield* directive ("block everything
             // except these"), not a whitelist — it cannot lift another store's
             // shield on a shared app. So an Allow-Only rule never punches a hole
@@ -58,6 +67,7 @@ nonisolated final class ManagedSettingsShieldController: ShieldApplying, @unchec
             store.shield.applicationCategories = .all(except: selection.applicationTokens)
             store.shield.webDomainCategories = .all(except: selection.webDomainTokens)
         }
+        if #available(iOS 26.5, *) { store.isActive = true }
         track(ruleID: ruleID)
         Diag.log(
             .shield, .event,
@@ -66,12 +76,26 @@ nonisolated final class ManagedSettingsShieldController: ShieldApplying, @unchec
 
     func clearShield(ruleID: UUID) {
         Diag.log(.shield, .event, "clear rule-\(ruleID.logTag)")
-        store(for: ruleID).clearAllSettings()
+        let store = store(for: ruleID)
+        if #available(iOS 26.5, *) { store.isActive = false }
+        store.shield.applications = nil
+        store.shield.applicationCategories = nil
+        store.shield.webDomains = nil
+        store.shield.webDomainCategories = nil
+        store.clearAllSettings()
+        if #available(iOS 26.5, *) {
+            store.deleteStore()
+            Diag.log(.shield, .event, "release rule-\(ruleID.logTag) store_deleted")
+        }
         untrack(ruleID: ruleID)
     }
 
     func clearShields(except activeRuleIDs: Set<UUID>) {
-        let toClear = trackedIDs.subtracting(activeRuleIDs)
+        let registeredNames: Set<String>
+        if #available(iOS 26.5, *) { registeredNames = Set(ManagedSettingsStore.stores.map(\.rawValue)) }
+        else { registeredNames = [] }
+        let toClear = ShieldStoreInventory.staleRuleIDs(tracked: trackedIDs,
+            registeredNames: registeredNames, keeping: activeRuleIDs)
         if !toClear.isEmpty {
             Diag.log(
                 .shield,
@@ -89,6 +113,24 @@ nonisolated final class ManagedSettingsShieldController: ShieldApplying, @unchec
         let store = ManagedSettingsStore(named: Self.uninstallProtectionStoreName)
         store.application.denyAppRemoval = denied ? true : nil
         if denied { Diag.log(.shield, "appRemovalDenied engaged (Uninstall Protection)") }
+    }
+
+    func blockingRuleIDs(for token: ApplicationToken, among ruleIDs: Set<UUID>) -> Set<UUID> {
+        let registered: Set<UUID>
+        if #available(iOS 26.5, *) {
+            registered = ShieldStoreInventory.ruleIDs(in: Set(ManagedSettingsStore.stores.map(\.rawValue)))
+        } else { registered = [] }
+        return Set(ruleIDs.union(trackedIDs).union(registered).filter { id in
+            let store = store(for: id)
+            if #available(iOS 26.5, *), !store.isActive { return false }
+            if store.shield.applications?.contains(token) == true { return true }
+            switch store.shield.applicationCategories {
+            case .all(let exceptions): return !exceptions.contains(token)
+            case .specific(let categories, let exceptions): return !categories.isEmpty && !exceptions.contains(token)
+            case nil, .some(.none): return false
+            @unknown default: return true
+            }
+        })
     }
 
     private static let uninstallProtectionStoreName =
@@ -144,6 +186,14 @@ nonisolated final class MockShieldController: ShieldApplying, @unchecked Sendabl
         // Note: appRemovalDenied is intentionally left untouched here.
     }
 
+    func blockingRuleIDs(for token: ApplicationToken, among ruleIDs: Set<UUID>) -> Set<UUID> {
+        Set(shieldedRuleIDs.filter { id in
+            let selection = AppSelectionCodec.decode(appliedSelectionData[id] ?? nil)
+            return selection.applicationTokens.contains(token) || !selection.categoryTokens.isEmpty ||
+                (appliedModes[id] == .allowOnly && !selection.applicationTokens.contains(token))
+        })
+    }
+
     func setAppRemovalDenied(_ denied: Bool) {
         appRemovalDenied = denied
     }
@@ -166,5 +216,19 @@ nonisolated enum AppSelectionCodec {
         selection.applicationTokens.count
             + selection.categoryTokens.count
             + selection.webDomainTokens.count
+    }
+}
+
+/// The system inventory repairs lost defaults bookkeeping after cross-process
+/// writes or upgrades. Unrelated named stores are never parsed as rule stores.
+nonisolated enum ShieldStoreInventory {
+    static func ruleIDs(in names: Set<String>) -> Set<UUID> {
+        Set(names.compactMap { name in
+            guard name.hasPrefix("rule-") else { return nil }
+            return UUID(uuidString: String(name.dropFirst(5)))
+        })
+    }
+    static func staleRuleIDs(tracked: Set<UUID>, registeredNames: Set<String>, keeping: Set<UUID>) -> Set<UUID> {
+        tracked.union(ruleIDs(in: registeredNames)).subtracting(keeping)
     }
 }

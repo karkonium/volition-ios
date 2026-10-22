@@ -20,12 +20,15 @@ enum RuleConfiguration: Hashable, Sendable {
     case schedule(ScheduleConfig)
     case timeLimit(TimeLimitConfig)
     case openLimit(OpenLimitConfig)
+    /// Always-on, individual-app blocking; no Hard Mode, pauses, or schedule.
+    case conversation(ConversationConfig)
 
     var kind: RuleKind {
         switch self {
         case .schedule: .schedule
         case .timeLimit: .timeLimit
         case .openLimit: .openLimit
+        case .conversation: .conversation
         }
     }
 
@@ -36,6 +39,7 @@ enum RuleConfiguration: Hashable, Sendable {
         case .schedule: .schedule(ScheduleConfig())
         case .timeLimit: .timeLimit(TimeLimitConfig())
         case .openLimit: .openLimit(OpenLimitConfig())
+        case .conversation: .conversation(ConversationConfig())
         }
     }
 
@@ -98,4 +102,9 @@ struct OpenLimitConfig: Hashable, Sendable {
     init(maxOpens: Int = 5) {
         self.maxOpens = maxOpens
     }
+}
+
+/// The user's durable goal for conversation-based access decisions.
+struct ConversationConfig: Hashable, Sendable {
+    var goal: String = ""
 }

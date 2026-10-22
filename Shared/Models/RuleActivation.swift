@@ -32,6 +32,8 @@ nonisolated enum RuleActivation: Equatable, Sendable {
 }
 
 nonisolated extension RuleSnapshotDTO {
+    /// Conversation rules block continuously while enabled; per-app exceptions are
+    /// applied separately by ConversationEnforcement.
     /// Whether this rule is blocking right now, and until/from when. Schedule
     /// rules block by the clock; limit rules block once the day's budget is spent
     /// on an enabled day (requires usage). A pause only surfaces when the rule
@@ -41,8 +43,11 @@ nonisolated extension RuleSnapshotDTO {
     ) -> RuleActivation {
         guard isEnabled else { return .notBlockingNow(nextReset: nil) }
 
+        if kind == .conversation { return .active(until: .distantFuture) }
+
         let currentBlockEnd: Date?
         switch kind {
+        case .conversation: currentBlockEnd = .distantFuture
         case .schedule:
             currentBlockEnd = schedule.activeWindow(containing: now, calendar: calendar)?.end
         case .timeLimit, .openLimit:

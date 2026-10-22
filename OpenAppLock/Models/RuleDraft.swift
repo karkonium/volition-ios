@@ -3,6 +3,7 @@
 //  OpenAppLock
 //
 
+import FamilyControls
 import Foundation
 import SwiftData
 
@@ -27,7 +28,7 @@ struct RuleDraft: Hashable {
     /// values (9–5 weekdays schedule, 45m/day, 5 opens/day).
     init(kind: RuleKind) {
         self.name = kind.defaultRuleName
-        self.days = Weekday.weekdays
+        self.days = kind == .conversation ? Weekday.everyDay : Weekday.weekdays
         self.hardMode = false
         self.appLists = []
         self.configuration = .default(for: kind)
@@ -50,6 +51,14 @@ struct RuleDraft: Hashable {
     }
     
     func validate() -> ValidationResult {
+        if kind == .conversation {
+            guard !conversationConfig.goal.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  conversationConfig.goal.count <= 2000 else { return .failure(reason: .conversationGoal) }
+            let selections = appLists.compactMap(\.selectionData).map { AppSelectionCodec.decode($0) }
+            guard selections.contains(where: { !$0.applicationTokens.isEmpty }),
+                  selections.allSatisfy({ $0.categoryTokens.isEmpty && $0.webDomainTokens.isEmpty })
+            else { return .failure(reason: .individualApps) }
+        }
         if self.configuration.kind == .schedule {
             if self.configuration.scheduleConfig?.startAndEndTimesTooClose == true {
                 return .failure(reason: .startEndTimesTooClose)
@@ -119,6 +128,11 @@ extension RuleDraft {
     /// controls. The getter returns kind defaults when the draft is a
     /// different kind; each editor only reads the projection for its own kind,
     /// and writing through it repackages the configuration to that kind.
+    var conversationConfig: ConversationConfig {
+        get { if case .conversation(let config) = configuration { return config }; return ConversationConfig() }
+        set { configuration = .conversation(newValue) }
+    }
+
     var scheduleConfig: ScheduleConfig {
         get { configuration.scheduleConfig ?? ScheduleConfig() }
         set { configuration = .schedule(newValue) }
@@ -140,6 +154,7 @@ extension RuleDraft {
         case success
         case failure(reason: Reason)
         enum Reason: Equatable {
+            case conversationGoal, individualApps
             case startEndTimesTooClose
             case startTooCloseToMidnight
         }
@@ -149,6 +164,8 @@ extension RuleDraft {
 extension RuleDraft.ValidationResult.Reason {
     var message: String {
         switch self {
+        case .conversationGoal: CopyKey.conversationGoalValidation.string
+        case .individualApps: CopyKey.conversationAppsValidation.string
         case .startEndTimesTooClose: CopyKey.ruleDraftValidationFailedStartEndTimesTooCloseMessage.string
         case .startTooCloseToMidnight: CopyKey.ruleDraftValidationFailedStartTimeTooCloseToMidnightMessage.string
         }

@@ -28,6 +28,8 @@ struct RuleDetailSheet: View {
     @Environment(RuleEnforcer.self) private var enforcer
     @Query(sort: \BlockingRule.createdAt) private var rules: [BlockingRule]
 
+    @Environment(ConversationCoordinator.self) private var conversation
+    @State private var showingConversationApps = false
     @State private var isEditing = false
     /// Working copy edited in place; re-captured from the rule on every mode
     /// switch, so each edit starts fresh and discarding simply drops it.
@@ -62,6 +64,15 @@ struct RuleDetailSheet: View {
         }
         // Force route through discard prompt
         .interactiveDismissDisabled(isEditing && hasOutstandingEdits)
+        .sheet(isPresented: $showingConversationApps) {
+            NavigationStack {
+                ConversationAppPicker(ruleID: rule.id) { token in
+                    conversation.select(token)
+                    showingConversationApps = false
+                    dismiss()
+                }
+            }
+        }
         .onDisappear {
             if pendingDeletion {
                 modelContext.delete(rule)
@@ -105,6 +116,12 @@ struct RuleDetailSheet: View {
 
             Section(CopyKey.ruleDetailDetailsSectionHeader.resource) {
                 detailRows
+            }
+            if rule.kind == .conversation && rule.isEnabled {
+                Section {
+                    Button(CopyKey.conversationRequestAccess.resource) { showingConversationApps = true }
+                        .accessibilityIdentifier("requestConversationAccessButton")
+                }
             }
             // Live Screen Time usage for this rule's apps, rendered inside the
             // report extension (the only place the data is available). Pushed to a
@@ -395,6 +412,10 @@ struct RuleDetailSheet: View {
     @ViewBuilder
     private var detailRows: some View {
         switch rule.configuration {
+        case .conversation(let config):
+            row(CopyKey.conversationGoalRow.string, config.goal)
+            row(CopyKey.ruleDetailWhenIOpenRowLabel.string, appCountLabel)
+            row(CopyKey.ruleDetailPausingAllowedRowLabel.string, CopyKey.ruleDetailNoValue.string)
         case .schedule(let config):
             row(CopyKey.ruleDetailDuringThisTimeRowLabel.string, rule.schedule.timeRangeLabel)
             row(CopyKey.ruleDetailOnTheseDaysRowLabel.string, rule.days.summary)

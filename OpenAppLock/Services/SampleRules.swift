@@ -3,6 +3,8 @@
 //  OpenAppLock
 //
 
+import FamilyControls
+import ManagedSettings
 import Foundation
 import SwiftData
 
@@ -27,6 +29,28 @@ enum SampleRules {
 
         let rules: [BlockingRule]
         switch scenario {
+        case .conversationMultiple:
+            for byte: UInt8 in [11, 12] {
+                guard let data = try? JSONSerialization.data(withJSONObject: ["data": Data([byte]).base64EncodedString()]),
+                      let token = try? JSONDecoder().decode(ApplicationToken.self, from: data) else { continue }
+                var selection = FamilyActivitySelection(); selection.applicationTokens = [token]
+                let list = AppList(name: "App \(byte)", selectionData: AppSelectionCodec.encode(selection), selectionCount: 1)
+                let rule = BlockingRule(name: "App \(byte)", configuration: .conversation(.init(goal: "Contact friends with purpose.")))
+                context.insert(list); context.insert(rule); rule.appLists = [list]
+            }
+            try? context.save()
+            return
+        case .conversation:
+            // Synthetic tokens are strictly UI harness data; no real picker authorization is needed.
+            var selection = FamilyActivitySelection()
+            if let data = try? JSONSerialization.data(withJSONObject: ["data": Data([1]).base64EncodedString()]),
+               let token = try? JSONDecoder().decode(ApplicationToken.self, from: data) {
+                selection.applicationTokens = [token]
+            }
+            distractions.selectionData = AppSelectionCodec.encode(selection)
+            distractions.selectionCount = 1
+            rules = [BlockingRule(name: "Intentional Access", configuration: .conversation(
+                ConversationConfig(goal: "Open this app for a specific useful task.")))]
         case .standard:
             rules = [
                 activeRule(named: "Work Time", hardMode: false, now: now, calendar: calendar),

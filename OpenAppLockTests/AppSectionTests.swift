@@ -12,9 +12,9 @@ import Testing
 /// layouts can never drift.
 @MainActor
 struct AppSectionTests {
-    @Test("Sections are ordered Home, Rules, Settings")
+    @Test("Sections are ordered Chat, Apps, Settings")
     func ordering() {
-        #expect(AppSection.allCases == [.home, .rules, .settings])
+        #expect(AppSection.allCases == [.chat, .apps, .settings])
     }
 
     @Test("There are exactly three top-level sections")

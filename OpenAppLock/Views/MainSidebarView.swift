@@ -8,19 +8,20 @@ import SwiftUI
 /// The regular-width (full-screen iPad) layout: a persistent left sidebar listing
 /// the top-level sections, with the selected section filling the detail column.
 ///
-/// Reuses the exact same section views as the compact `TabView` (`HomeView`,
-/// `RulesListView`, `SettingsView` — each brings its own `NavigationStack`); only
+/// Reuses the exact same section views as the compact `TabView` (`ConversationView`,
+/// `VolitionAppsView`, `SettingsView` — each brings its own `NavigationStack`); only
 /// the navigation chrome differs. Sidebar rows are built from `AppSection`, the
 /// shared source of truth, so labels and icons match the tab bar.
 struct MainSidebarView: View {
-    @State private var selection: AppSection? = .home
+    @Environment(ConversationCoordinator.self) private var conversation
 
     var body: some View {
         // Pin the sidebar visible: on the roomy iPad canvas the top-level
         // sections should always be in reach (HIG), and a constant column
         // visibility keeps the layout stable for UI tests and rotation.
+        @Bindable var conversation = conversation
         NavigationSplitView(columnVisibility: .constant(.all)) {
-            List(selection: $selection) {
+            List(selection: Binding<AppSection?>(get: { conversation.selectedSection }, set: { conversation.selectedSection = $0 ?? .chat })) {
                 ForEach(AppSection.allCases) { section in
                     Label(section.title, systemImage: section.systemImage)
                         // Collapse the icon + title into one queryable, hittable
@@ -32,7 +33,7 @@ struct MainSidebarView: View {
             }
             .navigationTitle(CopyKey.navAppTitle.resource)
         } detail: {
-            detail(for: selection ?? .home)
+            detail(for: conversation.selectedSection)
         }
         .navigationSplitViewStyle(.balanced)
     }
@@ -40,10 +41,9 @@ struct MainSidebarView: View {
     @ViewBuilder
     private func detail(for section: AppSection) -> some View {
         switch section {
-        case .home:
-            HomeView()
-        case .rules:
-            RulesListView()
+        case .home, .rules, .apps:
+            VolitionAppsView()
+        case .chat: ConversationView()
         case .settings:
             SettingsView()
         }

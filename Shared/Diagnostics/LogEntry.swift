@@ -25,7 +25,7 @@ nonisolated enum LogLevel: String, Sendable, CaseIterable {
 nonisolated enum LogCategory: String, Sendable {
     case enforcer, scheduler, shield, monitor
     case usage, dayStart, session, appList, rule, lifecycle
-    case migration
+    case migration, conversation
 }
 
 /// Which process wrote an entry, inferred from the running bundle so no
@@ -69,7 +69,7 @@ nonisolated enum LogTimestamp {
 }
 
 /// Builds and parses per-process daily log filenames: `<source>-<YYYY-MM-DD>.log`.
-enum LogFilename {
+nonisolated enum LogFilename {
     static let fileExtension = "log"
     static let dayKeyLength = 10
     static let dayKeySuffixLength = dayKeyLength + 1

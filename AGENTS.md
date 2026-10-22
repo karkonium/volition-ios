@@ -1,16 +1,31 @@
 # OpenAppLock — Agent Guide
 
-OpenAppLock is an iOS Screen Time app: recurring **rules** that block selected
-apps (Schedule windows, Time Limits, Open Limits), with a **Hard Mode** that
-makes an active block impossible to lift, edit, or delete until it ends. The
-presentation is bare native iOS (List/Form/NavigationStack, default color
-scheme).
+Volition (the OpenAppLock Xcode project) is a conversation-first iOS Screen Time
+app. Users save individual apps with a name and intention. The coach can ask,
+deny, approve 1–10 minutes, or enforce a 1–5 minute wait. Only Chat, Apps and
+minimal Settings are exposed. Legacy rule models/enforcement remain for data
+compatibility and are disabled by VolitionApps.prepare before the shell appears.
+The presentation is native SwiftUI, with tabs on iPhone and a sidebar on iPad.
+Grant approval and reconciliation check configured blockers before retaining a
+timer; iOS 26.5+ store discovery repairs orphaned rule stores. Coach activity
+summaries count full-archive grants across apps, and repeat requests require
+stricter duration/stopping-plan judgment. Configured readback is not proof of
+the OS-visible screen; physical-device acceptance remains necessary. Chat and app
+selection remain available during timers. Grants and waits are per app; ending one
+grant preserves other apps’ deadlines. On iOS 26.5+ releases delete the dedicated
+rule store. Debug approval snapshots live in Documents/VolitionSupport/LatestApproval.
+
+Current feature source: `Docs/Agents/Specs/CONVERSATION_UNLOCK.md`,
+`OpenAppLock/Services/Conversation/VolitionApps.swift`,
+`OpenAppLock/Views/Conversation/VolitionAppsView.swift`, and the Conversation
+coordinator/client/views. The legacy feature map below describes compatibility
+code, not reachable product options.
 
 ## Repo layout
 
 ```
 OpenAppLock/                    App target (iOS 26, SwiftUI + SwiftData)
-  Models/                   BlockingRule + AppList (@Model), RuleDraft,
+  Models/                   BlockingRule + AppList (@Model, V4), ConversationArchive, RuleDraft,
                             RulePreset
   Logic/                    Pure, heavily unit-tested:
                             RuleStatus (derived status + labels, usage-aware),
@@ -111,9 +126,10 @@ un-prefixed doc remains off-limits to agent edits.
   Hard Mode rules can't be paused.
 - Shields: one `ManagedSettingsStore` per rule (`rule-<uuid>`), tracked in
   UserDefaults for stray cleanup.
-- `RuleEnforcer.refresh` is the only place shields change; the post-onboarding
-  shell (`MainView`) runs it on rule changes and a 30s loop while the app is open,
-  regardless of the active layout (compact `TabView` vs regular-width sidebar).
+- `RuleEnforcer.refresh` owns foreground reconciliation; `MainView` runs it on
+  rule changes and a 30s loop in either layout. Background extensions use shared
+  enforcers. Conversation grants additionally use coordinated App Group
+  transactions so approval and expiry agree across processes.
 
 ## Rules feature map
 
@@ -126,12 +142,11 @@ Screens — post-onboarding adaptive shell (`MainView`: a tab bar in compact
 width, a sidebar in regular-width iPad; section labels from one `AppSection`):
 
 ```
-Home      Currently Blocking + Usage               HomeView
-Rules     rules grouped by kind; + opens New Rule   RulesListView
-            New Rule → editor                         NewRuleSheet → RuleEditorView
-            tap a rule → detail → editor              RuleDetailSheet → RuleEditorView
-Settings  Uninstall Protection, App Lists,           SettingsView → ManageAppListsView
-            Notifications, About                       SettingsView → NotificationSettingsView
+Chat      Shared coach + saved app selector           ConversationView
+Apps      Individual apps, names and intentions      VolitionAppsView → VolitionAppEditor
+Settings  Coach/privacy + diagnostic logs             SettingsView
+Setup     Welcome → permission → add apps             OnboardingView → MainView
+
 ```
 
 Where each topic is documented:
@@ -157,11 +172,11 @@ Where each topic is documented:
 | Notifications (permission + schedule-start & time-limit nudges) | `OpenAppLock/Views/Settings/NotificationSettingsView.swift`, `OpenAppLock/Services/NotificationAuthorization.swift`, `OpenAppLock/Services/NotificationScheduler.swift` (+ `ScheduleStartNotificationPlan.swift`), `Shared/Stores/NotificationPreferences.swift`, `Shared/Enforcement/LimitWarningDecision.swift`, `OpenAppLockMonitor/LimitWarningNotifier.swift`, `Shared/Platform/MonitoringPlan.swift` (`tlwarn-`/`warn-`); design spec `Docs/Agents/Specs/NOTIFICATIONS.md` |
 | About links (GitHub / Website) | `OpenAppLock/Services/AppLinks.swift`, `OpenAppLock/Services/LaunchConfiguration.swift` |
 | Diagnostic logging + daily export | `Shared/Diagnostics/DiagnosticLog.swift`, `Shared/Diagnostics/LogEntry.swift`, `Shared/Diagnostics/LogFileWriter.swift` (+ `LogMerge`/`LogRetention`), `OpenAppLock/Services/LogStore.swift`, `OpenAppLock/Views/Settings/DiagnosticLogsView.swift`; instrumentation lives at each enforcement site; design spec `Docs/Agents/Specs/DIAGNOSTIC_LOGGING.md` |
+| Conversation rules, shared chat, local env API key, tagged diagnostics and per-app grants | `OpenAppLock/Services/Conversation/*`, `OpenAppLock/Views/Conversation/*`, `Shared/Stores/ConversationGrantStore.swift`, `Shared/Enforcement/ConversationEnforcement.swift`; spec `Docs/Agents/Specs/CONVERSATION_UNLOCK.md` (short-expiry device verification pending) |
 | User-facing copy (String Catalog, symbolic keys) | `Shared/Copy/CopyKey.swift`, `Shared/Copy.xcstrings`; design spec `Docs/Agents/Specs/COPY_STRING_CATALOG_MIGRATION.md` |
 
 Not part of the feature: paywall, the Home gem/score UI, a Timer tab (one-off
-sessions). Onboarding exists (`OpenAppLock/Views/Onboarding/`)
-but is out of scope. The pre-reskin custom-themed design (Hold-to-Commit, rule
+sessions). Onboarding (`OpenAppLock/Views/Onboarding/`) now leads into required app setup. The pre-reskin custom-themed design (Hold-to-Commit, rule
 cards, photo preset gallery) is recoverable from git history
 (`Docs/AGENT_RULES_FEATURE_SPEC.md`, removed when the spec was folded into code).
 
@@ -267,8 +282,8 @@ them): `newRuleButton`, `ruleCard-<name>`, `ruleStatus-<name>`,
 `toggleEnabledButton`, `deleteRuleButton`, `closeDetailButton`,
 `pauseRuleButton`, `resumeRuleButton`,
 `detailRuleName`, `detailStatusLabel`, `detailRow-<label>`,
-`hardModeLockedNotice`, `sidebarItem-<section>` (iPad sidebar rows: `home` /
-`rules` / `settings`), settings About links: `githubLinkButton` /
+`hardModeLockedNotice`, `sidebarItem-<section>` (current iPad sidebar rows: `chat` /
+`apps` / `settings`), settings About links: `githubLinkButton` /
 `websiteLinkButton`, onboarding: `onboardingContinueButton`,
 `allowScreenTimeButton`, `permissionDeniedLabel`, `openSettingsButton`.
 
@@ -302,6 +317,18 @@ Gotchas learned the hard way:
   window only hold on iPhone (gate with `UIDevice.current.userInterfaceIdiom`).
 
 ## Known gaps / next steps
+
+Legacy schedule/limit/notification notes below are historical compatibility work;
+those controls are no longer exposed in Volition.
+
+- **Conversation MVP: device verification pending by user choice.** The fourth
+  rule kind, shared chat, user-key OpenAI client, and individual-app grants are
+  implemented and now form the only exposed blocking flow. Short expiry uses a
+  16-minute DeviceActivity interval with an end warning at the 1–10-minute grant
+  deadline. Shield-to-chat routing was user-verified; live synthetic OpenAI
+  approve/wait requests passed. Verify real background/terminated re-blocking.
+  The timer probe source remains available, but its Settings menu was removed. See
+  `Docs/Agents/Specs/CONVERSATION_UNLOCK.md`.
 
 - **Diagnostic logs are now the primary on-device instrument.** Every process
   logs how/when blocks execute to `os.Logger` (live in Xcode/Console) and to

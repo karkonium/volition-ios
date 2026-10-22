@@ -6,6 +6,7 @@
 import Foundation
 import Observation
 
+/// Conversation rules use coordinated per-app grants and always-on shields.
 /// Turns the current set of rules into shield state: schedule rules with an
 /// active, un-paused window are shielded, and limit rules whose daily budget
 /// is spent (per the usage ledger) are shielded until midnight; everything
@@ -49,14 +50,15 @@ final class RuleEnforcer {
         notificationScheduler: NotificationScheduler? = nil,
         openSessions: OpenSessionReading = OpenSessionStore(),
         settings: any AppSettingsReading = AppSettingsStore(),
-        dayStarts: DayStartStore = DayStartStore()
+        dayStarts: DayStartStore = DayStartStore(),
+        conversationStore: ConversationGrantStore = ConversationGrantStore()
     ) {
         self.usageReader = usage
         self.notificationScheduler = notificationScheduler
         self.settings = settings
         self.dayStarts = dayStarts
         self.engine = RuleEnforcementEngine(
-            shields: shields, scheduler: scheduler, usage: usage, openSessions: openSessions)
+            shields: shields, scheduler: scheduler, usage: usage, openSessions: openSessions, conversationStore: conversationStore)
     }
 
     /// The day's usage for a rule (nil for schedule rules, which don't track).
@@ -206,15 +208,18 @@ actor RuleEnforcementEngine {
     private let scheduler: RuleScheduler?
     private let usageReader: any UsageReading
     private let openSessions: any OpenSessionReading
+    private let conversation: ConversationEnforcement
 
     init(
         shields: any ShieldApplying, scheduler: RuleScheduler?,
-        usage: any UsageReading, openSessions: any OpenSessionReading
+        usage: any UsageReading, openSessions: any OpenSessionReading,
+        conversationStore: ConversationGrantStore = ConversationGrantStore()
     ) {
         self.shields = shields
         self.scheduler = scheduler
         self.usageReader = usage
         self.openSessions = openSessions
+        self.conversation = ConversationEnforcement(store: conversationStore, shields: shields)
     }
 
     /// Recomputes and applies shields from the given snapshots, reconciles
@@ -227,12 +232,27 @@ actor RuleEnforcementEngine {
     ) -> EnforcementOutcome {
         var blocking: Set<UUID> = []
         var shielded: Set<UUID> = []
-        for snapshot in snapshots {
+        do {
+            let conversationBlocks = try conversation.sync(snapshots, now: now)
+            blocking.formUnion(conversationBlocks)
+            shielded.formUnion(conversationBlocks)
+        } catch {
+            Diag.error(.conversation, "///CONVO-LOG reconcile.failed full_shields_applied")
+            // Storage failure grants no exceptions; reapply full selections.
+            for snapshot in snapshots where snapshot.kind == .conversation && snapshot.isEnabled {
+                shields.applyShield(ruleID: snapshot.id, selectionData: snapshot.selectionData, mode: .block)
+                blocking.insert(snapshot.id); shielded.insert(snapshot.id)
+            }
+        }
+        for snapshot in snapshots where snapshot.kind != .conversation {
             let outcome = evaluate(snapshot, at: now, calendar: calendar)
             if outcome.isBlocking { blocking.insert(snapshot.id) }
             if outcome.isShielded { shielded.insert(snapshot.id) }
         }
-        shields.clearShields(except: shielded)
+        // Keep enabled Conversation store IDs out of generic stray cleanup.
+        // An expiry callback may have restored a shield since sync returned.
+        let conversationIDs = Set(snapshots.filter { $0.kind == .conversation && $0.isEnabled }.map(\.id))
+        shields.clearShields(except: shielded.union(conversationIDs))
         shields.setAppRemovalDenied(
             RulePolicy.shouldDenyAppRemoval(
                 snapshots: snapshots,

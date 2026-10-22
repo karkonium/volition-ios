@@ -22,7 +22,7 @@ final class ScreenTimeAccessRequiredUITests: XCTestCase {
     }
 
     func testApprovedAuthorizationShowsMainApp() throws {
-        let app = XCUIApplication.launchOpenAppLock(onboardingCompleted: true)
+        let app = XCUIApplication.launchOpenAppLock(onboardingCompleted: true, seedScenario: "conversation")
 
         app.waitForMainUI()
         XCTAssertFalse(app.buttons["screenTimeAccessOpenSettingsButton"].exists)

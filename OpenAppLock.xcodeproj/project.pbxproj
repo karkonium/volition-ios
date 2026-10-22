@@ -96,6 +96,7 @@
 		E60000000000000000000001 /* Shared.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Shared.xcconfig; sourceTree = "<group>"; };
 		E60000000000000000000002 /* CI.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = CI.xcconfig; sourceTree = "<group>"; };
 		E60000000000000000000003 /* DeveloperSettings.sample.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = DeveloperSettings.sample.xcconfig; sourceTree = "<group>"; };
+		E60000000000000000000004 /* Conversation.env.example */ = {isa = PBXFileReference; lastKnownFileType = text; path = Conversation.env.example; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -283,6 +284,7 @@
 				E60000000000000000000001 /* Shared.xcconfig */,
 				E60000000000000000000002 /* CI.xcconfig */,
 				E60000000000000000000003 /* DeveloperSettings.sample.xcconfig */,
+				E60000000000000000000004 /* Conversation.env.example */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -774,7 +776,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = OpenAppLock/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = OpenAppLock;
+				INFOPLIST_KEY_CFBundleDisplayName = Volition;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -821,7 +823,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = OpenAppLock/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = OpenAppLock;
+				INFOPLIST_KEY_CFBundleDisplayName = Volition;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;

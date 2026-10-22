@@ -7,6 +7,8 @@ import ManagedSettings
 import ManagedSettingsUI
 import UIKit
 
+/// Conversation shields offer Request access; overlapping rules retain their
+/// independent shields even after conversational approval.
 /// Customizes the system shield. Apps under an open-limit rule show how many
 /// opens were used and offer an "Open" secondary button while opens remain;
 /// everything else gets a plain blocked shield — including an open-limit app
@@ -43,6 +45,10 @@ final class ShieldConfigurationExtension: ShieldConfigurationDataSource {
         categoryToken: ActivityCategoryToken? = nil
     ) -> ShieldConfiguration {
         let snapshots = RuleSnapshotUserDefaultsStore().load()
+        if !ConversationGrantStore.applicable(to: token, in: snapshots).isEmpty {
+            if #available(iOS 26.5, *) { return configuration(for: .conversation(canOpenParent: true)) }
+            return configuration(for: .conversation(canOpenParent: false))
+        }
         let ledger = UsageLedger()
         let sessions = OpenSessionStore()
         

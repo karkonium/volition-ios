@@ -19,9 +19,18 @@ struct OpenAppLockApp: App {
     @State private var enforcer: RuleEnforcer
     @State private var settings: AppSettingsStore
     @State private var logStore: LogStore
+    @State private var conversation: ConversationCoordinator
 
     init() {
         let config = LaunchConfiguration.current
+        #if DEBUG
+        if !config.isUITesting, ProcessInfo.processInfo.arguments.contains("-export-conversation-support"),
+           let group = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppGroup.identifier),
+           let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            do { try ConversationSupportExport.export(group: group, destination: documents.appendingPathComponent("VolitionSupport")) }
+            catch { Diag.error(.conversation, "///CONVO-LOG support_export.failed") }
+        }
+        #endif
 
         // UI tests must not sit through the cold-launch settle window.
         launchSettleDelay = config.isUITesting ? .zero : RootView.defaultLaunchSettleDelay
@@ -64,7 +73,7 @@ struct OpenAppLockApp: App {
         let appSettings = AppSettingsStore()
         _settings = State(initialValue: appSettings)
 
-        let schema = Schema(versionedSchema: OpenAppLockSchemaV3.self)
+        let schema = Schema(versionedSchema: OpenAppLockSchemaV4.self)
         let modelConfiguration = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: config.isUITesting
@@ -78,6 +87,14 @@ struct OpenAppLockApp: App {
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
+
+        let accessURL: URL?
+        if config.isUITesting {
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent("conversation-" + UUID().uuidString)
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            accessURL = directory.appendingPathComponent("access.json")
+        } else { accessURL = ConversationGrantStore().fileURL }
+        let conversationStore = ConversationGrantStore(fileURL: accessURL)
 
         let usageLedger: UsageReading = config.isUITesting ? MockUsageLedger() : UsageLedger()
 
@@ -122,7 +139,12 @@ struct OpenAppLockApp: App {
             initialValue: RuleEnforcer(
                 shields: shields, usage: usageLedger, scheduler: scheduler,
                 notificationScheduler: notificationScheduler,
-                openSessions: openSessions, settings: appSettings))
+                openSessions: openSessions, settings: appSettings, conversationStore: conversationStore))
+        _conversation = State(initialValue: ConversationCoordinator(context: container.mainContext,
+            client: config.isUITesting ? MockConversationClient() : OpenAIConversationClient(),
+            keys: config.isUITesting ? MockConversationKeyStore() : ConversationEnvironmentKeyStore(),
+            access: ConversationEnforcement(store: conversationStore, shields: shields),
+            timer: config.isUITesting ? MockConversationTimer() : DeviceConversationTimer()))
     }
 
     var body: some Scene {
@@ -133,6 +155,7 @@ struct OpenAppLockApp: App {
                 .environment(enforcer)
                 .environment(settings)
                 .environment(logStore)
+                .environment(conversation)
         }
         .modelContainer(container)
     }

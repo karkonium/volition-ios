@@ -6,7 +6,7 @@
 import SwiftData
 import SwiftUI
 
-/// The Rules tab: every rule, grouped into Schedule / Time Limit / Open Limit
+/// The Rules tab: every rule, grouped into Schedule / Time Limit / Open Limit / Conversation
 /// sections, alphabetical by name within each section (see
 /// `BlockingRule.displayOrder`). "+" creates a new rule; tapping a row opens its
 /// detail sheet.
@@ -104,14 +104,14 @@ struct RulesListView: View {
             }
         } else {
             List {
-                kindSection(.schedule, now: now)
-                kindSection(.timeLimit, now: now)
-                kindSection(.openLimit, now: now)
+                ForEach(RuleKind.allCases, id: \.self) { kind in
+                    kindSection(kind, now: now)
+                }
             }
         }
     }
 
-    /// One section per rule kind; empty kinds are omitted entirely.
+    /// One section per rule kind, including Conversation; empty kinds are omitted.
     @ViewBuilder
     private func kindSection(_ kind: RuleKind, now: Date) -> some View {
         let kindRules = rules.filter { $0.kind == kind }

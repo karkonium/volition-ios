@@ -7,7 +7,7 @@ import SwiftUI
 
 /// Two-step onboarding using system styling: a welcome screen, then the
 /// Screen Time permission request. Onboarding only completes once
-/// authorization is approved — the app cannot block anything without it.
+/// authorization is approved; MainView then requires per-app intention setup.
 struct OnboardingView: View {
     @Environment(ScreenTimeAuthorization.self) private var authorization
     @Environment(\.openURL) private var openURL
@@ -40,10 +40,10 @@ struct OnboardingView: View {
     private var welcome: some View {
         VStack(spacing: stepSpacing) {
             appLogo
-            Text(.onboardingWelcomeTitle)
+            Text(CopyKey.volitionWelcome.resource)
                 .font(.largeTitle.bold())
                 .multilineTextAlignment(.center)
-            Text(.onboardingWelcomeDescription)
+            Text(CopyKey.volitionWelcomeDescription.resource)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }

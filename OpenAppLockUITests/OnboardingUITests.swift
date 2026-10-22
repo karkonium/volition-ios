@@ -10,22 +10,22 @@ final class OnboardingUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    func testOnboardingWalksThroughPermissionToHome() throws {
+    func testOnboardingWalksThroughPermissionToAppSetup() throws {
         let app = XCUIApplication.launchOpenAppLock(onboardingCompleted: false)
 
         // Welcome step.
-        app.staticTexts["OpenAppLock"].waitToAppear()
+        app.staticTexts["Welcome to Volition"].waitToAppear()
         app.buttons["onboardingContinueButton"].waitToAppear().tap()
 
         // Permission step: granting (mocked) lands on the main app, in whichever
         // navigation chrome the device uses (tab bar on iPhone, sidebar on iPad).
         app.buttons["allowScreenTimeButton"].waitToAppear().tap()
-        app.waitForMainUI()
-        XCTAssertTrue(app.staticTexts["Currently Blocking"].waitToAppear().exists)
+        app.buttons["addVolitionAppButton"].waitToAppear()
+        XCTAssertFalse(app.buttons["finishVolitionSetupButton"].isEnabled)
     }
 
     func testCompletedOnboardingIsSkipped() throws {
-        let app = XCUIApplication.launchOpenAppLock(onboardingCompleted: true)
+        let app = XCUIApplication.launchOpenAppLock(onboardingCompleted: true, seedScenario: "conversation")
         app.waitForMainUI()
         XCTAssertFalse(app.buttons["onboardingContinueButton"].exists)
     }

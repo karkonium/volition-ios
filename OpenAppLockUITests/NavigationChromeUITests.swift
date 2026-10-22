@@ -17,20 +17,20 @@ final class NavigationChromeUITests: XCTestCase {
 
     /// iPad shows a sidebar and no tab bar; iPhone shows a tab bar and no sidebar.
     func testNavigationChromeMatchesIdiom() throws {
-        let app = XCUIApplication.launchOpenAppLock()
+        let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
 
         if UIDevice.current.userInterfaceIdiom == .pad {
-            app.element("sidebarItem-home").waitToAppear()
-            app.element("sidebarItem-rules").waitToAppear()
+            app.element("sidebarItem-chat").waitToAppear()
+            app.element("sidebarItem-apps").waitToAppear()
             app.element("sidebarItem-settings").waitToAppear()
             XCTAssertFalse(
                 app.tabBars.firstMatch.exists,
                 "Full-screen iPad should use a sidebar, not a bottom tab bar"
             )
         } else {
-            app.tabBars.buttons["Home"].waitToAppear()
+            app.tabBars.buttons["Chat"].waitToAppear()
             XCTAssertFalse(
-                app.element("sidebarItem-home").exists,
+                app.element("sidebarItem-chat").exists,
                 "iPhone should use a bottom tab bar, not a sidebar"
             )
         }
@@ -39,15 +39,15 @@ final class NavigationChromeUITests: XCTestCase {
     /// Every section is reachable through whichever chrome is presented, proving
     /// the shared `goTo…` helpers drive both the tab bar and the sidebar.
     func testEverySectionIsReachable() throws {
-        let app = XCUIApplication.launchOpenAppLock()
+        let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
 
-        app.goToRulesTab()
-        app.element("newRuleButton").waitToAppear()
+        app.goToAppsTab()
+        app.element("addVolitionAppButton").waitToAppear()
 
         app.goToSettingsTab()
-        app.switches["uninstallProtectionToggle"].waitToAppear()
+        app.element("conversationSettingsButton").waitToAppear()
 
-        app.goToHomeTab()
-        app.element("nothingBlockedLabel").waitToAppear()
+        app.goToChatTab()
+        app.element("conversationChooseAppButton").waitToAppear()
     }
 }

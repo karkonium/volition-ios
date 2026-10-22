@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// The three kinds of blocking rules offered on the "New Rule" sheet.
+/// The four kinds of blocking rules offered on the "New Rule" sheet.
 enum RuleKind: String, Codable, CaseIterable, Sendable {
     /// Block selected apps during a recurring time window.
     case schedule
@@ -13,12 +13,15 @@ enum RuleKind: String, Codable, CaseIterable, Sendable {
     case timeLimit
     /// Block selected apps after a number of opens per day.
     case openLimit
+    /// Block continuously until a goal-based conversation grants temporary access.
+    case conversation
 
     var displayName: String {
         switch self {
         case .schedule: CopyKey.ruleKindScheduleDisplayName.string
         case .timeLimit: CopyKey.ruleKindTimeLimitDisplayName.string
         case .openLimit: CopyKey.ruleKindOpenLimitDisplayName.string
+        case .conversation: CopyKey.conversationRuleTitle.string
         }
     }
 
@@ -27,6 +30,7 @@ enum RuleKind: String, Codable, CaseIterable, Sendable {
         case .schedule: CopyKey.ruleKindScheduleExampleText.string
         case .timeLimit: CopyKey.ruleKindTimeLimitExampleText.string
         case .openLimit: CopyKey.ruleKindOpenLimitExampleText.string
+        case .conversation: CopyKey.conversationRuleExample.string
         }
     }
 
@@ -35,6 +39,7 @@ enum RuleKind: String, Codable, CaseIterable, Sendable {
         case .schedule: "calendar"
         case .timeLimit: "hourglass"
         case .openLimit: "lock.fill"
+        case .conversation: "bubble.left.and.bubble.right"
         }
     }
 
@@ -44,6 +49,7 @@ enum RuleKind: String, Codable, CaseIterable, Sendable {
         case .schedule: CopyKey.ruleKindDefaultNameSchedule.string
         case .timeLimit: CopyKey.ruleKindDefaultNameTimeLimit.string
         case .openLimit: CopyKey.ruleKindDefaultNameOpenLimit.string
+        case .conversation: CopyKey.conversationDefaultName.string
         }
     }
 }

@@ -9,7 +9,8 @@ import SwiftUI
 /// The Home tab: what's blocking right now, plus the rules armed for today
 /// ("Active Rules"). Rows in each section are alphabetical by name (see
 /// `BlockingRule.displayOrder`). The rule list and rule creation live on the
-/// Rules tab.
+/// Rules tab. Conversation rows use the reconciled blocking set because a grant
+/// can temporarily release the only selected app.
 struct HomeView: View {
     @Environment(\.capturedURL) private var capturedURL
     @Environment(\.captureURL) private var captureURL
@@ -75,7 +76,9 @@ struct HomeView: View {
 
     @ViewBuilder
     private func blockingSection(now: Date) -> some View {
-        let blocking = rules.filter { liveStatus(for: $0, now: now).isActive }
+        let blocking = rules.filter {
+            $0.kind == .conversation ? enforcer.blockingRuleIDs.contains($0.id) : liveStatus(for: $0, now: now).isActive
+        }
         Section {
             if blocking.isEmpty {
                 Text(.homeNothingBlockingMessage)

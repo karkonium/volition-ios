@@ -22,7 +22,7 @@ final class DiagnosticLogsUITests: XCTestCase {
 
     func testSeededLogsExportAndClear() {
         let app = XCUIApplication()
-        app.launchArguments = ["-ui-testing", "-onboarding-completed", "-seed-logs"]
+        app.launchArguments = ["-ui-testing", "-onboarding-completed", "-seed-logs", "-seed-scenario=conversation"]
         app.launch()
 
         app.goToSettingsTab()

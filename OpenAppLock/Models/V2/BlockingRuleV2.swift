@@ -97,6 +97,7 @@ extension OpenAppLockSchemaV2 {
                                 selectionMode: selectionMode))
                 case .timeLimit:
                         .timeLimit(TimeLimitConfig(dailyLimitMinutes: dailyLimitMinutes))
+                case .conversation: .conversation(ConversationConfig())
                 case .openLimit:
                         .openLimit(OpenLimitConfig(maxOpens: maxOpens))
                 }
@@ -116,6 +117,8 @@ extension OpenAppLockSchemaV2 {
                 selectionModeRaw = config.selectionMode.rawValue
             case .timeLimit(let config):
                 dailyLimitMinutes = config.dailyLimitMinutes
+                selectionModeRaw = SelectionMode.block.rawValue
+            case .conversation:
                 selectionModeRaw = SelectionMode.block.rawValue
             case .openLimit(let config):
                 maxOpens = config.maxOpens

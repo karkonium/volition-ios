@@ -7,7 +7,7 @@ import Foundation
 import SwiftData
 
 // Set to the current schema version
-typealias BlockingRule = OpenAppLockSchemaV3.BlockingRule
+typealias BlockingRule = OpenAppLockSchemaV4.BlockingRule
 
 extension BlockingRule {
     /// The order rules appear in every list that shows them — the Rules tab's

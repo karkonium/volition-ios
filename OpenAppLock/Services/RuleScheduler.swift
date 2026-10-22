@@ -114,6 +114,7 @@ nonisolated final class RuleScheduler: @unchecked Sendable {
             else { continue }
 
             switch snapshot.kind {
+            case .conversation: break
             case .timeLimit:
                 // Self-dating per-day activities (block + opt-in warn): a stale
                 // cross-midnight flush carries a prior day key and is dropped.

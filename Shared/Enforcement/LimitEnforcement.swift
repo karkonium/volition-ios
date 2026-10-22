@@ -33,7 +33,7 @@ struct LimitEnforcement {
         let usage = ledger.usage(for: ruleID, onDayContaining: now, calendar: calendar)
         let scheduledToday = snapshot.isScheduledToday(at: now, calendar: calendar)
         switch snapshot.kind {
-        case .schedule:
+        case .schedule, .conversation:
             break
         case .openLimit:
             if scheduledToday {

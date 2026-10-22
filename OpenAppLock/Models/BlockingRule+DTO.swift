@@ -69,7 +69,8 @@ extension RuleSnapshotDTO {
             endMinutes: rule.endMinutes,
             dailyLimitMinutes: rule.dailyLimitMinutes,
             maxOpens: rule.maxOpens,
-            pausedUntil: rule.pausedUntil)
+            pausedUntil: rule.pausedUntil,
+            conversationGoal: rule.conversationGoal)
     }
 }
 

@@ -10,6 +10,9 @@ import Foundation
 struct LaunchConfiguration: Equatable {
     enum SeedScenario: String {
         /// One actively blocking rule ("Work Time") and one upcoming rule ("Sleep").
+        /// One app-only Conversation rule with mocked coach responses.
+        case conversation
+        case conversationMultiple = "conversation-multiple"
         case standard
         /// An actively blocking Lock While Blocking rule ("Locked In") plus an upcoming rule.
         case hardModeActive = "hard-mode-active"

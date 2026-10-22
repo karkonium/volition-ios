@@ -54,7 +54,7 @@ nonisolated extension RuleSnapshotDTO {
         at now: Date = .now, calendar: Calendar = .current, usage: RuleUsageDTO? = nil
     ) -> RuleStatus {
         guard isEnabled else { return .disabled }
-        guard !days.isEmpty else { return .dormant }
+        guard kind == .conversation || !days.isEmpty else { return .dormant }
         
         switch activation(usage: usage, at: now, calendar: calendar) {
         case .active(let until): return .active(until: until)
@@ -64,6 +64,8 @@ nonisolated extension RuleSnapshotDTO {
         }
     }
 
+    /// Conversation rows read “Conversation required” while enabled; individual
+    /// grant countdowns are shown in Chat.
     /// The live "context" line shown under a rule's name on the Home and Rules
     /// lists, and as the rule-detail Status row. A single source of truth so every
     /// screen renders a given kind/state the same way.
@@ -83,6 +85,8 @@ nonisolated extension RuleSnapshotDTO {
         calendar: Calendar = .current
     ) -> String {
         switch kind {
+        case .conversation:
+            return isEnabled ? CopyKey.conversationBlockedStatus.string : CopyKey.statusDisabled.string
         case .schedule:
             return status.label(relativeTo: now)
         case .timeLimit, .openLimit:
@@ -119,6 +123,7 @@ nonisolated extension RuleSnapshotDTO {
         let status = status(at: now, calendar: calendar, usage: usage)
         if status.isActive { return false }
         switch kind {
+        case .conversation: return false
         case .timeLimit, .openLimit:
             return isScheduledToday(at: now, calendar: calendar)
         case .schedule:

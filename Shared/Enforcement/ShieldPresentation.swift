@@ -15,6 +15,14 @@ struct ShieldPresentation: Equatable {
     /// no way through (a full block, or a spent open-limit budget).
     let secondaryButton: String?
 
+    /// Conversation offers route into the shared chat. Earlier iOS versions
+    /// explain that the user must open the parent app manually.
+    static func conversation(canOpenParent: Bool) -> ShieldPresentation {
+        .init(title: CopyKey.conversationBlockedStatus.string,
+              subtitle: canOpenParent ? CopyKey.conversationRuleExample.string : CopyKey.conversationOpenManually.string,
+              secondaryButton: CopyKey.conversationRequestAccess.string)
+    }
+
     static let blockedTitle = CopyKey.shieldBlockedTitle.string
     static let openLimitJustBlockedTitle = CopyKey.shieldBlockedTitle.string
 

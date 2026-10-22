@@ -13,13 +13,18 @@ import SwiftUI
 /// Tab labels and icons come from `AppSection`, the same source the regular-width
 /// sidebar (`MainSidebarView`) uses, so the two layouts can never drift.
 struct MainTabView: View {
+    @Environment(ConversationCoordinator.self) private var conversation
     var body: some View {
-        TabView {
-            HomeView()
-                .tabItem { Label(AppSection.home.title, systemImage: AppSection.home.systemImage) }
-            RulesListView()
-                .tabItem { Label(AppSection.rules.title, systemImage: AppSection.rules.systemImage) }
+        @Bindable var conversation = conversation
+        TabView(selection: $conversation.selectedSection) {
+            ConversationView()
+                .tag(AppSection.chat)
+                .tabItem { Label(AppSection.chat.title, systemImage: AppSection.chat.systemImage) }
+            VolitionAppsView()
+                .tag(AppSection.apps)
+                .tabItem { Label(AppSection.apps.title, systemImage: AppSection.apps.systemImage) }
             SettingsView()
+                .tag(AppSection.settings)
                 .tabItem { Label(AppSection.settings.title, systemImage: AppSection.settings.systemImage) }
         }
     }

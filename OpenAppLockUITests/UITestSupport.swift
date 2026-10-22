@@ -53,6 +53,9 @@ extension XCUIApplication {
 }
 
 extension XCUIApplication {
+    func goToAppsTab() { goToSection(tabLabel: "Apps", sidebarIdentifier: "sidebarItem-apps") }
+    func goToChatTab() { goToSection(tabLabel: "Chat", sidebarIdentifier: "sidebarItem-chat") }
+
     /// Switches to the Home section (Currently Blocking + Usage). Home is the
     /// default selection, so most Home tests don't need to call this.
     func goToHomeTab() { goToSection(tabLabel: "Home", sidebarIdentifier: "sidebarItem-home") }
@@ -105,9 +108,9 @@ extension XCUIApplication {
     @discardableResult
     func waitForMainUI() -> XCUIApplication {
         if UIDevice.current.userInterfaceIdiom == .pad {
-            element("sidebarItem-home").waitToAppear()
+            element("sidebarItem-chat").waitToAppear()
         } else {
-            tabBars.buttons["Home"].waitToAppear()
+            tabBars.buttons["Chat"].waitToAppear()
         }
         return self
     }

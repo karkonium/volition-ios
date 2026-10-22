@@ -30,6 +30,7 @@ nonisolated struct RuleSnapshotDTO: Codable, Equatable {
     var dailyLimitMinutes: Int
     var maxOpens: Int
     var pausedUntil: Date?
+    var conversationGoal: String = ""
 
     var kind: RuleKind { RuleKind(rawValue: kindRaw) ?? .schedule }
     var selectionMode: SelectionMode { SelectionMode(rawValue: selectionModeRaw) ?? .block }
@@ -51,7 +52,7 @@ nonisolated struct RuleSnapshotDTO: Codable, Equatable {
     /// Open limit counts opens, time limit counts minutes used.
     func limitReached(given usage: RuleUsageDTO, at now: Date = .now) -> Bool {
         switch kind {
-        case .schedule: false
+        case .schedule, .conversation: false
         case .timeLimit: usage.minutesUsed >= dailyLimitMinutes
         case .openLimit: usage.opensUsed >= maxOpens
         }
@@ -77,7 +78,7 @@ nonisolated extension RuleSnapshotDTO {
     private enum CodingKeys: String, CodingKey {
         case id, name, kindRaw, isEnabled, hardMode
         case selectionModeRaw, selectionData, dayNumbers, startMinutes, endMinutes
-        case dailyLimitMinutes, maxOpens, pausedUntil
+        case dailyLimitMinutes, maxOpens, pausedUntil, conversationGoal
     }
 
     /// Decodes tolerantly so snapshots written before `startMinutes`/`endMinutes`
@@ -98,6 +99,7 @@ nonisolated extension RuleSnapshotDTO {
         dailyLimitMinutes = try container.decode(Int.self, forKey: .dailyLimitMinutes)
         maxOpens = try container.decode(Int.self, forKey: .maxOpens)
         pausedUntil = try container.decodeIfPresent(Date.self, forKey: .pausedUntil)
+        conversationGoal = try container.decodeIfPresent(String.self, forKey: .conversationGoal) ?? ""
     }
 }
 

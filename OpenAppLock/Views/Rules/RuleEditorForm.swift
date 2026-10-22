@@ -5,6 +5,8 @@
 
 import SwiftUI
 
+/// Conversation forms require a goal and individual-app lists; schedule and
+/// Hard Mode controls are omitted.
 /// The rule editor's form body — the name field plus the per-kind sections — with
 /// no chrome of its own beyond the pushed app-list picker. Both hosts supply their
 /// own navigation bar: the New Rule flow wraps it in `RuleEditorView` (a pushed
@@ -48,6 +50,16 @@ struct RuleEditorForm: View {
     @ViewBuilder
     private var sections: some View {
         switch draft.kind {
+        case .conversation:
+            Section {
+                TextField(CopyKey.conversationGoalPrompt.resource, text: $draft.conversationConfig.goal, axis: .vertical)
+                    .lineLimit(3...8).accessibilityIdentifier("conversationGoalField")
+            } header: { Text(CopyKey.conversationGoalLabel.resource).textCase(nil) }
+            Section {
+                appListRow
+            } header: { Text(CopyKey.conversationAppsHeader.resource).textCase(nil) }
+              footer: { Text(CopyKey.conversationAlwaysOn.resource) }
+
         case .schedule:
             Section {
                 DatePicker(
@@ -159,7 +171,7 @@ struct RuleEditorForm: View {
         }
     }
 
-    /// Lock While Blocking applies to every kind. A labeled `Toggle` makes the whole row
+    /// Lock While Blocking applies to schedules and limit kinds. A labeled `Toggle` makes the whole row
     /// the tap target and gives VoiceOver a "Lock While Blocking" switch in one element.
     private var hardModeSection: some View {
         Section {

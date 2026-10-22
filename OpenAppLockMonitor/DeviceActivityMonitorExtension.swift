@@ -6,6 +6,7 @@
 import DeviceActivity
 import Foundation
 
+/// Conversation grant end warnings and interval ends restore per-app blocks.
 /// Background half of limit-rule enforcement. Time-limit rules run a self-dating
 /// per-day activity (`rule-<uuid>-<dayKey>`, plus an opt-in `tlwarn-` warn);
 /// open limits keep a single repeating daily activity. This extension reacts: it
@@ -52,7 +53,7 @@ final class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         switch snapshot.kind {
         case .schedule: scheduleEnforcement.reconcile(ruleID: ruleID)
         case .timeLimit: enforcement.handlePauseEnded(ruleID: ruleID)
-        case .openLimit: break
+        case .openLimit, .conversation: break
         }
     }
 
@@ -72,8 +73,22 @@ final class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         uninstallProtection.reconcile()
     }
 
+    override func intervalWillEndWarning(for activity: DeviceActivityName) {
+        super.intervalWillEndWarning(for: activity)
+        ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController())
+            .expire(activity: activity.rawValue)
+        #if DEBUG
+        ConversationTimerProbe.handle(activity: activity.rawValue, kind: "warning")
+        #endif
+    }
+
     override func intervalDidEnd(for activity: DeviceActivityName) {
         super.intervalDidEnd(for: activity)
+        ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController())
+            .expire(activity: activity.rawValue)
+        #if DEBUG
+        ConversationTimerProbe.handle(activity: activity.rawValue, kind: "interval-end")
+        #endif
         Diag.log(.monitor, .event, "intervalDidEnd \(activity.rawValue)")
         if let ruleID = MonitoringPlan.ruleID(fromSessionActivityName: activity.rawValue) {
             if !openSessionStore.hasActiveSession(for: ruleID) {

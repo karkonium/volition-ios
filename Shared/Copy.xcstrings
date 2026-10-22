@@ -342,6 +342,655 @@
         }
       }
     },
+    "conversation.approvalOne" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Approved for 1 minute."
+          }
+        }
+      }
+    },
+    "conversation.conversationAlwaysOn" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Always blocks while enabled. The coach may grant 1–10 minutes for one app at a time."
+          }
+        }
+      }
+    },
+    "conversation.conversationApprovalMarker" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Approved for %lld minutes."
+          }
+        }
+      }
+    },
+    "conversation.conversationAppsHeader" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps requiring a conversation"
+          }
+        }
+      }
+    },
+    "conversation.conversationAppsValidation" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose an app list containing individual apps only. Categories and websites are not supported."
+          }
+        }
+      }
+    },
+    "conversation.conversationAuthenticationError" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI rejected the API key (401). Update OpenAppLock/Conversation.env and rebuild. Your app stays blocked."
+          }
+        }
+      }
+    },
+    "conversation.conversationBlockedStatus" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation required"
+          }
+        }
+      }
+    },
+    "conversation.conversationCancel" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        }
+      }
+    },
+    "conversation.conversationChatTitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chat"
+          }
+        }
+      }
+    },
+    "conversation.conversationChooseApp" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose an app"
+          }
+        }
+      }
+    },
+    "conversation.conversationDefaultName" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Intentional Access"
+          }
+        }
+      }
+    },
+    "conversation.conversationDiagnosticsDisabled" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation logs disabled"
+          }
+        }
+      }
+    },
+    "conversation.conversationDiagnosticsEnabled" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation logs enabled"
+          }
+        }
+      }
+    },
+    "conversation.conversationDiagnosticsHelp" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter Xcode Console or exported diagnostic logs for ///CONVO-LOG. Set CONVO_LOG_ENABLED=0 in the env file and rebuild to disable."
+          }
+        }
+      }
+    },
+    "conversation.conversationEndUnlock" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End unlock"
+          }
+        }
+      }
+    },
+    "conversation.conversationEnvironmentConfigured" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configured at build time"
+          }
+        }
+      }
+    },
+    "conversation.conversationEnvironmentHelp" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set OPENAI_API_KEY in OpenAppLock/Conversation.env on your Mac, then rebuild and install the app. Previously saved in-app keys are no longer used."
+          }
+        }
+      }
+    },
+    "conversation.conversationEnvironmentMissing" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No key in this build"
+          }
+        }
+      }
+    },
+    "conversation.conversationErrorTitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to continue"
+          }
+        }
+      }
+    },
+    "conversation.conversationGoalLabel" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your goal"
+          }
+        }
+      }
+    },
+    "conversation.conversationGoalPrompt" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What do you want this rule to help you do?"
+          }
+        }
+      }
+    },
+    "conversation.conversationGoalRow" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Goal"
+          }
+        }
+      }
+    },
+    "conversation.conversationGoalValidation" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write a goal of 1–2,000 characters."
+          }
+        }
+      }
+    },
+    "conversation.conversationGrantActive" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app is already unlocked. Its original timer keeps running; you can keep chatting or choose another app."
+          }
+        }
+      }
+    },
+    "conversation.conversationGrantEnded" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock ended."
+          }
+        }
+      }
+    },
+    "conversation.conversationGrantExpired" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock expired."
+          }
+        }
+      }
+    },
+    "conversation.conversationGrantFailed" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access was approved, but the unlock could not start. The app stays blocked. Retry when monitoring is available."
+          }
+        }
+      }
+    },
+    "conversation.conversationHistoryClear" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear conversation history"
+          }
+        }
+      }
+    },
+    "conversation.conversationHistoryClearMessage" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This deletes the shared chat and its remembered history. An active unlock keeps its existing expiry."
+          }
+        }
+      }
+    },
+    "conversation.conversationHistoryEmpty" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose an app and explain why you want to open it."
+          }
+        }
+      }
+    },
+    "conversation.conversationMemoryError" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation memory could not be prepared. Please retry."
+          }
+        }
+      }
+    },
+    "conversation.conversationMessagePrompt" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Why do you want access?"
+          }
+        }
+      }
+    },
+    "conversation.conversationMissingKey" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set OPENAI_API_KEY in OpenAppLock/Conversation.env, then rebuild and reinstall the app."
+          }
+        }
+      }
+    },
+    "conversation.conversationNetworkError" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not reach OpenAI. Check your connection, then retry. Your app stays blocked."
+          }
+        }
+      }
+    },
+    "conversation.conversationNickname" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App nickname (optional)"
+          }
+        }
+      }
+    },
+    "conversation.conversationNoRules" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create a Conversation rule to get started."
+          }
+        }
+      }
+    },
+    "conversation.conversationPermissionError" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI denied access (403). Check the API project and model permissions. Your app stays blocked."
+          }
+        }
+      }
+    },
+    "conversation.conversationPrivacy" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messages, rule goals, and conversation memory are sent to OpenAI using the key bundled with this personal prototype. Logs omit credentials and conversation content."
+          }
+        }
+      }
+    },
+    "conversation.conversationQuotaError" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI API quota is exhausted (429). Check API billing and project limits, then retry. Your app stays blocked."
+          }
+        }
+      }
+    },
+    "conversation.conversationRateLimitError" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI rate limited this request (429). Wait a moment, then retry. Your app stays blocked."
+          }
+        }
+      }
+    },
+    "conversation.conversationRemainingBlock" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other active rules may still block this app."
+          }
+        }
+      }
+    },
+    "conversation.conversationRequestAccess" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Request access"
+          }
+        }
+      }
+    },
+    "conversation.conversationRequestCancelled" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Request cancelled."
+          }
+        }
+      }
+    },
+    "conversation.conversationRequestError" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI rejected the request or model. Check ///CONVO-LOG for the HTTP status and error code. Your app stays blocked."
+          }
+        }
+      }
+    },
+    "conversation.conversationRequestMarker" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Request: %@"
+          }
+        }
+      }
+    },
+    "conversation.conversationResponseError" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The coach returned an incomplete or invalid decision. Retry and check ///CONVO-LOG. Your app stays blocked."
+          }
+        }
+      }
+    },
+    "conversation.conversationRetry" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        }
+      }
+    },
+    "conversation.conversationRuleExample" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Talk through why you want access."
+          }
+        }
+      }
+    },
+    "conversation.conversationRuleTitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation"
+          }
+        }
+      }
+    },
+    "conversation.conversationSend" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send"
+          }
+        }
+      }
+    },
+    "conversation.conversationServiceError" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI returned a service error. Retry shortly and check ///CONVO-LOG for details. Your app stays blocked."
+          }
+        }
+      }
+    },
+    "conversation.conversationSetup" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI API"
+          }
+        }
+      }
+    },
+    "conversation.conversationStaleRequest" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The rules or requested app changed. Choose the app again to continue."
+          }
+        }
+      }
+    },
+    "conversation.conversationStorageError" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation storage is unavailable. Please try again."
+          }
+        }
+      }
+    },
+    "conversation.conversationTargetGeneric" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected app"
+          }
+        }
+      }
+    },
+    "conversation.conversationUnlockedUntil" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlocked until %@"
+          }
+        }
+      }
+    },
+    "conversation.conversationVerificationPending" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Short unlock timing is awaiting device verification."
+          }
+        }
+      }
+    },
+    "conversation.conversationWaiting" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thinking…"
+          }
+        }
+      }
+    },
+    "conversation.openManually" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Volition to talk through your request."
+          }
+        }
+      }
+    },
     "dayPicker.previewSectionHeader" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -502,7 +1151,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OpenAppLock"
+            "value" : "Volition"
           }
         }
       }
@@ -634,7 +1283,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Notifications are turned off for OpenAppLock. Turn them on in Settings to get these reminders."
+            "value" : "Notifications are turned off for Volition. Turn them on in Settings to get these reminders."
           }
         }
       }
@@ -722,7 +1371,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Screen Time access was declined. OpenAppLock can’t block apps without it."
+            "value" : "Screen Time access was declined. Volition can’t block apps without it."
           }
         }
       }
@@ -799,7 +1448,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OpenAppLock uses Apple’s Screen Time framework to block the apps you choose."
+            "value" : "Volition uses Apple’s Screen Time framework to block the apps you choose."
           }
         }
       }
@@ -821,7 +1470,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OpenAppLock"
+            "value" : "Volition"
           }
         }
       }
@@ -1651,17 +2300,6 @@
         }
       }
     },
-    "ruleEditor.onlyTheseAppsAllowedHeader" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Only these apps are allowed"
-          }
-        }
-      }
-    },
     "ruleEditor.onTheseDaysHeader" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1669,6 +2307,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "On these days"
+          }
+        }
+      }
+    },
+    "ruleEditor.onlyTheseAppsAllowedHeader" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only these apps are allowed"
           }
         }
       }
@@ -1932,7 +2581,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OpenAppLock can’t block anything without Screen Time access. Turn it back on in Settings to keep your rules working."
+            "value" : "Volition can’t block anything without Screen Time access. Turn it back on in Settings to keep your chosen apps protected."
           }
         }
       }
@@ -2119,7 +2768,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This app is blocked by OpenAppLock."
+            "value" : "This app is blocked by Volition."
           }
         }
       }
@@ -2384,6 +3033,347 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Unknown"
+          }
+        }
+      }
+    },
+    "volition.volitionAccessHistory" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your coach remembers recent requests and unlocks across apps to help you spot patterns."
+          }
+        }
+      }
+    },
+    "volition.volitionAddApp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add an app"
+          }
+        }
+      }
+    },
+    "volition.volitionAppName" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App name"
+          }
+        }
+      }
+    },
+    "volition.volitionAppNameHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter the same name as the app you selected above—for example, SoundCloud."
+          }
+        }
+      }
+    },
+    "volition.volitionApps" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps"
+          }
+        }
+      }
+    },
+    "volition.volitionAppsHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These apps stay blocked until you chat with Volition. You choose the intention; your coach helps with the next step."
+          }
+        }
+      }
+    },
+    "volition.volitionChatEmpty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What would you like to make time for? Choose an app, then tell me what you have in mind."
+          }
+        }
+      }
+    },
+    "volition.volitionClearHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear chat messages and summaries? App intentions, access history and an active waiting period are kept."
+          }
+        }
+      }
+    },
+    "volition.volitionCoachSettings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your coach"
+          }
+        }
+      }
+    },
+    "volition.volitionDuplicateError" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app is already saved. Edit it in Apps."
+          }
+        }
+      }
+    },
+    "volition.volitionEditApp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your intention"
+          }
+        }
+      }
+    },
+    "volition.volitionIntention" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How do you want to use this app?"
+          }
+        }
+      }
+    },
+    "volition.volitionIntentionError" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Describe how you want to use this app (up to 2,000 characters)."
+          }
+        }
+      }
+    },
+    "volition.volitionIntentionHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For example: Stay in touch with close friends, without getting pulled into the feed."
+          }
+        }
+      }
+    },
+    "volition.volitionNameError" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Give this app a name (up to 100 characters)."
+          }
+        }
+      }
+    },
+    "volition.volitionPickOneHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose one individual app. The picker closes when you select it. Categories and websites aren’t supported."
+          }
+        }
+      }
+    },
+    "volition.volitionPrivacy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your app names, intentions and conversation are sent to OpenAI when you chat. Your history is stored on this device."
+          }
+        }
+      }
+    },
+    "volition.volitionRemoveApp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove app"
+          }
+        }
+      }
+    },
+    "volition.volitionRemoveMessage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app will no longer be blocked by Volition."
+          }
+        }
+      }
+    },
+    "volition.volitionRetry" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try again"
+          }
+        }
+      }
+    },
+    "volition.volitionSaveApp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save app"
+          }
+        }
+      }
+    },
+    "volition.volitionSaveError" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t save your changes. Please try again."
+          }
+        }
+      }
+    },
+    "volition.volitionSetupHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose apps one at a time. Give each a name and an intention. Volition will help you pause and choose when to open them."
+          }
+        }
+      }
+    },
+    "volition.volitionSetupTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose your apps"
+          }
+        }
+      }
+    },
+    "volition.volitionSingleAppError" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose exactly one app, without categories or websites."
+          }
+        }
+      }
+    },
+    "volition.volitionStartChat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start chatting"
+          }
+        }
+      }
+    },
+    "volition.volitionWaitError" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app stays blocked until %@. You can keep chatting or choose another app."
+          }
+        }
+      }
+    },
+    "volition.volitionWaitHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app is still blocked. The countdown is a waiting period, not an unlock. You can keep chatting or choose another app."
+          }
+        }
+      }
+    },
+    "volition.volitionWaiting" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Still blocked"
+          }
+        }
+      }
+    },
+    "volition.volitionWelcome" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welcome to Volition"
+          }
+        }
+      }
+    },
+    "volition.volitionWelcomeDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A little pause. A thoughtful conversation. More time for what matters to you."
           }
         }
       }

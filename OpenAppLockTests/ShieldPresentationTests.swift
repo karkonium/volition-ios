@@ -13,7 +13,7 @@ struct ShieldPresentationTests {
     func blockedIsGeneric() {
         let presentation = ShieldPresentation.blocked
         #expect(presentation.title == "App Blocked")
-        #expect(presentation.subtitle == "This app is blocked by OpenAppLock.")
+        #expect(presentation.subtitle == "This app is blocked by Volition.")
         #expect(presentation.secondaryButton == nil)
     }
 
