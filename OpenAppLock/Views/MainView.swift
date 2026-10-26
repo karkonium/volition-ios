@@ -21,6 +21,7 @@ import SwiftUI
 struct MainView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(ConversationCoordinator.self) private var conversation
+    @Environment(NotificationAuthorization.self) private var notificationAuthorization
     @Environment(AppSettingsStore.self) private var settings
     @Environment(RuleEnforcer.self) private var enforcer
     @Environment(\.scenePhase) private var scenePhase
@@ -31,6 +32,9 @@ struct MainView: View {
     @State private var needsSetup = false
     @State private var preparationError = false
     @State private var retry = UUID()
+    // State remains current inside the long-lived loop, unlike its captured
+    // view's initial Environment value when the scene changes in the meantime.
+    @State private var sceneIsActive = false
 
     var body: some View {
         Group {
@@ -58,8 +62,12 @@ struct MainView: View {
                     let current = try modelContext.fetch(FetchDescriptor<BlockingRule>())
                     needsSetup = !current.contains { $0.kind == .conversation && $0.isEnabled }
                     await enforcer.refresh(rules: current)
-                    await conversation.refresh(snapshots: current.map(\.dto))
+                    await conversation.refresh(snapshots: current.map(\.dto), consumeRequests: sceneIsActive)
                     prepared = true
+                    if ConversationShieldRoute.current == .notification {
+                        await notificationAuthorization.refresh()
+                        if notificationAuthorization.status == .notDetermined { await notificationAuthorization.request() }
+                    }
                 } catch { preparationError = true; return }
                 await enforcementLoop()
             }
@@ -69,15 +77,17 @@ struct MainView: View {
                 Diag.log(.lifecycle, "refresh trigger: rule-change observed")
                 refreshEnforcement()
             }
-            .onChange(of: scenePhase) { _, phase in
+            .onChange(of: scenePhase, initial: true) { _, phase in
+                sceneIsActive = phase == .active
                 if phase == .active {
                     Diag.log(.lifecycle, "refresh trigger: scenePhase active")
                     refreshEnforcement()
                 }
             }
-            .onOpenURL { _ in
+            .onOpenURL { url in
                 Diag.log(.lifecycle, "handling URL open: coach")
                 conversation.selectedSection = .chat
+                conversation.openRequestURL(url, snapshots: rules.map(\.dto))
                 refreshEnforcement()
             }
     }
@@ -107,7 +117,7 @@ struct MainView: View {
         // fire-and-forget Task hands it the current rules and returns immediately.
         Task {
             await enforcer.refresh(rules: rules)
-            await conversation.refresh(snapshots: rules.map(\.dto))
+            await conversation.refresh(snapshots: rules.map(\.dto), consumeRequests: sceneIsActive)
         }
     }
 
@@ -120,7 +130,7 @@ struct MainView: View {
             // (when the app isn't open to run this) are visible as timeline holes.
             Diag.log(.lifecycle, "refresh trigger: foreground 30s loop")
             await enforcer.refresh(rules: allRules)
-            await conversation.refresh(snapshots: allRules.map(\.dto))
+            await conversation.refresh(snapshots: allRules.map(\.dto), consumeRequests: sceneIsActive)
             try? await Task.sleep(for: .seconds(30))
         }
     }

@@ -8,7 +8,7 @@
 import UserNotifications
 
 extension UNNotificationContent {
-    var url: URL? {
+    nonisolated var url: URL? {
         if let stringContent = self.userInfo["url"] as? String {
             return URL(string: stringContent)
         }

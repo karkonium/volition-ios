@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import UserNotifications
 
 // see https://swiftwithmajid.com/2024/04/09/deep-linking-for-local-notifications-in-swiftui/
 
@@ -17,6 +18,9 @@ final class CustomAppDelegate: NSObject, UIApplicationDelegate {
 }
 
 extension CustomAppDelegate: UNUserNotificationCenterDelegate {
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        [.banner, .list, .sound]
+    }
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         guard let url = response.notification.request.content.url else { return }
         await UIApplication.shared.open(url)

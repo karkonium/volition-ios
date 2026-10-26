@@ -11,6 +11,49 @@ final class ConversationUITests: XCTestCase {
         field.tap(); field.typeText(text)
         app.buttons["conversationSendButton"].tap()
     }
+    private func capture(_ name: String, _ app: XCUIApplication) {
+        let image = XCTAttachment(screenshot: app.screenshot())
+        image.name = name; image.lifetime = .keepAlways; add(image)
+    }
+    func testMissingAppGuidanceAndReadableActivityLog() {
+        let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
+        send("Hello", app)
+        let attention = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "App selection needed"),
+            object: app.buttons["conversationChooseAppButton"])
+        XCTAssertEqual(XCTWaiter.wait(for: [attention], timeout: 5), .completed)
+        app.staticTexts["conversationAppSelectionHint"].waitToAppear()
+        XCTAssertFalse(app.staticTexts["conversationErrorLabel"].exists)
+        XCTAssertEqual(app.element("conversationMessageField").value as? String, "Hello")
+        capture("Choose an app guidance", app)
+        chooseApp(app)
+        app.buttons["conversationSendButton"].tap()
+        app.staticTexts["What would you like to accomplish in this app?"].waitToAppear()
+        app.goToSettingsTab()
+        app.element("conversationActivityLogButton").waitToAppear().tap()
+        app.staticTexts["App selection needed"].waitToAppear()
+        app.staticTexts["Question asked"].waitToAppear()
+        capture("Readable activity log", app)
+        app.buttons["exportActivityLogButton"].waitToAppear().tap()
+        app.buttons["Readable text (.txt)"].waitToAppear()
+        app.buttons["JSON Lines (.jsonl)"].waitToAppear()
+        app.buttons["Readable text (.txt)"].tap()
+        XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.otherElements["LP.CaptionBar.TopCaption"].waitToAppear().label, "Volition-activity")
+        capture("Activity log export share sheet", app)
+    }
+    func testNamedAppRoutesWithoutOpeningThePicker() {
+        let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation-multiple")
+        send("approve App 12 for one minute", app)
+        app.buttons["endConversationUnlockButton"].waitToAppear()
+        XCTAssertTrue(app.buttons["conversationChooseAppButton"].label.contains("App 12"))
+        XCTAssertFalse(app.element("conversationAppSelectionHint").exists)
+        capture("Named app selected automatically", app)
+        app.goToSettingsTab()
+        app.element("conversationActivityLogButton").waitToAppear().tap()
+        app.staticTexts["Unlocked"].waitToAppear()
+        app.staticTexts["approve App 12 for one minute"].waitToAppear()
+        capture("Actual unlock in activity log", app)
+    }
     func testSharedConversationFollowUpDenialAndApproval() {
         let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
         chooseApp(app)
@@ -46,6 +89,6 @@ final class ConversationUITests: XCTestCase {
         app.buttons["clearConversationHistoryButton"].waitToAppear().tap()
         app.sheets.buttons["Clear conversation history"].waitToAppear().tap()
         app.goToChatTab()
-        app.staticTexts["What would you like to make time for? Choose an app, then tell me what you have in mind."].waitToAppear()
+        app.staticTexts["What would you like to make time for?"].waitToAppear()
     }
 }

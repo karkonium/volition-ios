@@ -5,9 +5,13 @@ import Observation
 import SwiftData
 
 /// Owns shared chat, saved app identity and timestamped cross-app access outcomes.
+/// Unambiguous saved names route locally before any API call; unresolved requests
+/// preserve the draft and request explicit selection. Private activity records
+/// capture coach decisions separately from actual outcomes, atomically with replies.
+/// Clear Chat retains the log; clearing the log never clears enforcement history.
 /// Independent app grants preserve each expiry. Per-app waits persist while chat
 /// remains available; local validation prevents approval before that app’s deadline. Clearing messages retains access outcomes and an active wait.
-/// Only confirmed grants enter access history; returning after expiry records it.
+/// Only confirmed approvals enter history as grants; returning after expiry records it.
 /// Captures target/configuration per request and revalidates after every await.
 /// Clearing history or changing a rule invalidates in-flight model decisions.
 /// The unsent draft lives here for the session so sidebar view replacement does
@@ -17,6 +21,10 @@ final class ConversationCoordinator {
     var selectedSection: AppSection = .chat
     private(set) var target: ApplicationToken?
     private(set) var nickname = ""
+    private(set) var appSelectionNeeded = false
+    private(set) var selectionAttention = 0
+    private var selectionPromptText: String?
+    private var confirmedSelectionText: String?
     var draftMessage = ""
     private(set) var history = ConversationHistory()
     private(set) var isSending = false
@@ -29,6 +37,8 @@ final class ConversationCoordinator {
     private let historyStore: any ConversationHistoryStoring
     private let access: ConversationEnforcement
     private let timer: any ConversationTimerScheduling
+    private let requestStore: ConversationRequestStore
+    private var selectionVersion = UUID()
     private var requestID: UUID?
     private var generation = UUID()
     private var loadFailed = false
@@ -49,21 +59,24 @@ final class ConversationCoordinator {
     convenience init(context: ModelContext, client: any ConversationClient = OpenAIConversationClient(),
          keys: any ConversationKeyStoring = ConversationEnvironmentKeyStore(),
          access: ConversationEnforcement = ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController()),
-         timer: any ConversationTimerScheduling = DeviceConversationTimer()) {
-        self.init(historyStore: ConversationHistoryStore(context: context), client: client, keys: keys, access: access, timer: timer)
+         timer: any ConversationTimerScheduling = DeviceConversationTimer(),
+         requestStore: ConversationRequestStore = .init()) {
+        self.init(historyStore: ConversationHistoryStore(context: context), client: client, keys: keys, access: access, timer: timer, requestStore: requestStore)
     }
 
     init(historyStore: any ConversationHistoryStoring, client: any ConversationClient = OpenAIConversationClient(),
          keys: any ConversationKeyStoring = ConversationEnvironmentKeyStore(),
          access: ConversationEnforcement = ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController()),
-         timer: any ConversationTimerScheduling = DeviceConversationTimer()) {
+         timer: any ConversationTimerScheduling = DeviceConversationTimer(),
+         requestStore: ConversationRequestStore = .init()) {
         self.client = client
         self.keys = keys
         ConversationDiagnostics.live.log("config.loaded source=\(keys is ConversationEnvironmentKeyStore ? "bundled-env" : "injected") key_present=\((try? keys.read()) != nil)")
         self.historyStore = historyStore
         self.access = access
         self.timer = timer
-        do { history = try historyStore.load() }
+        self.requestStore = requestStore
+        do { history = try historyStore.load(); history.prepareActivityLog() }
         catch {
             ConversationDiagnostics.live.log("history.load_failed requests_disabled")
             loadFailed = true; errorMessage = CopyKey.conversationStorageError.string
@@ -71,6 +84,9 @@ final class ConversationCoordinator {
     }
 
     func select(_ token: ApplicationToken) {
+        selectionVersion = UUID()
+        confirmedSelectionText = appSelectionNeeded ? selectionPromptText : nil
+        appSelectionNeeded = false
         if target != token { requestID = nil; generation = UUID(); nickname = "" }
         target = token
         errorMessage = nil
@@ -78,19 +94,23 @@ final class ConversationCoordinator {
         selectedSection = .chat
     }
 
-    func refresh(snapshots: [RuleSnapshotDTO]) async {
+    func refresh(snapshots: [RuleSnapshotDTO], consumeRequests: Bool = true) async {
         knownSnapshots = snapshots
         let observedGrantVersion = grantVersion
+        let observedSelectionVersion = selectionVersion
         do {
             let access = access
+            let requests = requestStore
             let state = try await Task.detached {
                 let grants = try access.store.transaction { $0.activeGrants }
-                let pending = try access.store.consumePending()
-                return (grants, pending)
+                let pending = consumeRequests ? try access.store.consumePending() : nil
+                let request = consumeRequests ? requests.pending() : nil
+                if let request { requests.acknowledge(request) }
+                return (grants, request?.token ?? pending)
             }.value
             if observedGrantVersion == grantVersion { grants = state.0.filter { !$0.plan.hasExpired(at: .now) } }
             if target == nil, let first = grants.first { target = first.token }
-            if let pending = state.1,
+            if observedSelectionVersion == selectionVersion, let pending = state.1,
                !ConversationGrantStore.applicable(to: pending, in: snapshots).isEmpty { select(pending) }
             if let target { nickname = ConversationGrantStore.applicable(to: target, in: snapshots).first?.name ?? "" }
             if let target, ConversationGrantStore.applicable(to: target, in: snapshots).isEmpty {
@@ -104,6 +124,10 @@ final class ConversationCoordinator {
                 let expiry = history.accessEvents[index].expiresAt ?? .now
                 let expired = expiry <= Date()
                 history.accessEvents[index].endedAt = expired ? expiry : .now
+                let endedAt = history.accessEvents[index].endedAt
+                for entry in history.activityLog.indices where history.activityLog[entry].grantID == id {
+                    history.activityLog[entry].endedAt = endedAt
+                }
                 recordedEndIDs.insert(id)
                 try append(.event, "\(history.accessEvents[index].appName): \(expired ? CopyKey.conversationGrantExpired.string : CopyKey.conversationGrantEnded.string)")
             }
@@ -117,6 +141,19 @@ final class ConversationCoordinator {
         } catch { errorMessage = CopyKey.conversationStorageError.string }
     }
 
+    /// A notification names its own saved profile; a newer pending request must
+    /// not redirect an older notification to a different app. No link grants access.
+    func openRequestURL(_ url: URL, snapshots: [RuleSnapshotDTO]) {
+        guard let id = ConversationShieldRequest.appID(from: url),
+              let app = snapshots.first(where: { $0.id == id && $0.isEnabled && $0.kind == .conversation }) else { return }
+        let selection = AppSelectionCodec.decode(app.selectionData)
+        guard selection.applicationTokens.count == 1, selection.categoryTokens.isEmpty,
+              selection.webDomainTokens.isEmpty, let token = selection.applicationTokens.first else { return }
+        knownSnapshots = snapshots
+        if let pending = requestStore.pending() { requestStore.acknowledge(pending) }
+        select(token)
+    }
+
     func send(_ text: String, rules: [BlockingRule]) async {
         await send(text, snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) })
     }
@@ -127,41 +164,68 @@ final class ConversationCoordinator {
             return
         }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, trimmed.count <= 4000, let target else {
-            ConversationDiagnostics.live.log("send.skipped invalid_input_or_missing_target")
-            return
-        }
-        ConversationDiagnostics.live.log("send.begin messages=\(history.messages.count)")
-        let key: String
-        do {
-            guard let stored = try keys.read(), !stored.isEmpty else {
-                ConversationDiagnostics.live.log("key.missing request_not_sent")
-                errorMessage = CopyKey.conversationMissingKey.string; return
-            }
-            key = stored
-            ConversationDiagnostics.live.log("key.loaded request_ready")
-        } catch {
-            ConversationDiagnostics.live.log("key.load_failed request_not_sent")
-            errorMessage = CopyKey.conversationMissingKey.string; return
-        }
+        guard !trimmed.isEmpty, trimmed.count <= 4000 else { return }
         let initial = snapshots()
         knownSnapshots = initial
-        let syncInstant = Date()
-        let applicable = ConversationGrantStore.applicable(to: target, in: initial)
-        guard !applicable.isEmpty else {
-            ConversationDiagnostics.live.log("send.skipped no_applicable_rule")
-            errorMessage = CopyKey.conversationStaleRequest.string; return
+        if confirmedSelectionText != trimmed {
+            switch ConversationAppResolver.resolve(trimmed, in: initial) {
+            case .selected(let app): select(app)
+            case .ambiguous:
+                requireAppSelection(for: trimmed, ambiguous: true); return
+            case .none:
+                if target == nil || appSelectionNeeded { requireAppSelection(for: trimmed); return }
+            }
         }
-        nickname = applicable[0].name
+        guard let target else { requireAppSelection(for: trimmed); return }
+        let applicable = ConversationGrantStore.applicable(to: target, in: initial)
+        guard let requestedApp = applicable.first else { requireAppSelection(for: trimmed); return }
+        confirmedSelectionText = nil; selectionPromptText = nil; appSelectionNeeded = false
+        nickname = requestedApp.name
+        let entry = ConversationActivityEntry(appID: requestedApp.id, appName: requestedApp.name, message: trimmed)
+        history.activityLog.append(entry)
+        do { try persist() }
+        catch {
+            errorMessage = CopyKey.conversationStorageError.string
+            updateActivity(entry.id) {
+                $0.outcome = .failed; $0.completedAt = .now
+                $0.systemResponse = CopyKey.conversationStorageError.string; $0.failureStage = "activity_save"
+            }
+            try? persist(); return
+        }
+        defer {
+            if history.activityLog.first(where: { $0.id == entry.id })?.outcome == .pending {
+                updateActivity(entry.id) {
+                    $0.outcome = .cancelled; $0.completedAt = .now
+                    $0.systemResponse = errorMessage ?? CopyKey.activityCancelled.string
+                }
+                try? persist()
+            }
+        }
+        let key: String
+        do {
+            guard let stored = try keys.read(), !stored.isEmpty else { throw MissingKey() }
+            key = stored
+        } catch {
+            ConversationDiagnostics.live.log(error is MissingKey ? "key.missing request_not_sent" : "key.load_failed request_not_sent")
+            errorMessage = CopyKey.conversationMissingKey.string
+            updateActivity(entry.id) {
+                $0.outcome = .failed; $0.completedAt = .now
+                $0.systemResponse = CopyKey.conversationMissingKey.string; $0.failureStage = "key_loading"
+            }
+            try? persist(); return
+        }
+        ConversationDiagnostics.live.log("send.begin messages=\(history.messages.count)")
+        ConversationDiagnostics.live.log("key.loaded request_ready")
         let fingerprint = ConversationGrantStore.fingerprint(initial)
         let currentGeneration = generation
         let id = requestID ?? UUID()
-        isSending = true
-        errorMessage = nil
+        let syncInstant = Date()
+        isSending = true; errorMessage = nil
         defer { isSending = false }
         var stage = "enforcement_sync"
         var activatedForRequest: ConversationGrantStore.Grant?
         var attemptedApproval = false
+        var receivedDecision: ConversationDecision?
         do {
             let access = access
             _ = try await Task.detached { try access.sync(initial, now: syncInstant) }.value
@@ -169,10 +233,8 @@ final class ConversationCoordinator {
             stage = "history_save"
             if requestID == nil {
                 requestID = id
-                let name = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
-                try append(.event, CopyKey.conversationRequestMarker.string(name.isEmpty ? CopyKey.conversationTargetGeneric.string : String(name.prefix(100))), request: id)
+                try append(.event, CopyKey.conversationRequestMarker.string(String(requestedApp.name.prefix(100))), request: id)
             }
-            // Retrying an unanswered network request reuses its saved user turn.
             if history.messages.last?.role != .user || history.messages.last?.text != trimmed || history.messages.last?.requestID != id {
                 try append(.user, trimmed, request: id)
             }
@@ -188,64 +250,81 @@ final class ConversationCoordinator {
             }
             let contextInstant = Date()
             let context = ConversationContext(goals: applicable.map(\.conversationGoal),
-                appNickname: String(nickname.prefix(100)), memory: history.memory,
-                recentMessages: history.recentMessages, currentTime: contextInstant, currentAppID: applicable[0].id, accessEvents: Array(history.accessEvents.suffix(100)),
-                activitySummary: .init(events: history.accessEvents, appID: applicable[0].id, now: contextInstant),
+                appNickname: String(requestedApp.name.prefix(100)), memory: history.memory,
+                recentMessages: history.recentMessages, currentTime: contextInstant, currentAppID: requestedApp.id,
+                accessEvents: Array(history.accessEvents.suffix(100)),
+                activitySummary: .init(events: history.accessEvents, appID: requestedApp.id, now: contextInstant),
                 activeUnlocks: grants.filter { !$0.plan.hasExpired(at: contextInstant) }.map {
                     .init(appID: ConversationGrantStore.applicable(to: $0.token, in: initial).first?.id,
                         appName: appName(for: $0), expiresAt: $0.plan.expiresAt)
-                }, waitUntil: waitUntil(for: applicable[0].id))
+                }, waitUntil: waitUntil(for: requestedApp.id))
             stage = "decision_request"
             let response = try await client.respond(to: context, apiKey: key)
             let decision = try ConversationDecision.parse(JSONEncoder().encode(response))
+            receivedDecision = decision
             guard generation == currentGeneration, self.target == target,
                   fingerprint == ConversationGrantStore.fingerprint(snapshots()) else {
                 ConversationDiagnostics.live.log("decision.discarded stale_configuration")
                 errorMessage = CopyKey.conversationStaleRequest.string; requestID = nil; return
             }
             ConversationDiagnostics.live.log("decision.received decision=\(decision.decision.rawValue) minutes=\(decision.unlockMinutes ?? 0) wait_minutes=\(decision.waitMinutes ?? 0)")
-            stage = "assistant_save"
-            if decision.decision != .approve { try append(.assistant, decision.reply, request: id) }
-            var event = ConversationAccessEvent(date: .now, appID: applicable[0].id,
-                appName: nickname, reason: trimmed, decision: decision.decision, reply: decision.reply)
+            var event = ConversationAccessEvent(date: .now, appID: requestedApp.id,
+                appName: requestedApp.name, reason: trimmed, decision: decision.decision, reply: decision.reply)
             if decision.decision == .approve, let minutes = decision.unlockMinutes {
                 attemptedApproval = true
-                if waitUntil(for: applicable[0].id) != nil { throw ConversationAccessError.waiting }
+                if waitUntil(for: requestedApp.id) != nil { throw ConversationAccessError.waiting }
                 let access = access; let timer = timer
                 stage = "grant_registration"
-                ConversationDiagnostics.live.log("grant.begin rule=\(applicable[0].id.logTag) minutes=\(minutes)")
+                ConversationDiagnostics.live.log("grant.begin rule=\(requestedApp.id.logTag) minutes=\(minutes)")
                 let activated = try await Task.detached {
-                    return try access.approve(token: target, minutes: minutes, fingerprint: fingerprint, timer: timer)
+                    try access.approve(token: target, minutes: minutes, fingerprint: fingerprint, timer: timer)
                 }.value
                 activatedForRequest = activated
-                // Clearing history/target while registration was in flight must not activate stale access.
                 guard generation == currentGeneration,
                       fingerprint == ConversationGrantStore.fingerprint(snapshots()) else {
                     try await Task.detached { try access.end(grantID: activated.plan.grantID) }.value
-                    errorMessage = CopyKey.conversationStaleRequest.string
-                    return
+                    errorMessage = CopyKey.conversationStaleRequest.string; return
                 }
-                ConversationDiagnostics.live.log("grant.activated id=\(activated.plan.grantID.logTag) minutes=\(minutes)")
                 stage = "grant_save"
-                grants.append(activated)
-                grantVersion = UUID()
-                history.lastGrantID = grants.first?.plan.grantID
-                history.lastGrantExpiry = grants.first?.plan.expiresAt
-                event.date = activated.plan.start
-                event.grantID = activated.plan.grantID
-                event.expiresAt = activated.plan.expiresAt
-                history.accessEvents.append(event)
-                try append(.assistant, decision.reply, request: id)
-                try append(.event, minutes == 1 ? CopyKey.conversationApprovalOne.string : CopyKey.conversationApprovalMarker.string(minutes), request: id)
+                let beforePublishing = history
+                do {
+                    history.lastGrantID = grants.first?.plan.grantID ?? activated.plan.grantID
+                    history.lastGrantExpiry = grants.first?.plan.expiresAt ?? activated.plan.expiresAt
+                    event.date = activated.plan.start; event.grantID = activated.plan.grantID; event.expiresAt = activated.plan.expiresAt
+                    history.accessEvents.append(event)
+                    let marker = minutes == 1 ? CopyKey.conversationApprovalOne.string : CopyKey.conversationApprovalMarker.string(minutes)
+                    history.messages.append(.init(role: .assistant, text: decision.reply, requestID: id))
+                    history.messages.append(.init(role: .event, text: marker, requestID: id))
+                    updateActivity(entry.id) {
+                        $0.outcome = .unlocked; $0.modelDecision = decision.decision
+                        $0.coachResponse = decision.reply; $0.systemResponse = marker; $0.completedAt = .now
+                        $0.unlockMinutes = minutes; $0.unlockUntil = activated.plan.expiresAt; $0.grantID = activated.plan.grantID
+                    }
+                    try persist()
+                } catch { history = beforePublishing; throw error }
+                grants.append(activated); grantVersion = UUID()
+                ConversationDiagnostics.live.log("grant.activated id=\(activated.plan.grantID.logTag) minutes=\(minutes)")
                 requestID = nil
             } else {
-                if decision.decision == .wait, let minutes = decision.waitMinutes {
-                    history.cooldownUntil = waitUntil(for: applicable[0].id) ?? Date().addingTimeInterval(Double(minutes * 60))
-                    event.waitUntil = history.cooldownUntil
+                stage = "assistant_save"
+                let beforePublishing = history
+                do {
+                    if decision.decision == .wait, let minutes = decision.waitMinutes {
+                        history.cooldownUntil = waitUntil(for: requestedApp.id) ?? Date().addingTimeInterval(Double(minutes * 60))
+                        event.waitUntil = history.cooldownUntil
+                    }
+                    history.accessEvents.append(event)
+                    history.messages.append(.init(role: .assistant, text: decision.reply, requestID: id))
+                    updateActivity(entry.id) {
+                        $0.outcome = decision.decision == .ask ? .asked : decision.decision == .deny ? .denied : .wait
+                        $0.modelDecision = decision.decision; $0.coachResponse = decision.reply
+                        $0.systemResponse = $0.outcome.title; $0.waitUntil = event.waitUntil; $0.completedAt = .now
+                    }
+                    try persist()
+                } catch { history = beforePublishing; throw error }
+                if let minutes = decision.waitMinutes {
                     ConversationDiagnostics.live.log("cooldown.started minutes=\(minutes)")
                 }
-                history.accessEvents.append(event)
-                try persist()
                 if decision.decision != .ask { requestID = nil }
             }
         } catch {
@@ -255,17 +334,27 @@ final class ConversationCoordinator {
                 let access = access
                 try? await Task.detached { try access.end(grantID: activated.plan.grantID) }.value
                 history.accessEvents.removeAll { $0.grantID == activated.plan.grantID }
-                grants.removeAll { $0.plan.grantID == activated.plan.grantID }
-                grantVersion = UUID()
-                history.lastGrantID = grants.first?.plan.grantID; history.lastGrantExpiry = grants.first?.plan.expiresAt
+                grants.removeAll { $0.plan.grantID == activated.plan.grantID }; grantVersion = UUID()
+                history.lastGrantID = grants.first?.plan.grantID
+                history.lastGrantExpiry = grants.first?.plan.expiresAt
             }
-            if let until = waitUntil(for: applicable[0].id), error as? ConversationAccessError == .waiting {
-                errorMessage = CopyKey.volitionWaitError.string(until.formatted(date: .omitted, time: .shortened))
+            let outcome: ConversationActivityEntry.Outcome
+            if error as? ConversationAccessError == .waiting {
+                errorMessage = CopyKey.volitionWaitError.string; outcome = .blockedByWait
             } else if error as? ConversationAccessError == .alreadyUnlocked {
-                errorMessage = CopyKey.conversationGrantActive.string
-            } else if error is PersistenceFailure { errorMessage = CopyKey.conversationStorageError.string }
-            else if let failure = error as? ConversationClientError { errorMessage = failure.copyKey.string }
-            else { errorMessage = error is ConversationAccessError ? CopyKey.conversationGrantFailed.string : CopyKey.conversationNetworkError.string }
+                errorMessage = CopyKey.conversationGrantActive.string; outcome = .alreadyUnlocked
+            } else {
+                outcome = .failed
+                if error is PersistenceFailure { errorMessage = CopyKey.conversationStorageError.string }
+                else if let failure = error as? ConversationClientError { errorMessage = failure.copyKey.string }
+                else { errorMessage = error is ConversationAccessError ? CopyKey.conversationGrantFailed.string : CopyKey.conversationNetworkError.string }
+            }
+            updateActivity(entry.id) {
+                $0.outcome = outcome; $0.modelDecision = receivedDecision?.decision
+                $0.coachResponse = receivedDecision?.reply; $0.systemResponse = errorMessage
+                $0.completedAt = .now; $0.failureStage = stage
+            }
+            try? persist()
         }
         #if DEBUG
         if attemptedApproval, keys is ConversationEnvironmentKeyStore {
@@ -296,6 +385,7 @@ final class ConversationCoordinator {
         history = ConversationHistory()
         history.cooldownUntil = previous.cooldownUntil
         history.accessEvents = previous.accessEvents
+        history.activityLog = previous.activityLog
         history.lastGrantID = grants.first?.plan.grantID
         history.lastGrantExpiry = grants.first?.plan.expiresAt
         do { try persist(); loadFailed = false }
@@ -304,10 +394,49 @@ final class ConversationCoordinator {
 
     func cancelRequest() {
         generation = UUID(); requestID = nil
+        for index in history.activityLog.indices where history.activityLog[index].outcome == .pending {
+            history.activityLog[index].outcome = .cancelled
+            history.activityLog[index].systemResponse = CopyKey.activityCancelled.string
+            history.activityLog[index].completedAt = .now
+        }
+        try? persist()
         // The URLSession call may finish, but its result cannot authorize access.
     }
 
+    private struct MissingKey: Error {}
+
+    private func requireAppSelection(for text: String, ambiguous: Bool = false) {
+        appSelectionNeeded = true; selectionAttention += 1; selectionPromptText = text
+        confirmedSelectionText = nil
+        errorMessage = (ambiguous ? CopyKey.conversationAmbiguousApp : .conversationSelectAppHelp).string
+        var entry = ConversationActivityEntry(message: text, outcome: .selectionRequired, systemResponse: errorMessage)
+        entry.completedAt = .now; history.activityLog.append(entry)
+        do { try persist() } catch { errorMessage = CopyKey.conversationStorageError.string }
+    }
+
+    private func updateActivity(_ id: UUID, _ update: (inout ConversationActivityEntry) -> Void) {
+        // A late network result cannot rewrite an already-cancelled request.
+        if let index = history.activityLog.firstIndex(where: { $0.id == id && $0.outcome == .pending }) {
+            update(&history.activityLog[index])
+        }
+    }
+
+    @discardableResult
+    func clearActivityLog() -> Bool {
+        let previous = history.activityLog
+        history.activityLog = []
+        do {
+            try persist()
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("VolitionActivityExports")
+            if FileManager.default.fileExists(atPath: url.path) { try? FileManager.default.removeItem(at: url) }
+            return true
+        } catch { history.activityLog = previous; errorMessage = CopyKey.conversationStorageError.string; return false }
+    }
+
     private func finishAccessEvent(id: UUID, at date: Date) {
+        for index in history.activityLog.indices where history.activityLog[index].grantID == id {
+            history.activityLog[index].endedAt = date
+        }
         if let index = history.accessEvents.firstIndex(where: { $0.grantID == id }) {
             history.accessEvents[index].endedAt = date
         }

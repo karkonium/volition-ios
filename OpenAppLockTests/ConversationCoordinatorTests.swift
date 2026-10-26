@@ -7,7 +7,7 @@ import Testing
 @MainActor
 @Suite("Shared conversation lifecycle", .serialized)
 struct ConversationCoordinatorTests {
-    private func setup(client: any ConversationClient = MockConversationClient(), shields: any ShieldApplying = MockShieldController()) throws -> (ConversationCoordinator, HistoryMemory, RuleSnapshotDTO, ApplicationToken) {
+    private func setup(client: any ConversationClient = MockConversationClient(), shields: any ShieldApplying = MockShieldController(), selectTarget: Bool = true, requests: ConversationRequestStore = .init()) throws -> (ConversationCoordinator, HistoryMemory, RuleSnapshotDTO, ApplicationToken) {
         let token = try JSONDecoder().decode(ApplicationToken.self,
             from: JSONSerialization.data(withJSONObject: ["data": Data([1]).base64EncodedString()]))
         var selection = FamilyActivitySelection(); selection.applicationTokens = [token]
@@ -21,9 +21,134 @@ struct ConversationCoordinatorTests {
         let coordinator = ConversationCoordinator(historyStore: history, client: client,
             keys: MockConversationKeyStore(),
             access: .init(store: .init(fileURL: directory.appendingPathComponent("access.json")), shields: shields),
-            timer: MockConversationTimer())
-        coordinator.select(token)
+            timer: MockConversationTimer(), requestStore: requests)
+        if selectTarget { coordinator.select(token) }
         return (coordinator, history, rule, token)
+    }
+
+    @Test("Repeated shield requests return to Chat; notification links select their own app")
+    func repeatedShieldRequestsAndNotificationLinks() async throws {
+        let defaults = try #require(UserDefaults(suiteName: "Routing-\(UUID().uuidString)"))
+        let requests = ConversationRequestStore(defaults: defaults)
+        let (coordinator, history, first, original) = try setup(requests: requests)
+        let other = try JSONDecoder().decode(ApplicationToken.self,
+            from: JSONSerialization.data(withJSONObject: ["data": Data([23]).base64EncodedString()]))
+        var selection = FamilyActivitySelection(); selection.applicationTokens = [other]
+        var second = first; second.id = UUID(); second.name = "Maps"; second.selectionData = AppSelectionCodec.encode(selection)
+        let oldNotification = requests.begin(token: original, appID: first.id)
+        _ = requests.begin(token: other, appID: second.id)
+        coordinator.selectedSection = .settings
+        await coordinator.refresh(snapshots: [first, second], consumeRequests: false)
+        #expect(requests.pending() != nil)
+        #expect(coordinator.target == original)
+        await coordinator.refresh(snapshots: [first, second])
+        #expect(coordinator.target == other)
+        #expect(coordinator.selectedSection == .chat)
+        #expect(requests.pending() == nil)
+        coordinator.openRequestURL(try #require(oldNotification.url), snapshots: [first, second])
+        #expect(coordinator.target == original)
+        _ = requests.begin(token: other, appID: second.id)
+        coordinator.selectedSection = .apps
+        await coordinator.refresh(snapshots: [first, second])
+        #expect(coordinator.target == other)
+        #expect(coordinator.selectedSection == .chat)
+        #expect(coordinator.grants.isEmpty)
+        #expect(history.value.accessEvents.isEmpty)
+        var disabled = first; disabled.isEnabled = false
+        coordinator.openRequestURL(try #require(oldNotification.url), snapshots: [disabled, second])
+        #expect(coordinator.target == other)
+    }
+
+    @Test("A named saved app routes a request without manual selection")
+    func namedAppRouting() async throws {
+        let (coordinator, history, rule, token) = try setup(selectTarget: false)
+        await coordinator.send("approve COACH for a task", snapshots: { [rule] })
+        #expect(coordinator.target == token)
+        #expect(coordinator.grant != nil)
+        let entry = try #require(history.value.activityLog.last)
+        #expect(entry.outcome == .unlocked)
+        #expect(entry.appID == rule.id)
+        #expect(entry.message == "approve COACH for a task")
+        #expect(entry.modelDecision == .approve)
+        #expect(entry.unlockUntil != nil)
+        coordinator.clearHistory()
+        #expect(history.value.activityLog.last?.id == entry.id)
+        await coordinator.endUnlock()
+        #expect(history.value.activityLog.last?.endedAt != nil)
+    }
+
+    @Test("An unresolved request asks for selection without sending or losing its message")
+    func noAppGuidance() async throws {
+        let client = RecordingConversationClient()
+        let (coordinator, history, rule, _) = try setup(client: client, selectTarget: false)
+        await coordinator.send("Please unlock it", snapshots: { [rule] })
+        #expect(await client.contexts().isEmpty)
+        #expect(coordinator.appSelectionNeeded)
+        #expect(coordinator.selectionAttention == 1)
+        #expect(history.value.messages.isEmpty)
+        #expect(history.value.activityLog.last?.outcome == .selectionRequired)
+        #expect(history.value.activityLog.last?.message == "Please unlock it")
+        coordinator.clearActivityLog()
+        #expect(history.value.activityLog.isEmpty)
+    }
+
+    @Test("Explicit selection resolves a message naming multiple apps")
+    func ambiguousMessageCanBeConfirmed() async throws {
+        let client = RecordingConversationClient()
+        let (coordinator, history, first, _) = try setup(client: client, selectTarget: false)
+        let token = try JSONDecoder().decode(ApplicationToken.self,
+            from: JSONSerialization.data(withJSONObject: ["data": Data([3]).base64EncodedString()]))
+        var selection = FamilyActivitySelection(); selection.applicationTokens = [token]
+        var second = first; second.id = UUID(); second.name = "Maps"
+        second.selectionData = AppSelectionCodec.encode(selection)
+        let message = "Coach or Maps for directions"
+        await coordinator.send(message, snapshots: { [first, second] })
+        #expect(coordinator.appSelectionNeeded)
+        #expect(await client.contexts().isEmpty)
+        coordinator.select(token)
+        await coordinator.send(message, snapshots: { [first, second] })
+        #expect(await client.contexts().last?.currentAppID == second.id)
+        #expect(!coordinator.appSelectionNeeded)
+        #expect(history.value.activityLog.map(\.outcome) == [.selectionRequired, .asked])
+    }
+
+    @Test("A failed initial log save does not send or leave a pending request")
+    func failedInitialLogSave() async throws {
+        let client = RecordingConversationClient()
+        let (coordinator, history, rule, _) = try setup(client: client)
+        history.failNextSave = true
+        await coordinator.send("Hello", snapshots: { [rule] })
+        #expect(await client.contexts().isEmpty)
+        #expect(coordinator.history.activityLog.last?.outcome == .failed)
+        #expect(coordinator.errorMessage == CopyKey.conversationStorageError.string)
+        #expect(history.value.activityLog.last?.outcome == .failed)
+    }
+
+    @Test("Cancelling a request remains cancelled regardless of the late network result", arguments: [false, true])
+    func cancelledRequestIsLogged(networkFails: Bool) async throws {
+        let client = GatedConversationClient()
+        let (coordinator, history, rule, _) = try setup(client: client)
+        let task = Task { await coordinator.send("approve", snapshots: { [rule] }) }
+        await client.waitUntilStarted()
+        coordinator.cancelRequest()
+        #expect(history.value.activityLog.last?.outcome == .cancelled)
+        if networkFails { await client.fail() } else { await client.complete() }
+        await task.value
+        #expect(history.value.activityLog.last?.outcome == .cancelled)
+        #expect(coordinator.grants.isEmpty)
+    }
+
+    @Test("Failed release logs a failed outcome even when the coach approved")
+    func actualOutcomeLog() async throws {
+        let (coordinator, history, rule, _) = try setup(shields: UnreleasedShield())
+        await coordinator.send("approve now", snapshots: { [rule] })
+        let entry = try #require(history.value.activityLog.last)
+        #expect(entry.modelDecision == .approve)
+        #expect(entry.outcome == .failed)
+        #expect(entry.coachResponse != nil)
+        #expect(entry.systemResponse == coordinator.errorMessage)
+        #expect(entry.unlockUntil == nil)
+        #expect(coordinator.grant == nil)
     }
 
     @Test("Wait persists for its app while chat and another app remain available")
@@ -198,6 +323,12 @@ struct ConversationCoordinatorTests {
         #expect(coordinator.grants.isEmpty)
         #expect(coordinator.cooldownUntil == deadline)
         #expect(coordinator.errorMessage != nil)
+        #expect(history.value.activityLog.map(\.outcome) == [.wait, .asked, .blockedByWait])
+        #expect(history.value.activityLog.last?.modelDecision == .approve)
+        #expect(coordinator.clearActivityLog())
+        #expect(history.value.activityLog.isEmpty)
+        #expect(coordinator.cooldownUntil == deadline)
+        #expect(history.value.accessEvents.count == 2)
     }
 
     @Test("Switching apps sends the earlier conversation as shared context")
@@ -263,6 +394,8 @@ struct ConversationCoordinatorTests {
         await coordinator.send("approve", snapshots: { [rule] })
         #expect(coordinator.grant == nil)
         #expect(coordinator.errorMessage == CopyKey.conversationStorageError.string)
+        #expect(history.value.activityLog.last?.outcome == .failed)
+        #expect(history.value.activityLog.last?.modelDecision == .approve)
         await coordinator.refresh(snapshots: [rule])
         #expect(coordinator.grant == nil)
     }
@@ -288,9 +421,11 @@ struct ConversationCoordinatorTests {
 private final class HistoryMemory: ConversationHistoryStoring {
     var value = ConversationHistory()
     var failApprovalSave = false
+    var failNextSave = false
     enum Failure: Error { case save }
     func load() -> ConversationHistory { value }
     func save(_ history: ConversationHistory) throws {
+        if failNextSave { failNextSave = false; throw Failure.save }
         if failApprovalSave && history.lastGrantID != nil { throw Failure.save }
         value = history
     }
@@ -301,15 +436,19 @@ private final class RuleBox {
     init(rule: RuleSnapshotDTO) { self.rule = rule }
 }
 private actor GatedConversationClient: ConversationClient {
-    private var continuation: CheckedContinuation<ConversationDecision, Never>?
+    private var continuation: CheckedContinuation<ConversationDecision, any Error>?
     func respond(to context: ConversationContext, apiKey: String) async throws -> ConversationDecision {
-        await withCheckedContinuation { continuation = $0 }
+        try await withCheckedThrowingContinuation { continuation = $0 }
     }
     func waitUntilStarted() async {
         while continuation == nil { await Task.yield() }
     }
     func complete() {
         continuation?.resume(returning: .init(reply: "Yes", decision: .approve, unlockMinutes: 1))
+        continuation = nil
+    }
+    func fail() {
+        continuation?.resume(throwing: ConversationClientError.transport(code: -1009))
         continuation = nil
     }
     func summarize(memory: String, messages: [ConversationMessage], apiKey: String) async throws -> String { memory }

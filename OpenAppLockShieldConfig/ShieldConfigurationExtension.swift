@@ -46,8 +46,7 @@ final class ShieldConfigurationExtension: ShieldConfigurationDataSource {
     ) -> ShieldConfiguration {
         let snapshots = RuleSnapshotUserDefaultsStore().load()
         if !ConversationGrantStore.applicable(to: token, in: snapshots).isEmpty {
-            if #available(iOS 26.5, *) { return configuration(for: .conversation(canOpenParent: true)) }
-            return configuration(for: .conversation(canOpenParent: false))
+            return configuration(for: .conversation(route: .current, requestPending: ConversationRequestStore().pending()?.token == token))
         }
         let ledger = UsageLedger()
         let sessions = OpenSessionStore()

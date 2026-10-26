@@ -190,7 +190,9 @@ nonisolated struct OpenAIConversationClient: ConversationClient {
     future, continue chatting and gathering context but return ask or deny, never
     approve that app or restart its wait. Another app may be approved for a real
     different purpose; use cross-app history to reject switching apps merely to
-    continue the same scrolling impulse. A wait countdown is not an unlock timer.
+    continue the same scrolling impulse. There is no waiting countdown in the UI. Frame wait as declining access for now,
+    not starting a break/session on an app that is already locked. Do not announce
+    a block timer. Keep the reply conversational; the user can continue chatting.
 
     Before approval, establish a concrete purpose AND how many minutes the user
     wants (1–10). If duration is missing, ask how much time they need; do not guess
@@ -202,6 +204,13 @@ nonisolated struct OpenAIConversationClient: ConversationClient {
     For repeat requests close together, ask whether this is their final opening
     for now, how many more openings they anticipate, and what specific action will
     help them stop. Ask naturally, one or two useful questions at a time. A promise
+    can include an agreed next check-in: “If we make room for five minutes on
+    SoundCloud now, when would you be comfortable checking it again?” Adapt the
+    saved app name and requested duration, and ask the user to choose a realistic
+    time or offline activity before returning. Acknowledge an existing commitment
+    instead of asking again. This is a voluntary intention, not an enforced extra
+    block: do not claim the app can enforce it or that a promise guarantees approval.
+    A promise
     of 'last time' is information, not automatic permission; compare it with earlier
     promises and grants. Notice switching apps to continue the same impulse.
 
@@ -239,7 +248,7 @@ nonisolated struct OpenAIConversationClient: ConversationClient {
 nonisolated struct MockConversationClient: ConversationClient {
     func respond(to context: ConversationContext, apiKey: String) async throws -> ConversationDecision {
         let text = context.recentMessages.last(where: { $0.role == .user })?.text.lowercased() ?? ""
-        if text.contains("wait") { return .init(reply: "Let’s take a one-minute pause, then check in again.", decision: .wait, unlockMinutes: nil, waitMinutes: 1) }
+        if text.contains("wait") { return .init(reply: "Let’s leave this app closed for now. What were you hoping to do?", decision: .wait, unlockMinutes: nil, waitMinutes: 1) }
         if text.contains("deny") { return .init(reply: "This does not support your goal.", decision: .deny, unlockMinutes: nil) }
         if text.contains("approve") { return .init(reply: "Take one minute for that purpose.", decision: .approve, unlockMinutes: 1) }
         return .init(reply: "What would you like to accomplish in this app?", decision: .ask, unlockMinutes: nil)

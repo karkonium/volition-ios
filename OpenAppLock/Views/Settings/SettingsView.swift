@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Volition keeps only coach/privacy settings and exportable diagnostics.
+/// Volition exposes coach/privacy settings, the private activity log and technical diagnostics.
 /// Scheduling, hard mode, app lists and time/open budgets are no longer exposed.
 struct SettingsView: View {
     var body: some View {
@@ -10,6 +10,9 @@ struct SettingsView: View {
                     NavigationLink { ConversationSettingsView() } label: {
                         Label(CopyKey.volitionCoachSettings.resource, systemImage: "bubble.left.and.bubble.right")
                     }.accessibilityIdentifier("conversationSettingsButton")
+                    NavigationLink { ConversationActivityLogView() } label: {
+                        Label(CopyKey.activityLogTitle.resource, systemImage: "clock.arrow.circlepath")
+                    }.accessibilityIdentifier("conversationActivityLogButton")
                     NavigationLink { DiagnosticLogsView() } label: {
                         Label(CopyKey.settingsLogsRowLabel.resource, systemImage: "doc.text.magnifyingglass")
                     }.accessibilityIdentifier("diagnosticsLogsRow")
