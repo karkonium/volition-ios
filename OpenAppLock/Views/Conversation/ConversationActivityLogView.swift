@@ -4,6 +4,8 @@ import UIKit
 /// Private request history: time, app, message, coach response and actual local
 /// outcome. Explicit exports are readable text or ISO-8601 JSON Lines; clearing
 /// this content log never clears the coach's enforcement history or active waits.
+/// The format menu stays enabled while dismissing; disabling it during its own
+/// action can strand the menu and prevent sheet presentation on older systems.
 struct ConversationActivityLogView: View {
     @Environment(ConversationCoordinator.self) private var conversation
     @State private var confirmingClear = false
@@ -53,7 +55,8 @@ struct ConversationActivityLogView: View {
                     Button(CopyKey.activityExportText.resource) { export(.text) }
                     Button(CopyKey.activityExportJSONL.resource) { export(.jsonLines) }
                 } label: { Image(systemName: "square.and.arrow.up") }
-                    .disabled(conversation.history.activityLog.isEmpty || exporting)
+                    .menuActionDismissBehavior(.enabled)
+                    .disabled(conversation.history.activityLog.isEmpty)
                     .accessibilityLabel(CopyKey.activityExport.resource)
                     .accessibilityIdentifier("exportActivityLogButton")
             }
@@ -70,6 +73,7 @@ struct ConversationActivityLogView: View {
     }
 
     private func export(_ format: ConversationActivityExport.Format) {
+        guard !exporting else { return }
         let entries = conversation.history.activityLog
         exporting = true; exportFailed = false
         Task {

@@ -37,8 +37,9 @@ final class ConversationUITests: XCTestCase {
         app.buttons["Readable text (.txt)"].waitToAppear()
         app.buttons["JSON Lines (.jsonl)"].waitToAppear()
         app.buttons["Readable text (.txt)"].tap()
-        XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 10))
-        XCTAssertEqual(app.otherElements["LP.CaptionBar.TopCaption"].waitToAppear().label, "Volition-activity")
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "Volition-activity"))
+            .firstMatch.waitToAppear()
         capture("Activity log export share sheet", app)
     }
     func testNamedAppRoutesWithoutOpeningThePicker() {

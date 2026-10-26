@@ -83,3 +83,10 @@ the user has separately verified native single-app auto-dismiss and name guidanc
 Real blocking and DeviceActivity timing cannot be established in the simulator.
 Foreground SoundCloud/Maps unlocks are user-verified. Long-running use and grant
 expiry while backgrounded or terminated still require device observation.
+
+Unsigned CI explicitly skips the native ManagedSettings store-release integration
+test because ManagedSettingsAgent rejects store creation without a signed host.
+Signed local runs retain it; deterministic enforcement tests still run in CI.
+The activity export menu must dismiss normally before the share sheet appears;
+do not disable the menu from inside its own export action. Its UI test uses
+the exported filename rather than OS-specific Close labels/private preview IDs.

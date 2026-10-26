@@ -130,6 +130,10 @@ no manual pbxproj source registration is needed.
 - Use concrete `Color.primary/secondary` inside tinted button rows.
 - iPad sheets are shorter and centered; scroll controls into view and navigate via
   idiom-aware helpers, not hardcoded tab bars or full-window edge swipes.
+- Unsigned CI cannot register ManagedSettings stores. Config/CI.xcconfig marks
+  the native store-release integration test unavailable; signed local runs retain
+  it. Domain/enforcement regressions still run in CI. Export UI tests use the
+  exported filename, not Apple’s private labels/hierarchy.
 - If XCTest waits 60 seconds for keyboard animations and a short test grant expires,
   rerun the timer flow in isolation. This occurred during concurrent iPhone/iPad
   automation; do not change production deadlines to accommodate the test runner.
