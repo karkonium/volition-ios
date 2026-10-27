@@ -1,5 +1,13 @@
 # Compatibility boundary
 
+All targets deploy to iOS 18. Older text fields use localized strings supported by
+that OS; named-store activation/deletion/inventory remain guarded for iOS 26.5+.
+Icon Composer produces legacy PNG icons alongside modern assets. Device builds
+targeting iOS 18 compile; current UI runtimes are iOS 27. Xcode's catalog rejected
+both arm64 and universal iOS 18.5 runtime downloads; older-device checks remain
+pending. One build selects direct opening on iOS 26.5+ and notification/manual
+routing below that version. Both share the same lightweight pending request store.
+
 The product exposes only conversation-based access. Old screens, editor navigation
 and completed planning docs were removed after the conversation MVP was verified.
 The clean baseline is commit `410fc5b`; removed code/docs remain recoverable in Git.

@@ -4,6 +4,9 @@ Volition is a conversation-first iOS Screen Time app. The Xcode project and targ
 are still named OpenAppLock. Users save individual apps with a name and intention;
 a respectful coach asks, denies, approves 1–10 minutes, or waits 1–5 minutes.
 The product has only Chat, Apps and Settings. iPhone uses tabs; iPad uses a sidebar.
+Minimum deployment target: iOS 18. Runtime checks currently use iOS 27; the iOS
+18.5 simulator was unavailable from Xcode's download catalog. Older-device
+enforcement and notification acceptance remain pending.
 
 ## Start here
 
@@ -19,12 +22,13 @@ The product has only Chat, Apps and Settings. iPhone uses tabs; iPad uses a side
 | Location | Responsibility |
 |---|---|
 | `OpenAppLock/Models/` | SwiftData V1–V4 schemas, migrations, BlockingRule/AppList, ConversationArchive; legacy value models and regression tests remain |
-| `OpenAppLock/Services/Conversation/` | Saved app setup/migration, shared chat/history, OpenAI client, diagnostics, approval support snapshots |
-| `OpenAppLock/Views/Conversation/` | App library/editor, chat and coach settings |
+| `OpenAppLock/Services/Conversation/` | Saved app setup/migration, name routing, shared chat/history, private activity log/exports, OpenAI client, diagnostics, approval support snapshots |
+| `OpenAppLock/Views/Conversation/` | App library/editor, chat, activity log and coach settings |
 | `OpenAppLock/Views/` | Root permission gate, onboarding, adaptive shell and diagnostic settings |
 | `OpenAppLock/Services/RuleEnforcer.swift` | Foreground reconciliation, including a 30-second backstop |
 | `OpenAppLock/Services/RuleScheduler.swift` | DeviceActivity registration and removal of retired monitors |
 | `Shared/Stores/ConversationGrantStore.swift` | Coordinated App Group state, independent grants and pending shield target |
+| `Shared/Stores/ConversationRequestStore.swift` | Fresh notification/manual request identities and acknowledgements; advisory metadata without grant-file locks |
 | `Shared/Enforcement/ConversationEnforcement.swift` | Transactional grant registration, shield release, expiry and rollback |
 | `Shared/Enforcement/ShieldController.swift` | Per-rule ManagedSettings stores, orphan cleanup and configured-blocker readback |
 | `Shared/` | Cross-process DTOs, domain logic, stores, diagnostics, copy and platform IDs |
@@ -43,14 +47,28 @@ The product has only Chat, Apps and Settings. iPhone uses tabs; iPad uses a side
   app. Ending one grant must not change another app’s original deadline.
 - The coach receives cross-app access history, active grants and the selected
   app’s wait. A local wait prevents early approval but does not disable chat.
+  Only unlocks show timers; a declined request has no waiting countdown.
+- Saved app names can route messages before sending. Ambiguous/missing targets
+  preserve the draft and highlight the picker; explicit selection resolves them.
+- The private activity log records content and actual local outcomes separately
+  from model decisions. Failed activation must never be logged as unlocked.
+  Clear Chat retains this log; clearing it retains coaching/enforcement history.
 - Approval requires a registered timer, durable state, matching configuration and
   no configured blocker. Failed activation must not publish a success response.
 - All grant mutations and shield writes use the coordinated App Group transaction.
   Stale expiry callbacks must never end a replacement or another app’s grant.
+- Shield requests open Volition directly on iOS 26.5+ and use notification/manual
+  routing below that version. The earlier direct path had reported system UI hangs;
+  preserve the lightweight request store. Repeated direct opening, correct selection
+  and Home navigation are user-verified with this implementation.
+  Callback completion is bounded and once-only; shield request/render paths never
+  acquire the grant file lock. Foreground routing consumes lightweight requests;
+  background reconciliation must leave them pending.
 - iOS 26.5+ releases clear/deactivate/delete the dedicated rule store; future blocks
   recreate it. Enumerate actual stores as well as defaults to find orphaned rules.
 - Configured readback does not prove the OS has dismissed a shield. Real-device
-  acceptance matters. Maps/SoundCloud opening and the native picker are verified;
+  acceptance matters. Maps/SoundCloud, the native picker and repeated notification
+  requests with working Home navigation are verified on the connected iPhone;
   long-run repetition and background/terminated short expiry need observation.
 - Background grants use a 16-minute DeviceActivity interval and an end warning at
   the 1–10-minute deadline. OS callbacks may be late; do not promise exact expiry.
@@ -112,11 +130,19 @@ no manual pbxproj source registration is needed.
 - Use concrete `Color.primary/secondary` inside tinted button rows.
 - iPad sheets are shorter and centered; scroll controls into view and navigate via
   idiom-aware helpers, not hardcoded tab bars or full-window edge swipes.
+- Unsigned CI cannot register ManagedSettings stores. Config/CI.xcconfig marks
+  the native store-release integration test unavailable; signed local runs retain
+  it. Domain/enforcement regressions still run in CI. Export UI tests use the
+  exported filename, not Apple’s private labels/hierarchy.
+- If XCTest waits 60 seconds for keyboard animations and a short test grant expires,
+  rerun the timer flow in isolation. This occurred during concurrent iPhone/iPad
+  automation; do not change production deadlines to accommodate the test runner.
 - UI launches use `-ui-testing`, mocked authorization/shields and in-memory storage;
   `-onboarding-completed`/`-onboarding-required` and `-seed-scenario=conversation` or
   `conversation-multiple` make flows deterministic. `-seed-logs` seeds diagnostics.
 - Stable IDs include `conversationMessageField`, `conversationSendButton`,
-  `conversationChooseAppButton`, `conversationAppOption`, `conversationCooldown`,
+  `conversationChooseAppButton`, `conversationAppOption`, `conversationAppSelectionHint`,
+  `conversationActivityLogButton`, `exportActivityLogButton`, `clearActivityLogButton`,
   `endConversationUnlockButton`, `addVolitionAppButton`, `pickVolitionAppButton`,
   `volitionAppName`, `volitionAppNameHelp`, `volitionAppIntention`,
   `saveVolitionAppButton`, `finishVolitionSetupButton`, and `sidebarItem-chat/apps/settings`.

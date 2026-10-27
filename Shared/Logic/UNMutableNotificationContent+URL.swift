@@ -8,7 +8,7 @@
 import UserNotifications
 
 extension UNMutableNotificationContent {
-    func setURL(_ url: URL) {
+    nonisolated func setURL(_ url: URL) {
         self.userInfo["url"] = url.absoluteString
     }
 }

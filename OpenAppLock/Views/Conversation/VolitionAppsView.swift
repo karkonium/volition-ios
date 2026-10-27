@@ -87,7 +87,7 @@ struct VolitionAppEditor: View {
                             else { Label(token).frame(height: 32) }
                         } else { Label(CopyKey.conversationChooseApp.resource, systemImage: "apps.iphone") }
                     }.accessibilityIdentifier("pickVolitionAppButton")
-                    TextField(CopyKey.volitionAppName.resource, text: $name)
+                    TextField(CopyKey.volitionAppName.string, text: $name)
                         .focused($focused, equals: .name).accessibilityIdentifier("volitionAppName")
                 } footer: {
                     Text(CopyKey.volitionAppNameHelp.resource)

@@ -7,8 +7,11 @@ import DeviceActivity
 import Foundation
 import ManagedSettings
 
-/// Conversation requests persist a target and open the parent app on iOS 26.5+;
-/// older versions close the shield so the user can open the parent manually.
+/// Conversation requests open Volition directly on iOS 26.5+ and use the
+/// notification/manual route on older versions. Both publish fresh lightweight
+/// routing metadata before responding; never restore the grant-file lock here.
+/// Record lightweight routing metadata without taking the grant file lock;
+/// always complete once within one second even if notification scheduling stalls.
 /// Handles shield button presses. The secondary "Open" button on an
 /// open-limit shield spends one open, lifts the rule's shield, and starts a
 /// one-shot DeviceActivity session after which the monitor extension
@@ -20,17 +23,12 @@ final class ShieldActionExtension: ShieldActionDelegate {
         action: ShieldAction, for application: ApplicationToken,
         completionHandler: @escaping (ShieldActionResponse) -> Void
     ) {
-        switch action {
-        case .primaryButtonPressed:
-            completionHandler(.close)
-        case .secondaryButtonPressed:
+        guard action == .secondaryButtonPressed else { completionHandler(.close); return }
+        let snapshots = RuleSnapshotUserDefaultsStore().load()
+        if let app = ConversationGrantStore.applicable(to: application, in: snapshots).first {
+            ConversationShieldRequestHandler().request(token: application, appID: app.id, completionHandler: completionHandler)
+        } else {
             completionHandler(handleOpenPress(applicationToken: application))
-        case .firstSecondarySubmenuItemPressed, .secondSecondarySubmenuItemPressed,
-            .thirdSecondarySubmenuItemPressed:
-            // Our shields define no submenu items.
-            completionHandler(.close)
-        @unknown default:
-            completionHandler(.close)
         }
     }
 
@@ -68,13 +66,6 @@ final class ShieldActionExtension: ShieldActionDelegate {
 
     private func handleOpenPress(applicationToken: ApplicationToken) -> ShieldActionResponse {
         let lookupEnvironment = LookupEnvironment.construct()
-        if !ConversationGrantStore.applicable(to: applicationToken, in: lookupEnvironment.snapshots).isEmpty {
-            do {
-                try ConversationGrantStore().setPending(applicationToken)
-                if #available(iOS 26.5, *) { return .openParentalControlsApp }
-            } catch { Diag.error(.session, "conversation request routing failed") }
-            return .close
-        }
         let snapshot = ShieldLookup.openLimitSnapshot(
                 containingApplication: applicationToken, in: lookupEnvironment.snapshots,
                 usage: lookupEnvironment.usage, hasActiveOpenSession: lookupEnvironment.hasActiveOpenSession,

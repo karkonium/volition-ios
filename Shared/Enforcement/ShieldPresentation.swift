@@ -8,18 +8,19 @@
 /// rules cover the same app the responsible rule can't be told apart, so every
 /// shield carries the same generic "App Blocked" title. Open-limit shields add
 /// their functional detail (remaining opens + an "Open" button) beneath it.
-struct ShieldPresentation: Equatable {
+nonisolated struct ShieldPresentation: Equatable {
     let title: String
     let subtitle: String
     /// Label for the secondary "Open" button, or `nil` when the shield offers
     /// no way through (a full block, or a spent open-limit budget).
     let secondaryButton: String?
 
-    /// Conversation offers route into the shared chat. Earlier iOS versions
-    /// explain that the user must open the parent app manually.
-    static func conversation(canOpenParent: Bool) -> ShieldPresentation {
-        .init(title: CopyKey.conversationBlockedStatus.string,
-              subtitle: canOpenParent ? CopyKey.conversationRuleExample.string : CopyKey.conversationOpenManually.string,
+    /// Requests show guidance for the same OS route used by the action handler.
+    /// Never claims that a notification was delivered or access was approved.
+    static func conversation(route: ConversationShieldRoute, requestPending: Bool) -> ShieldPresentation {
+        .init(title: (requestPending ? CopyKey.conversationContinueInVolition : .conversationBlockedStatus).string,
+              subtitle: route == .direct ? CopyKey.conversationDirectRequestInstructions.string :
+                (requestPending ? CopyKey.conversationNotificationInstructions.string : CopyKey.conversationRequestInstructions.string),
               secondaryButton: CopyKey.conversationRequestAccess.string)
     }
 

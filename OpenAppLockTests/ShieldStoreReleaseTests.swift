@@ -5,7 +5,17 @@ import Testing
 
 @MainActor @Suite(.serialized)
 struct ShieldStoreReleaseTests {
-    @Test("Releasing a rule removes its named store, leaving no stale directives")
+    private nonisolated static var nativeIntegrationAvailable: Bool {
+        #if VOLITION_UNSIGNED_CI
+        return false
+        #else
+        return true
+        #endif
+    }
+
+    @Test("Releasing a rule removes its named store, leaving no stale directives",
+          .enabled(if: nativeIntegrationAvailable,
+                   "Requires a signed test host with a working ManagedSettingsAgent; unavailable in unsigned CI."))
     func removesReleasedStore() async throws {
         guard #available(iOS 26.5, *) else { return }
         let id = UUID(), name = ManagedSettingsStore.Name("rule-" + UUID().uuidString)

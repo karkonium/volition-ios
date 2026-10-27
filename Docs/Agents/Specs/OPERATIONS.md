@@ -10,8 +10,24 @@ ScreenTimeAccessRequiredView. UI tests use mocked providers.
 
 After authorization, MainView prepares legacy data, reconciles shields/monitoring,
 and requires at least one saved app. It refreshes on app changes, foreground entry
-and a 30-second loop. Incoming app URLs return to Chat; the App Group pending token
-selects the intended saved app. UI navigation state is not a persisted rule schema.
+and a 30-second loop. Foreground requests return to Chat; notification links bind
+to their saved profile ID rather than a newer global target. Background refreshes
+do not consume requests. UI navigation state is not a persisted rule schema.
+
+Each Request access tap records fresh, five-minute routing metadata in App Group
+preferences. On iOS 26.5+ the handler immediately returns openParentalControlsApp;
+no notification APIs or permission prompts are needed. Below iOS 26.5 it schedules
+a unique “Chat here” notification and defers/redraws the shield with notification,
+permission and manual-opening instructions. Older-OS notification permission is
+requested from the main flow, never the extension; Coach settings offers its
+settings shortcut only on that route. Delivery is best-effort and cannot grant
+access. Both routes retain manual opening. Metadata logs identify the chosen route
+and response timing, plus notification scheduled/unavailable events when relevant.
+The action callback completes once, with a one-second fallback. The request/render
+path must never take the grant-state file coordinator lock. Earlier direct-opening
+hangs have an unproven cause. The user verified repeated direct requests select
+the correct app and Home works with this restoration; long-running observation
+and older-device verification remain pending.
 
 ## Personal OpenAI configuration
 
@@ -26,6 +42,16 @@ configured blocker counts and precise local rejection categories. Never log raw
 API errors, chat, intentions, tokens or keys; server errors can echo a credential.
 
 ## Diagnostics
+
+Settings → Activity Log is the private, user-readable request history, separate
+from technical diagnostics. It stores timestamps, app IDs/names, user messages,
+coach replies, model decisions and actual local outcomes inside ConversationArchive.
+Readable text and ISO-8601 JSONL exports are explicit user actions. Clearing the
+log removes its entries/generated local exports, but retains coaching access
+history and waits. Clear Chat retains the log. Old access events migrate once;
+approvals without a recorded grant are unconfirmed. Pending requests recovered
+after relaunch are interrupted, never assumed unlocked. Do not include this
+content log in automatic support snapshots or os.Logger/App Group diagnostics.
 
 `Diag` writes to os.Logger and per-process daily App Group files. Separate app,
 monitor, shield and report writers prevent concurrent appends to the same file.
@@ -57,3 +83,10 @@ the user has separately verified native single-app auto-dismiss and name guidanc
 Real blocking and DeviceActivity timing cannot be established in the simulator.
 Foreground SoundCloud/Maps unlocks are user-verified. Long-running use and grant
 expiry while backgrounded or terminated still require device observation.
+
+Unsigned CI explicitly skips the native ManagedSettings store-release integration
+test because ManagedSettingsAgent rejects store creation without a signed host.
+Signed local runs retain it; deterministic enforcement tests still run in CI.
+The activity export menu must dismiss normally before the share sheet appears;
+do not disable the menu from inside its own export action. Its UI test uses
+the exported filename rather than OS-specific Close labels/private preview IDs.

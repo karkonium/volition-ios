@@ -7,7 +7,9 @@ import SwiftUI
 /// local request target; model output cannot choose a different app. Full local
 /// history is visible, including actual approval/expiry events. Independent per-app unlocks.
 /// Saved app names replace nickname entry. The app selector sits above the chat.
-/// Per-app waiting periods explicitly say Still blocked; chat remains available.
+/// Only active unlocks display timers; waiting stays in coach replies.
+/// Clear app names in messages select their saved app; unresolved sends preserve
+/// the draft and draw attention to the picker, respecting Reduce Motion.
 /// The composer uses one focus binding. Opening the app picker, sending,
 /// leaving Chat/backgrounding, or receiving a grant clears focus. Inputs are
 /// disabled only while sending; returning to Chat never restores stale focus.
@@ -16,12 +18,14 @@ struct ConversationView: View {
     @Environment(RuleEnforcer.self) private var enforcer
     @Query(sort: BlockingRule.displayOrder) private var rules: [BlockingRule]
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private enum ComposerField: Hashable { case message }
     @FocusState private var focusedField: ComposerField?
     @State private var choosingApp = false
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { _ in
+        let motionReduced = reduceMotion
+        Group {
             @Bindable var conversation = conversation
             NavigationStack {
                 VStack(spacing: 0) {
@@ -36,19 +40,31 @@ struct ConversationView: View {
                             else { Label(CopyKey.conversationChooseApp.resource, systemImage: "apps.iphone") }
                         }
                         .accessibilityIdentifier("conversationChooseAppButton")
+                        .accessibilityValue(conversation.appSelectionNeeded ? CopyKey.activitySelectionRequired.string : "")
                         .disabled(conversation.isSending)
+                        .padding(8)
+                        .background(conversation.appSelectionNeeded ? Color.accentColor.opacity(0.12) : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 10))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 10).stroke(conversation.appSelectionNeeded ? Color.accentColor : Color.clear, lineWidth: 2)
+                        }
+                        .keyframeAnimator(initialValue: CGFloat.zero, trigger: conversation.selectionAttention) { content, offset in
+                            content.offset(x: motionReduced ? 0 : offset)
+                        } keyframes: { _ in
+                            LinearKeyframe(CGFloat(-7), duration: 0.06)
+                            LinearKeyframe(CGFloat(7), duration: 0.08)
+                            LinearKeyframe(CGFloat(-4), duration: 0.08)
+                            LinearKeyframe(CGFloat(4), duration: 0.08)
+                            LinearKeyframe(CGFloat.zero, duration: 0.08)
+                        }
+                        .sensoryFeedback(.warning, trigger: conversation.selectionAttention)
                         Spacer()
                     }.padding(.horizontal).padding(.vertical, 10)
-                    if let until = conversation.cooldownUntil {
-                        VStack(spacing: 6) {
-                            Label(CopyKey.volitionWaiting.resource, systemImage: "leaf")
-                                .font(.headline)
-                            Text(until, style: .timer).monospacedDigit()
-                            Text(CopyKey.volitionWaitHelp.resource).font(.footnote).foregroundStyle(.secondary)
-                        }
-                        .padding().frame(maxWidth: .infinity).background(.thinMaterial)
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("conversationCooldown")
+                    if conversation.target == nil || conversation.appSelectionNeeded {
+                        Text(conversation.appSelectionNeeded ? conversation.errorMessage ?? CopyKey.conversationSelectAppHelp.string : CopyKey.conversationSelectAppHelp.string)
+                            .font(.footnote).foregroundStyle(conversation.appSelectionNeeded ? Color.accentColor : Color.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal).padding(.bottom, 8)
+                            .accessibilityIdentifier("conversationAppSelectionHint")
                     }
                     ForEach(conversation.grants, id: \.plan.grantID) { grant in
                         TimelineView(.periodic(from: .now, by: 1)) { timeline in
@@ -104,7 +120,7 @@ struct ConversationView: View {
                     }
                     VStack(alignment: .leading) {
                         HStack(alignment: .bottom) {
-                            TextField(CopyKey.conversationMessagePrompt.resource, text: $conversation.draftMessage, axis: .vertical)
+                            TextField(CopyKey.conversationMessagePrompt.string, text: $conversation.draftMessage, axis: .vertical)
                                 .lineLimit(1...5)
                                 .focused($focusedField, equals: .message)
                                 .disabled(composerDisabled)
@@ -120,13 +136,13 @@ struct ConversationView: View {
                                 }
                             }
                             .labelStyle(.iconOnly)
-                            .disabled(conversation.draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || conversation.draftMessage.count > 4000 || conversation.target == nil || composerDisabled)
+                            .disabled(conversation.draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || conversation.draftMessage.count > 4000 || composerDisabled)
                             .accessibilityIdentifier("conversationSendButton")
                         }
                         if conversation.isSending {
                             Button(CopyKey.conversationCancel.resource) { conversation.cancelRequest() }
                         }
-                        if let error = conversation.errorMessage {
+                        if let error = conversation.errorMessage, !conversation.appSelectionNeeded {
                             Text(error).font(.callout).foregroundStyle(.red)
                                 .accessibilityIdentifier("conversationErrorLabel")
                         }

@@ -20,6 +20,18 @@ nonisolated struct ConversationHistory: Codable, Sendable {
         get { recordedAccess ?? [] }
         set { recordedAccess = newValue }
     }
+    private var recordedActivity: [ConversationActivityEntry]?
+    var activityLog: [ConversationActivityEntry] {
+        get { recordedActivity ?? [] }
+        set { recordedActivity = newValue }
+    }
+    mutating func prepareActivityLog() {
+        if recordedActivity == nil { recordedActivity = accessEvents.map(ConversationActivityEntry.init(event:)) }
+        for index in activityLog.indices where activityLog[index].outcome == .pending {
+            activityLog[index].outcome = .interrupted
+            activityLog[index].systemResponse = CopyKey.activityInterruptedHelp.string
+        }
+    }
     var lastGrantID: UUID?
     var lastGrantExpiry: Date?
     var recentMessages: [ConversationMessage] { Array(messages.dropFirst(summarizedCount)) }

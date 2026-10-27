@@ -12,7 +12,7 @@ import Foundation
 /// The active / hard-locked semantics deliberately match
 /// `BlockingRule.status(...).isActive` exactly so the foreground and background
 /// paths never disagree; a parity unit test enforces this.
-enum UninstallProtectionPolicy {
+nonisolated enum UninstallProtectionPolicy {
     /// Whether device app removal should be denied right now: the user opted in
     /// (`enabled`) *and* some snapshot is actively blocking with Lock While Blocking on.
     static func shouldDenyAppRemoval(

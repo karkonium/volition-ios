@@ -1,6 +1,281 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "activity.activityAlreadyUnlocked" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Already unlocked"
+          }
+        }
+      }
+    },
+    "activity.activityAsked" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Question asked"
+          }
+        }
+      }
+    },
+    "activity.activityBlockedByWait" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access still declined"
+          }
+        }
+      }
+    },
+    "activity.activityCancelled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Request cancelled"
+          }
+        }
+      }
+    },
+    "activity.activityClear" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear activity log"
+          }
+        }
+      }
+    },
+    "activity.activityClearHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This removes activity log entries and generated exports. Saved apps, coaching history and active waits stay in place."
+          }
+        }
+      }
+    },
+    "activity.activityDenied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access declined"
+          }
+        }
+      }
+    },
+    "activity.activityEmpty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your requests and their outcomes will appear here."
+          }
+        }
+      }
+    },
+    "activity.activityExport" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export activity log"
+          }
+        }
+      }
+    },
+    "activity.activityExportError" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The activity log could not be exported. Please try again."
+          }
+        }
+      }
+    },
+    "activity.activityExportJSONL" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JSON Lines (.jsonl)"
+          }
+        }
+      }
+    },
+    "activity.activityExportText" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Readable text (.txt)"
+          }
+        }
+      }
+    },
+    "activity.activityFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Request failed"
+          }
+        }
+      }
+    },
+    "activity.activityInterrupted" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Request interrupted"
+          }
+        }
+      }
+    },
+    "activity.activityInterruptedHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The request was interrupted before its result was recorded."
+          }
+        }
+      }
+    },
+    "activity.activityLogTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activity log"
+          }
+        }
+      }
+    },
+    "activity.activityNoApp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No app selected"
+          }
+        }
+      }
+    },
+    "activity.activityPending" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Awaiting response"
+          }
+        }
+      }
+    },
+    "activity.activityPrivacy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This log includes your messages and coach replies. It stays on this device unless you export it."
+          }
+        }
+      }
+    },
+    "activity.activitySelectionRequired" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App selection needed"
+          }
+        }
+      }
+    },
+    "activity.activityUnconfirmed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock unconfirmed"
+          }
+        }
+      }
+    },
+    "activity.activityUnlocked" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlocked"
+          }
+        }
+      }
+    },
+    "activity.activityWait" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Declined for now"
+          }
+        }
+      }
+    },
+    "activity.conversationAmbiguousApp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You mentioned more than one saved app. Choose which one above, then send again."
+          }
+        }
+      }
+    },
+    "activity.conversationSelectAppHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose an app above, or type its saved name in your message."
+          }
+        }
+      }
+    },
     "conversation.approvalOne" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -67,6 +342,17 @@
         }
       }
     },
+    "conversation.conversationChatHere" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chat here"
+          }
+        }
+      }
+    },
     "conversation.conversationChatTitle" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -85,6 +371,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choose an app"
+          }
+        }
+      }
+    },
+    "conversation.conversationContinueInVolition" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue in Volition"
           }
         }
       }
@@ -129,6 +426,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Filter Xcode Console or exported diagnostic logs for ///CONVO-LOG. Set CONVO_LOG_ENABLED=0 in the env file and rebuild to disable."
+          }
+        }
+      }
+    },
+    "conversation.conversationDirectRequestInstructions" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap Request access to open chat in Volition. If it doesn’t open, open Volition directly."
+          }
+        }
+      }
+    },
+    "conversation.conversationEnableNotifications" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable chat notifications"
           }
         }
       }
@@ -276,6 +595,50 @@
         }
       }
     },
+    "conversation.conversationNotificationBody" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to talk with Volition about your access request."
+          }
+        }
+      }
+    },
+    "conversation.conversationNotificationHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notifications take you from a blocked app back to chat. Enable alerts in notification settings. You can always open Volition directly."
+          }
+        }
+      }
+    },
+    "conversation.conversationNotificationInstructions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap the “Chat here” notification to continue. If you don’t see it, enable notifications for Volition in Settings. You can always open Volition directly. Tap Request access to try again."
+          }
+        }
+      }
+    },
+    "conversation.conversationNotificationSettings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notification settings"
+          }
+        }
+      }
+    },
     "conversation.conversationPermissionError" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -327,6 +690,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "OpenAI rejected the request or model. Check ///CONVO-LOG for the HTTP status and error code. Your app stays blocked."
+          }
+        }
+      }
+    },
+    "conversation.conversationRequestInstructions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap Request access for a notification that takes you to chat. You can also open Volition directly."
           }
         }
       }
@@ -1404,7 +1778,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "What would you like to make time for? Choose an app, then tell me what you have in mind."
+            "value" : "What would you like to make time for?"
           }
         }
       }
@@ -1415,7 +1789,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clear chat messages and summaries? App intentions, access history and an active waiting period are kept."
+            "value" : "Clear the chat messages and summary? Saved app intentions, the activity log, coaching history and active waits are kept."
           }
         }
       }
@@ -1624,7 +1998,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This app stays blocked until %@. You can keep chatting or choose another app."
+            "value" : "No extra access yet. You can keep chatting or choose another app."
           }
         }
       }

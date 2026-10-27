@@ -51,9 +51,9 @@ saved intentions, access history and active waits (explained in its confirmation
 Chat and the app selector remain available during waits and unlocks. Waits persist
 per app across navigation/relaunch/history clearing. Local validation rejects early
 approval for the waiting app; another app can be considered for a real purpose.
-The wait banner says **Still blocked** and explains the countdown. Its expiry
-permits reconsideration, never automatic access. Additional wait replies do not
-restart an already-active wait.
+Waiting is expressed in the coach reply, without a separate banner or countdown.
+Only actual unlocks display timers. Wait expiry permits reconsideration, never
+automatic access. Additional wait replies do not restart an already-active wait.
 
 Distinct apps may have concurrent grants. Each retains its original deadline and
 monitor. Chatting or approving another app must not end/extend an existing grant.
@@ -92,9 +92,32 @@ Foreground reconciliation runs on configuration changes, app activation and a
 and an end warning at the 1–10-minute requested expiry. OS callbacks can be late;
 do not promise exact wall-clock expiry, especially while backgrounded/terminated.
 
-ShieldAction records a short-lived target token; on iOS 26.5+ it opens the app.
-Earlier systems require opening manually. Foreground consumption selects the saved
-app in Chat. Raw Apple tokens never enter the OpenAI context.
+Shield requests select a route at runtime in one iOS 18+ build: iOS 26.5+ returns
+openParentalControlsApp immediately, while older systems schedule a notification
+and return defer. Both routes publish lightweight metadata before responding.
+The modern route never calls notification APIs or requires notification permission.
+Each tap saves a fresh request in lightweight App Group preferences, with a unique
+ID, selected token, profile ID and five-minute lifetime. Per-ID acknowledgements
+consume requests without erasing a newer request or reviving a consumed one. Shield rendering
+and request handling never take the grant file coordinator lock. Notification
+scheduling has a bounded completion fallback; every shield callback completes once.
+The older-OS deferred response redraws notification/permission/manual-open
+instructions. The newer shield explains direct opening with a manual fallback. Notifications deep-link by saved profile ID, never raw Apple token;
+they do not unlock anything. Background refreshes leave requests pending until
+foreground routing. No notification is a guaranteed delivery or grant.
+
+The minimum deployment target is iOS 18 for the app and all extensions. Newer
+store cleanup APIs stay availability-gated. Older-OS routing and actual shield
+redraw/notification presentation require older-device verification. The user
+confirmed repeated notification-to-chat requests select the correct app and Home
+navigation kept working on the notification-only revision. With direct opening
+restored using the lock-free request handler, the user also confirmed repeated
+direct requests, correct selected apps and working Home navigation. This does
+not establish long-running reliability or identify the earlier OS hang's cause.
+
+For repeated requests the coach can ask a concrete, voluntary next-use commitment:
+“If we make room for five minutes on SoundCloud now, when would you be comfortable
+checking it again?” Do not imply this creates an enforced block or guarantees access.
 
 ## Configuration and evidence
 
@@ -104,15 +127,20 @@ at an actual approval attempt without restarting the app. No API key or transcri
 is exported. Never use an inactive-grant snapshot as proof of a failed unlock.
 
 User-verified on iPhone: shield-to-chat routing, genuine SoundCloud/Maps unlocks,
-single-app picker auto-dismiss and matching-name hint. During an earlier report,
-“A little breathing room” was a wait timer; current copy explicitly says Still
-blocked. A successful foreground check does not establish long-running reliability.
+single-app picker auto-dismiss, matching-name hint, and repeated notification
+and restored direct requests with correct routing and working Home navigation. Waiting previously looked
+like an unlock; the current UI removes its banner/countdown entirely. A successful
+foreground check does not establish long-running reliability.
 
-The baseline before branding/cleanup passed 447 tests (433 unit + 14 UI), with
-screenshots inspected on iPhone/iPad. Live synthetic coach checks returned valid
-HTTP 200 decisions for purposeful use, missing duration, repeated scrolling,
+The current suite passes 471 tests (507 parameterized runs), with affected UI flows and log export checked
+on iPhone/iPad and a signed device build validated. One iPad timer test hit XCTest
+keyboard-animation waits during concurrent automation and passed in isolation.
+Earlier live synthetic coach checks returned valid HTTP 200 decisions for
+purposeful use, missing duration, repeated scrolling,
 repeated requests requiring a stopping plan, returning after a wait, active-app
-extension refusal, another-app approval and an active wait refusal.
+extension refusal, another-app approval and an active wait refusal. The notification
+revision also received a valid HTTP 200 ask decision for a repeated SoundCloud
+request, asking about a final opening and a concrete stopping action.
 
 Pending device observation: repeated use over time, multiple concurrent real-app
 grants, and 1/5/10-minute re-blocking while backgrounded or terminated. Confirm
@@ -124,3 +152,20 @@ blocking before returning so foreground reconciliation cannot mask a late callba
 - https://developer.apple.com/documentation/deviceactivity/deviceactivityschedule/warningtime
 - https://developer.apple.com/documentation/managedsettings/managedsettingsstore
 - https://developer.apple.com/documentation/familycontrols/familyactivitypicker
+
+## Request selection and activity log
+
+Messages may identify saved apps by name (case/diacritic/punctuation tolerant). One
+clear match selects that app before the existing decision request. Ambiguous names
+require explicit selection; no model may grant an unbound app. Sending without a
+resolvable target keeps the draft, highlights/shakes the picker (respecting Reduce
+Motion), and explains how to choose or name an app. Follow-ups can reuse selection.
+
+Settings → Activity Log records timestamp, selected/requested app, message, coach
+reply, actual system outcome and grant/intervention metadata. It is a private user
+log inside the existing archive, with readable text and JSONL exports. Runtime
+diagnostics remain metadata-only. Record failed, cancelled and selection-required
+requests as well as model outcomes; an approval is unlocked only after activation
+and persistence succeed. Old access events migrate once, with unknown approvals
+marked unconfirmed. Clear Chat retains this log; Clear Activity Log removes only
+log records, preserving enforcement history/waits. Exports are user-initiated.

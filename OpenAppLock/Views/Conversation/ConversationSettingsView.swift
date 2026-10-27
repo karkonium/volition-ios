@@ -4,9 +4,21 @@ import SwiftUI
 /// change it. No key entry or Keychain fallback. History deletion remains explicit.
 struct ConversationSettingsView: View {
     @Environment(ConversationCoordinator.self) private var conversation
+    @Environment(NotificationAuthorization.self) private var notifications
+    @Environment(\.openURL) private var openURL
     @State private var confirmingClear = false
     var body: some View {
         Form {
+            if ConversationShieldRoute.current == .notification {
+                Section {
+                    Button((notifications.status == .notDetermined ? CopyKey.conversationEnableNotifications : .conversationNotificationSettings).resource) {
+                        if notifications.status == .notDetermined { Task { await notifications.request() } }
+                        else if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
+                    }.accessibilityIdentifier("conversationNotificationSettingsButton")
+                } footer: {
+                    Text(CopyKey.conversationNotificationHelp.resource).accessibilityIdentifier("conversationNotificationHelp")
+                }
+            }
             Section {
                 Text((hasKey ? CopyKey.conversationEnvironmentConfigured : .conversationEnvironmentMissing).resource)
                     .accessibilityIdentifier("openAIKeyStatus")
