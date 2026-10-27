@@ -197,6 +197,69 @@ struct ConversationAccessTests {
         #expect(ConversationGrantStore.fingerprint([first]) == ConversationGrantStore.fingerprint([second]))
     }
 
+    @Test("Focus revokes covering grants, preserves another app and cannot be overridden")
+    func focusPrecedence() throws {
+        let app = try token(1), other = try token(2)
+        let (access, shields) = try makeAccess()
+        let first = snapshot([app]), second = snapshot([other]), rules = [first, second]
+        _ = try access.sync(rules)
+        let fingerprint = ConversationGrantStore.fingerprint(rules)
+        _ = try access.approve(token: app, minutes: 1, fingerprint: fingerprint, timer: MockConversationTimer())
+        let retained = try access.approve(token: other, minutes: 5, fingerprint: fingerprint, timer: MockConversationTimer())
+        var focus = FocusProtectionState()
+        focus.session = FocusSession(appIDs: [first.id], start: .now, minutes: 25)
+        try access.updateFocus(focus, monitor: MockFocusMonitor())
+        #expect(shields.shieldedRuleIDs.contains(first.id))
+        #expect(!shields.shieldedRuleIDs.contains(second.id))
+        #expect(try access.store.transaction { $0.activeGrants } == [retained])
+        #expect(throws: ConversationAccessError.focusProtected) {
+            try access.approve(token: app, minutes: 1, fingerprint: fingerprint, timer: MockConversationTimer())
+        }
+        try access.updateFocus(FocusProtectionState(), monitor: MockFocusMonitor())
+        #expect(try access.store.transaction { $0.activeGrants } == [retained])
+        #expect(shields.shieldedRuleIDs.contains(first.id))
+    }
+
+    @Test("Focus registration failure never publishes new protection")
+    func focusRegistrationFailure() throws {
+        let (access, _) = try makeAccess()
+        _ = try access.sync([snapshot([try token(1)])])
+        var focus = FocusProtectionState()
+        focus.session = FocusSession(appIDs: [], start: .now, minutes: 25)
+        #expect(throws: ConversationAccessError.monitoringUnavailable) {
+            try access.updateFocus(focus, monitor: FailingFocusMonitor())
+        }
+        #expect(try access.focusStore.load() == FocusProtectionState())
+    }
+
+    @Test("Unrelated app edits preserve a grant and its original deadline")
+    func unrelatedEditsPreserveGrant() throws {
+        let app = try token(1), other = try token(2)
+        let (access, _) = try makeAccess()
+        let first = snapshot([app]); var second = snapshot([other])
+        _ = try access.sync([first, second])
+        let grant = try access.approve(token: app, minutes: 5,
+            fingerprint: ConversationGrantStore.fingerprint([first, second]), timer: MockConversationTimer())
+        second.conversationGoal = "Another intention"
+        _ = try access.sync([first, second])
+        #expect(try access.store.transaction { $0.activeGrants } == [grant])
+    }
+
+    @Test("Unreadable grant state at expiry restores shields from the independent mirror")
+    func corruptExpiryRestoresProtection() throws {
+        let app = try token(1)
+        let (access, shields) = try makeAccess()
+        let rule = snapshot([app])
+        _ = try access.sync([rule])
+        let grant = try access.approve(token: app, minutes: 1,
+            fingerprint: ConversationGrantStore.fingerprint([rule]), timer: MockConversationTimer())
+        let url = try #require(access.store.fileURL)
+        try Data("corrupt".utf8).write(to: url)
+        access.expire(activity: grant.plan.activityName, now: grant.plan.expiresAt)
+        #expect(shields.shieldedRuleIDs.contains(rule.id))
+        #expect(try access.store.transaction { $0.activeGrants.isEmpty })
+    }
+
     nonisolated private struct FailingTimer: ConversationTimerScheduling {
         func start(_ plan: ConversationUnlockPlan) throws { throw ConversationAccessError.monitoringUnavailable }
         func stop(_ name: String) {}
@@ -209,4 +272,9 @@ nonisolated private final class RefusingReleaseShields: ShieldApplying, @uncheck
     func clearShields(except activeRuleIDs: Set<UUID>) {}
     func setAppRemovalDenied(_ denied: Bool) {}
     func blockingRuleIDs(for token: ApplicationToken, among ruleIDs: Set<UUID>) -> Set<UUID> { ruleIDs }
+}
+
+nonisolated private struct FailingFocusMonitor: FocusMonitoring {
+    func register(_ state: FocusProtectionState, now: Date) throws { throw ConversationAccessError.monitoringUnavailable }
+    func keepOnly(_ names: Set<String>) {}
 }

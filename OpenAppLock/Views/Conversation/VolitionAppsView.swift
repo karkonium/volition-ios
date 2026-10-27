@@ -28,6 +28,9 @@ struct VolitionAppsView: View {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(rule.name).foregroundStyle(Color.primary)
                                 Text(rule.conversationGoal).font(.subheadline).foregroundStyle(Color.secondary).lineLimit(3)
+                                Label((conversation.grants.contains { grant in ConversationGrantStore.applicable(to: grant.token, in: [rule.dto]).contains { $0.id == rule.id } } ? CopyKey.appTemporarilyOpen : .appConversationProtected).resource,
+                                    systemImage: "shield.lefthalf.filled")
+                                    .font(.caption).foregroundStyle(Color.secondary)
                             }.padding(.vertical, 4)
                         }.accessibilityIdentifier("volitionApp-\(rule.name)")
                     }
@@ -117,7 +120,8 @@ struct VolitionAppEditor: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(CopyKey.volitionSaveApp.resource) { save() }
-                        .disabled(saving).accessibilityIdentifier("saveVolitionAppButton")
+                        .disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || name.count > 100 || intention.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || intention.count > 2000 || selection.applicationTokens.count != 1)
+                        .accessibilityIdentifier("saveVolitionAppButton")
                 }
             }
             .onAppear {

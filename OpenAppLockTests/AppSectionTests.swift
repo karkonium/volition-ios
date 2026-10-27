@@ -18,14 +18,14 @@ struct AppSectionTests {
         #expect(AppSection(rawValue: "rules") == nil)
     }
 
-    @Test("Sections are ordered Chat, Apps, Settings")
+    @Test("Sections are ordered Chat, Apps, Insights, Focus, Settings")
     func ordering() {
-        #expect(AppSection.allCases == [.chat, .apps, .settings])
+        #expect(AppSection.allCases == [.chat, .apps, .insights, .focus, .settings])
     }
 
-    @Test("There are exactly three top-level sections")
+    @Test("There are exactly five top-level sections")
     func count() {
-        #expect(AppSection.allCases.count == 3)
+        #expect(AppSection.allCases.count == 5)
     }
 
     @Test("Each section exposes its display title")

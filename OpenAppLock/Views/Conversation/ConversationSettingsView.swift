@@ -1,14 +1,23 @@
 import SwiftUI
 
-/// Shows whether this build contains a local env-file credential and how to
-/// change it. No key entry or Keychain fallback. History deletion remains explicit.
+/// Consumer coaching controls never expose credentials or provider diagnostics.
 struct ConversationSettingsView: View {
     @Environment(ConversationCoordinator.self) private var conversation
     @Environment(NotificationAuthorization.self) private var notifications
     @Environment(\.openURL) private var openURL
     @State private var confirmingClear = false
     var body: some View {
+        @Bindable var preferences = conversation.preferences
         Form {
+            Section {
+                Picker(CopyKey.coachTone.string, selection: $preferences.tone) {
+                    ForEach(CoachTone.allCases, id: \.self) { tone in Text(tone.title).tag(tone) }
+                }.accessibilityIdentifier("coachTonePicker")
+            } footer: { Text(CopyKey.coachToneHelp.resource) }
+            Section {
+                Text((conversation.coachAvailable ? CopyKey.coachReady : .coachUnavailable).resource)
+                    .accessibilityIdentifier("openAIKeyStatus")
+            }
             if ConversationShieldRoute.current == .notification {
                 Section {
                     Button((notifications.status == .notDetermined ? CopyKey.conversationEnableNotifications : .conversationNotificationSettings).resource) {
@@ -20,24 +29,13 @@ struct ConversationSettingsView: View {
                 }
             }
             Section {
-                Text((hasKey ? CopyKey.conversationEnvironmentConfigured : .conversationEnvironmentMissing).resource)
-                    .accessibilityIdentifier("openAIKeyStatus")
-                Text(CopyKey.conversationEnvironmentHelp.resource).foregroundStyle(.secondary)
-            } footer: { Text(CopyKey.volitionPrivacy.resource) }
-            Section {
-                Text((ConversationEnvironment.bundled.logsEnabled ? CopyKey.conversationDiagnosticsEnabled : .conversationDiagnosticsDisabled).resource)
-                Text(CopyKey.conversationDiagnosticsHelp.resource).foregroundStyle(.secondary)
-            }
-            Section {
                 Button(CopyKey.conversationHistoryClear.resource, role: .destructive) { confirmingClear = true }
                     .accessibilityIdentifier("clearConversationHistoryButton")
-            }
-            Section { Text(CopyKey.volitionAccessHistory.resource).foregroundStyle(.secondary) }
+            } footer: { Text(CopyKey.volitionClearHelp.resource) }
         }
         .navigationTitle(CopyKey.volitionCoachSettings.resource)
         .confirmationDialog(CopyKey.conversationHistoryClear.string, isPresented: $confirmingClear, titleVisibility: .visible) {
             Button(CopyKey.conversationHistoryClear.resource, role: .destructive) { conversation.clearHistory() }
         } message: { Text(CopyKey.volitionClearHelp.resource) }
     }
-    private var hasKey: Bool { (try? conversation.keys.read()) != nil }
 }

@@ -27,6 +27,7 @@ import Observation
 @Observable
 final class RuleEnforcer {
     private(set) var blockingRuleIDs: Set<UUID> = []
+    private(set) var health: EnforcementHealth = .healthy
     /// Performs the shield + DeviceActivity I/O off the main thread and
     /// serializes overlapping refreshes (edit, 30 s loop, scenePhase).
     private let engine: RuleEnforcementEngine
@@ -60,6 +61,8 @@ final class RuleEnforcer {
         self.engine = RuleEnforcementEngine(
             shields: shields, scheduler: scheduler, usage: usage, openSessions: openSessions, conversationStore: conversationStore)
     }
+
+    func acknowledgeRecovery() async { await engine.acknowledgeRecovery() }
 
     /// The day's usage for a rule (nil for schedule rules, which don't track).
     /// Synchronous main-actor accessor used by views; the engine reads usage
@@ -108,6 +111,7 @@ final class RuleEnforcer {
             snapshots: snapshots, uninstallProtectionEnabled: uninstallProtectionEnabled,
             at: now, calendar: calendar)
         // Back on the main actor: publish the observed UI state.
+        health = outcome.health
         commitBlockingSet(outcome.blocking, prior: priorBlocking, shieldedCount: outcome.shieldedCount)
         syncStartingSoonNotifications(snapshots: snapshots)
     }
@@ -192,9 +196,14 @@ final class RuleEnforcer {
 }
 
 /// The result of one off-main enforcement pass, handed back to the main actor.
+nonisolated enum EnforcementHealth: String, Sendable, Equatable {
+    case healthy, degraded, failed
+}
+
 nonisolated struct EnforcementOutcome: Sendable {
     let blocking: Set<UUID>
     let shieldedCount: Int
+    var health: EnforcementHealth = .healthy
 }
 
 /// Performs the shield and DeviceActivity I/O that a `refresh` triggers, off the
@@ -230,13 +239,21 @@ actor RuleEnforcementEngine {
         snapshots: [RuleSnapshotDTO], uninstallProtectionEnabled: Bool,
         at now: Date, calendar: Calendar
     ) -> EnforcementOutcome {
+        var health: EnforcementHealth = .healthy
         var blocking: Set<UUID> = []
         var shielded: Set<UUID> = []
         do {
             let conversationBlocks = try conversation.sync(snapshots, now: now)
+            if try conversation.store.transaction({ $0.recoveredAt != nil }) { health = .degraded }
             blocking.formUnion(conversationBlocks)
             shielded.formUnion(conversationBlocks)
         } catch {
+            do {
+                try conversation.restoreProtection(using: snapshots)
+                try conversation.invalidateGrants()
+                _ = try conversation.focusStore.load()
+                health = .degraded
+            } catch { health = .failed }
             Diag.error(.conversation, "///CONVO-LOG reconcile.failed full_shields_applied")
             // Storage failure grants no exceptions; reapply full selections.
             for snapshot in snapshots where snapshot.kind == .conversation && snapshot.isEnabled {
@@ -260,7 +277,12 @@ actor RuleEnforcementEngine {
                 usageFor: { usage(for: $0, at: now, calendar: calendar) },
                 at: now, calendar: calendar))
         scheduler?.sync(snapshots: snapshots, at: now, calendar: calendar)
-        return EnforcementOutcome(blocking: blocking, shieldedCount: shielded.count)
+        return EnforcementOutcome(blocking: blocking, shieldedCount: shielded.count, health: health)
+    }
+
+    func acknowledgeRecovery() {
+        do { try conversation.store.transaction { $0.recoveredAt = nil } }
+        catch { Diag.error(.enforcer, "recovery acknowledgement failed") }
     }
 
     /// Starts the background re-arm that re-engages a rule's shield when its

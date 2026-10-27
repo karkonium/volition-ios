@@ -169,3 +169,22 @@ requests as well as model outcomes; an approval is unlocked only after activatio
 and persistence succeed. Old access events migrate once, with unknown approvals
 marked unconfirmed. Clear Chat retains this log; Clear Activity Log removes only
 log records, preserving enforcement history/waits. Exports are user-initiated.
+
+## Expansion contract
+
+Storage failures preserve the last valid restrictions; a successful empty fetch
+alone may remove them. Enforcement publishes healthy, degraded or failed state.
+Grant validity is scoped to its covering app configuration, while pending
+responses retain a full request revision. Cancellation immediately restores chat
+and owns transport cancellation. Summarization failure uses bounded recent context.
+
+AI consent precedes every transmission and withdrawal cancels pending work. Content
+erasure removes transcript, memory, content logs and reason/reply text from retained
+minimal active enforcement events. Release builds never bundle personal credentials;
+a production coach gateway and public privacy policy remain release blockers.
+
+Insights report grants/access opportunities, never measured usage. Warm/balanced/
+direct tone defaults to balanced without changing local policy. Focus protection
+covers all or selected saved apps, takes precedence over grants, and persists.
+Recurring local weekday periods may cross midnight and last at least 15 minutes;
+immediate sessions last 15–180 minutes (25 by default). Explicit ending is allowed.

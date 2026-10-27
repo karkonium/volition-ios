@@ -10,7 +10,7 @@ nonisolated struct ConversationMessage: Codable, Identifiable, Equatable, Sendab
     var requestID: UUID?
 }
 
-nonisolated struct ConversationHistory: Codable, Sendable {
+nonisolated struct ConversationHistory: Codable, Equatable, Sendable {
     var messages: [ConversationMessage] = []
     var memory: String = ""
     var summarizedCount: Int = 0
@@ -44,20 +44,68 @@ protocol ConversationHistoryStoring {
     func save(_ history: ConversationHistory) throws
 }
 
-struct ConversationHistoryStore: ConversationHistoryStoring {
+/// Writes only changed records. A small archive holds memory and timer metadata;
+/// a legacy archive is converted in one save, so interrupted migration can retry.
+final class ConversationHistoryStore: ConversationHistoryStoring {
     let context: ModelContext
+    private var lastSaved: ConversationHistory?
+    private struct Metadata: Codable { var format = 5; var history: ConversationHistory }
+    init(context: ModelContext) { self.context = context }
+
     func load() throws -> ConversationHistory {
         guard let archive = try context.fetch(FetchDescriptor<ConversationArchive>()).first,
               !archive.payload.isEmpty else { return ConversationHistory() }
-        return try JSONDecoder().decode(ConversationHistory.self, from: archive.payload)
+        if let metadata = try? JSONDecoder().decode(Metadata.self, from: archive.payload), metadata.format == 5 {
+            var history = metadata.history
+            for record in try context.fetch(FetchDescriptor<ConversationRecord>(sortBy: [SortDescriptor(\.position)])) {
+                switch record.category {
+                case "message": history.messages.append(try JSONDecoder().decode(ConversationMessage.self, from: record.payload))
+                case "access": history.accessEvents.append(try JSONDecoder().decode(ConversationAccessEvent.self, from: record.payload))
+                case "activity": history.activityLog.append(try JSONDecoder().decode(ConversationActivityEntry.self, from: record.payload))
+                default: throw CocoaError(.coderReadCorrupt)
+                }
+            }
+            lastSaved = history
+            return history
+        }
+        var legacy = try JSONDecoder().decode(ConversationHistory.self, from: archive.payload)
+        legacy.prepareActivityLog()
+        try save(legacy)
+        return legacy
     }
+
     func save(_ history: ConversationHistory) throws {
-        let data = try JSONEncoder().encode(history)
-        let archive: ConversationArchive
-        if let existing = try context.fetch(FetchDescriptor<ConversationArchive>()).first { archive = existing }
-        else { archive = ConversationArchive(); context.insert(archive) }
-        archive.payload = data
-        try context.save()
+        guard history != lastSaved else { return }
+        let encoder = JSONEncoder()
+        var metadata = history
+        metadata.messages = []; metadata.accessEvents = []; metadata.activityLog = []
+        let data = try encoder.encode(Metadata(history: metadata))
+        do {
+            let archive: ConversationArchive
+            if let existing = try context.fetch(FetchDescriptor<ConversationArchive>()).first { archive = existing }
+            else { archive = ConversationArchive(); context.insert(archive) }
+            let records = try context.fetch(FetchDescriptor<ConversationRecord>())
+            let existing = Dictionary(uniqueKeysWithValues: records.map { ($0.id, $0) })
+            var retained = Set<String>()
+            func upsert<T: Encodable>(_ values: [T], category: String, identity: (T, Int) -> String) throws {
+                for (position, value) in values.enumerated() {
+                    let id = category + "-" + identity(value, position)
+                    retained.insert(id)
+                    let payload = try encoder.encode(value)
+                    if let record = existing[id] {
+                        if record.payload != payload { record.payload = payload }
+                        if record.position != position { record.position = position }
+                    } else { context.insert(ConversationRecord(id: id, category: category, position: position, payload: payload)) }
+                }
+            }
+            try upsert(history.messages, category: "message") { value, _ in value.id.uuidString }
+            try upsert(history.accessEvents, category: "access") { value, index in value.grantID?.uuidString ?? String(index) }
+            try upsert(history.activityLog, category: "activity") { value, _ in value.id.uuidString }
+            for record in records where !retained.contains(record.id) { context.delete(record) }
+            if archive.payload != data { archive.payload = data }
+            if context.hasChanges { try context.save() }
+            lastSaved = history
+        } catch { context.rollback(); throw error }
     }
 }
 
@@ -74,4 +122,9 @@ nonisolated struct ConversationAccessEvent: Codable, Equatable, Sendable {
     var expiresAt: Date?
     var endedAt: Date?
     var waitUntil: Date?
+}
+
+struct UnavailableHistoryStore: ConversationHistoryStoring {
+    func load() throws -> ConversationHistory { throw CocoaError(.fileReadUnknown) }
+    func save(_ history: ConversationHistory) throws { throw CocoaError(.fileReadUnknown) }
 }

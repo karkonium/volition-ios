@@ -5,33 +5,42 @@
 
 import SwiftUI
 
-/// Two-step onboarding using system styling: a welcome screen, then the
+/// Consent-aware onboarding introduces the access model before requesting
 /// Screen Time permission request. Onboarding only completes once
 /// authorization is approved; MainView then requires per-app intention setup.
 struct OnboardingView: View {
+    @Environment(ConversationCoordinator.self) private var conversation
     @Environment(ScreenTimeAuthorization.self) private var authorization
     @Environment(\.openURL) private var openURL
     let onComplete: () -> Void
 
     private enum Step {
         case welcome
+        case privacy
         case permission
     }
 
     @State private var step = Step.welcome
     @State private var isRequesting = false
+    @State private var showingPrivacy = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
-            switch step {
-            case .welcome: welcome
-            case .permission: permission
+        VStack(spacing: 20) {
+            GeometryReader { geometry in
+                ScrollView {
+                    VStack {
+                        switch step {
+                        case .welcome: welcome
+                        case .privacy: privacy
+                        case .permission: permission
+                        }
+                    }
+                    .frame(maxWidth: 560)
+                    .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+                }
             }
-            Spacer()
             footer
-        }
-        .padding()
+        }.padding()
     }
 
     /// Shared vertical rhythm so both onboarding steps line up.
@@ -59,6 +68,17 @@ struct OnboardingView: View {
             .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
             .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
             .accessibilityHidden(true)
+    }
+
+    private var privacy: some View {
+            VStack(alignment: .leading, spacing: stepSpacing) {
+                Image(systemName: "hand.raised.fill").font(.largeTitle).foregroundStyle(.tint)
+                Text(CopyKey.aiConsentTitle.resource).font(.largeTitle.bold())
+                Text(CopyKey.aiConsentDisclosure.resource).foregroundStyle(.secondary)
+                Text(CopyKey.aiConsentWithdrawal.resource).font(.footnote).foregroundStyle(.secondary)
+                Button(CopyKey.privacyTitle.resource) { showingPrivacy = true }
+                    .sheet(isPresented: $showingPrivacy) { NavigationStack { PrivacyDataView() } }
+            }
     }
 
     private var permission: some View {
@@ -108,7 +128,15 @@ struct OnboardingView: View {
         switch step {
         case .welcome:
             pillButton(CopyKey.onboardingContinueButton.string, identifier: "onboardingContinueButton") {
-                step = .permission
+                step = conversation.preferences.hasConsent ? .permission : .privacy
+            }
+        case .privacy:
+            VStack(spacing: 16) {
+                pillButton(CopyKey.aiConsentAccept.string, identifier: "acceptAIConsentButton") {
+                    conversation.setAIConsent(true); step = .permission
+                }
+                Button(CopyKey.aiConsentLater.resource) { step = .permission }
+                    .accessibilityIdentifier("deferAIConsentButton")
             }
         case .permission:
             pillButton(

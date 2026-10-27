@@ -10,6 +10,9 @@ struct SettingsView: View {
                     NavigationLink { ConversationSettingsView() } label: {
                         Label(CopyKey.volitionCoachSettings.resource, systemImage: "bubble.left.and.bubble.right")
                     }.accessibilityIdentifier("conversationSettingsButton")
+                    NavigationLink { PrivacyDataView() } label: {
+                        Label(CopyKey.privacyTitle.resource, systemImage: "hand.raised")
+                    }.accessibilityIdentifier("privacyDataButton")
                     NavigationLink { ConversationActivityLogView() } label: {
                         Label(CopyKey.activityLogTitle.resource, systemImage: "clock.arrow.circlepath")
                     }.accessibilityIdentifier("conversationActivityLogButton")

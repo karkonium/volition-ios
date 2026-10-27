@@ -15,6 +15,7 @@ import SwiftUI
 /// disabled only while sending; returning to Chat never restores stale focus.
 struct ConversationView: View {
     @Environment(ConversationCoordinator.self) private var conversation
+    @Environment(FocusController.self) private var focus
     @Environment(RuleEnforcer.self) private var enforcer
     @Query(sort: BlockingRule.displayOrder) private var rules: [BlockingRule]
     @Environment(\.scenePhase) private var scenePhase
@@ -22,6 +23,8 @@ struct ConversationView: View {
     private enum ComposerField: Hashable { case message }
     @FocusState private var focusedField: ComposerField?
     @State private var choosingApp = false
+    @State private var followsLatest = true
+    @State private var visibleMessages = 60
 
     var body: some View {
         let motionReduced = reduceMotion
@@ -60,31 +63,56 @@ struct ConversationView: View {
                         .sensoryFeedback(.warning, trigger: conversation.selectionAttention)
                         Spacer()
                     }.padding(.horizontal).padding(.vertical, 10)
+                    if !conversation.preferences.hasConsent {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label(CopyKey.aiConsentTitle.resource, systemImage: "hand.raised").font(.headline)
+                            Text(CopyKey.aiConsentDisclosure.resource).font(.footnote).foregroundStyle(.secondary)
+                            Button(CopyKey.aiConsentAccept.resource) { conversation.setAIConsent(true) }
+                                .buttonStyle(.borderedProminent).accessibilityIdentifier("acceptAIConsentButton")
+                        }.padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16)).padding(.horizontal)
+                    }
                     if conversation.target == nil || conversation.appSelectionNeeded {
                         Text(conversation.appSelectionNeeded ? conversation.errorMessage ?? CopyKey.conversationSelectAppHelp.string : CopyKey.conversationSelectAppHelp.string)
                             .font(.footnote).foregroundStyle(conversation.appSelectionNeeded ? Color.accentColor : Color.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal).padding(.bottom, 8)
                             .accessibilityIdentifier("conversationAppSelectionHint")
                     }
-                    ForEach(conversation.grants, id: \.plan.grantID) { grant in
-                        TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                            VStack {
-                                Text(conversation.appName(for: grant)).font(.headline)
-                                Text(CopyKey.conversationUnlockedUntil.string(grant.plan.expiresAt.formatted(date: .omitted, time: .shortened)))
-                                if timeline.date < grant.plan.expiresAt {
-                                    Text(grant.plan.expiresAt, style: .timer)
-                                } else { Text(CopyKey.conversationGrantExpired.resource) }
-                                Button(CopyKey.conversationEndUnlock.resource) {
-                                    Task { await conversation.endUnlock(grantID: grant.plan.grantID); await enforcer.refresh(rules: rules) }
-                                }.accessibilityIdentifier("endConversationUnlockButton")
-                            }.padding()
-                            .task(id: timeline.date >= grant.plan.expiresAt) {
-                                if timeline.date >= grant.plan.expiresAt {
-                                    await conversation.refresh(snapshots: rules.map(\.dto))
-                                    await enforcer.refresh(rules: rules)
-                                }
-                            }
+                    TimelineView(.periodic(from: .now, by: 60)) { timeline in
+                        if let appID = conversation.selectedAppID, focus.state.protects(appID: appID, at: timeline.date) {
+                            Label(CopyKey.focusProtected.resource, systemImage: "moon.fill")
+                                .font(.footnote).foregroundStyle(.secondary).padding(.horizontal).padding(.bottom, 8)
                         }
+                    }
+                    if !conversation.grants.isEmpty {
+                        ScrollView(.horizontal) {
+                            HStack(spacing: 12) {
+                                ForEach(conversation.grants, id: \.plan.grantID) { grant in
+                                    TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            Label(conversation.appName(for: grant), systemImage: "lock.open").font(.headline)
+                                            HStack {
+                                                if timeline.date < grant.plan.expiresAt {
+                                                    Text(grant.plan.expiresAt, style: .timer).monospacedDigit().font(.title3)
+                                                } else { Text(CopyKey.conversationGrantExpired.resource).font(.footnote) }
+                                                Spacer()
+                                                Button(CopyKey.conversationEndUnlock.resource) {
+                                                    Task { await conversation.endUnlock(grantID: grant.plan.grantID); await enforcer.refresh(rules: rules) }
+                                                }.font(.footnote).buttonStyle(.bordered)
+                                                    .accessibilityIdentifier("endConversationUnlockButton")
+                                            }
+                                        }
+                                        .padding(12).frame(minWidth: 230)
+                                        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+                                        .task(id: timeline.date >= grant.plan.expiresAt) {
+                                            if timeline.date >= grant.plan.expiresAt {
+                                                await enforcer.refresh(rules: rules)
+                                                await conversation.refresh(snapshots: rules.map(\.dto))
+                                            }
+                                        }
+                                    }
+                                }
+                            }.padding(.horizontal).padding(.bottom, 8)
+                        }.scrollIndicators(.hidden)
                     }
                     ScrollViewReader { proxy in
                         List {
@@ -93,7 +121,10 @@ struct ConversationView: View {
                                     .foregroundStyle(.secondary)
                                     .listRowSeparator(.hidden)
                             }
-                            ForEach(conversation.history.messages) { item in
+                            if conversation.history.messages.count > visibleMessages {
+                                Button(CopyKey.chatLoadEarlier.resource) { visibleMessages += 60 }
+                            }
+                            ForEach(Array(conversation.history.messages.suffix(visibleMessages))) { item in
                                 HStack {
                                     if item.role == .user { Spacer(minLength: 24) }
                                     Text(item.text)
@@ -111,11 +142,14 @@ struct ConversationView: View {
                         }
                         .listStyle(.plain)
                         .scrollDismissesKeyboard(.interactively)
+                        .onScrollGeometryChange(for: Bool.self) { geometry in
+                            geometry.contentSize.height - geometry.contentOffset.y - geometry.containerSize.height < 120
+                        } action: { _, nearBottom in followsLatest = nearBottom }
                         .onAppear {
                             if let last = conversation.history.messages.last { proxy.scrollTo(last.id, anchor: .bottom) }
                         }
                         .onChange(of: conversation.history.messages.count) {
-                            if let last = conversation.history.messages.last { proxy.scrollTo(last.id, anchor: .bottom) }
+                            if followsLatest, let last = conversation.history.messages.last { proxy.scrollTo(last.id, anchor: .bottom) }
                         }
                     }
                     VStack(alignment: .leading) {
@@ -129,6 +163,7 @@ struct ConversationView: View {
                                 let text = conversation.draftMessage
                                 focusedField = nil
                                 conversation.draftMessage = ""
+                                followsLatest = true
                                 Task {
                                     await conversation.send(text, rules: rules)
                                     if conversation.errorMessage != nil && conversation.draftMessage.isEmpty { conversation.draftMessage = text }

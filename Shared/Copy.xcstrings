@@ -205,7 +205,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This log includes your messages and coach replies. It stays on this device unless you export it."
+            "value" : "This local log contains your messages and coach replies. Recent access outcomes and conversation context are shared with OpenAI only while AI coaching is enabled. Exports share the records you choose."
           }
         }
       }
@@ -722,7 +722,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The coach returned an incomplete or invalid decision. Retry and check ///CONVO-LOG. Your app stays blocked."
+            "value" : "The coach could not finish a valid reply. Please try again. Your app stays blocked."
           }
         }
       }
@@ -932,6 +932,688 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No logs yet. Logs are recorded automatically as rules enforce."
+          }
+        }
+      }
+    },
+    "expansion.aiConsentAccept" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow AI coaching"
+          }
+        }
+      }
+    },
+    "expansion.aiConsentDisclosure" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you chat, Volition sends your messages, saved app names and intentions, conversation memory, and recent access outcomes to OpenAI to respond. App selection tokens stay on this device. History is saved locally; exported files contain your messages and replies."
+          }
+        }
+      }
+    },
+    "expansion.aiConsentLater" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set up without AI for now"
+          }
+        }
+      }
+    },
+    "expansion.aiConsentRequired" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow AI coaching before sending a message. You can review what is shared in Privacy & Data."
+          }
+        }
+      }
+    },
+    "expansion.aiConsentTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your conversation, your choice"
+          }
+        }
+      }
+    },
+    "expansion.aiConsentToggle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow sharing for AI coaching"
+          }
+        }
+      }
+    },
+    "expansion.aiConsentWithdrawal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI coaching is optional. You can withdraw permission in Privacy & Data at any time. Withdrawing stops new requests and cancels a pending reply; it does not undo data already transmitted or lift existing restrictions."
+          }
+        }
+      }
+    },
+    "expansion.appConversationProtected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation protected"
+          }
+        }
+      }
+    },
+    "expansion.appTemporarilyOpen" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temporarily open"
+          }
+        }
+      }
+    },
+    "expansion.chatLoadEarlier" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Load earlier messages"
+          }
+        }
+      }
+    },
+    "expansion.coachReady" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The coach is ready."
+          }
+        }
+      }
+    },
+    "expansion.coachTone" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coaching tone"
+          }
+        }
+      }
+    },
+    "expansion.coachToneHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose how the coach speaks. Access limits, waits, and focus protection stay the same."
+          }
+        }
+      }
+    },
+    "expansion.coachUnavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The coach is unavailable in this build. Your apps remain protected. You can still manage your restrictions in Apps."
+          }
+        }
+      }
+    },
+    "expansion.enforcementRecovered" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Protection was restored after a storage problem. Please retry to refresh its status."
+          }
+        }
+      }
+    },
+    "expansion.enforcementUncertain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Protection could not be verified. Existing restrictions were preserved. Please retry."
+          }
+        }
+      }
+    },
+    "expansion.eraseCoachingContent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erase coaching content"
+          }
+        }
+      }
+    },
+    "expansion.eraseCoachingHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erase conversations, coaching memory, activity records, request reasons, replies, and local activity exports. Saved app intentions remain. Active access and waiting deadlines keep their original times."
+          }
+        }
+      }
+    },
+    "expansion.focusActiveSession" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Focusing now"
+          }
+        }
+      }
+    },
+    "expansion.focusAddSchedule" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add protected period"
+          }
+        }
+      }
+    },
+    "expansion.focusAllApps" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Protect all saved apps"
+          }
+        }
+      }
+    },
+    "expansion.focusCustomDuration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom duration"
+          }
+        }
+      }
+    },
+    "expansion.focusDays" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Days"
+          }
+        }
+      }
+    },
+    "expansion.focusDuration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duration"
+          }
+        }
+      }
+    },
+    "expansion.focusEnabled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enabled"
+          }
+        }
+      }
+    },
+    "expansion.focusEndCurrent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End current protection"
+          }
+        }
+      }
+    },
+    "expansion.focusEndHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End the current session and skip any protected period active now. Future scheduled periods remain enabled. Apps return to ordinary conversation protection."
+          }
+        }
+      }
+    },
+    "expansion.focusEnds" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ends"
+          }
+        }
+      }
+    },
+    "expansion.focusHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Make room for what matters. During protected periods, the coach cannot grant access to the selected apps. Outside those periods, your saved apps still require a conversation."
+          }
+        }
+      }
+    },
+    "expansion.focusProtected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Focus protection is active. Access stays closed until it ends."
+          }
+        }
+      }
+    },
+    "expansion.focusRemoveSchedule" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove schedule"
+          }
+        }
+      }
+    },
+    "expansion.focusSaveError" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Focus protection could not be updated. Existing restrictions were kept. Try again when monitoring is available."
+          }
+        }
+      }
+    },
+    "expansion.focusScheduleHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a period of at least 15 minutes. An end time earlier than the start continues into the next day."
+          }
+        }
+      }
+    },
+    "expansion.focusScheduleName" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name"
+          }
+        }
+      }
+    },
+    "expansion.focusSchedules" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recurring protection"
+          }
+        }
+      }
+    },
+    "expansion.focusStart" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start focus"
+          }
+        }
+      }
+    },
+    "expansion.focusStartSession" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start a focus session"
+          }
+        }
+      }
+    },
+    "expansion.focusStarts" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts"
+          }
+        }
+      }
+    },
+    "expansion.focusTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Focus"
+          }
+        }
+      }
+    },
+    "expansion.insightsByApp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By app"
+          }
+        }
+      }
+    },
+    "expansion.insightsDailyRequests" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requests by day"
+          }
+        }
+      }
+    },
+    "expansion.insightsDay" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Day"
+          }
+        }
+      }
+    },
+    "expansion.insightsDenials" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Declined"
+          }
+        }
+      }
+    },
+    "expansion.insightsEarlyEndings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ended early"
+          }
+        }
+      }
+    },
+    "expansion.insightsEmpty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your access trends will appear here after you chat."
+          }
+        }
+      }
+    },
+    "expansion.insightsGrants" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirmed grants"
+          }
+        }
+      }
+    },
+    "expansion.insightsHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These are access opportunities, not measured screen time. Granted minutes describe permission to use an app; they do not prove the app was used."
+          }
+        }
+      }
+    },
+    "expansion.insightsMinutes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Granted minutes"
+          }
+        }
+      }
+    },
+    "expansion.insightsOpportunities" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access opportunities"
+          }
+        }
+      }
+    },
+    "expansion.insightsRange" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date range"
+          }
+        }
+      }
+    },
+    "expansion.insightsRequests" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requests"
+          }
+        }
+      }
+    },
+    "expansion.insightsTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Insights"
+          }
+        }
+      }
+    },
+    "expansion.insightsToday" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today"
+          }
+        }
+      }
+    },
+    "expansion.insightsWaits" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pauses suggested"
+          }
+        }
+      }
+    },
+    "expansion.insightsWeek" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last 7 days"
+          }
+        }
+      }
+    },
+    "expansion.privacyPolicy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy policy"
+          }
+        }
+      }
+    },
+    "expansion.privacyPolicyPending" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A public privacy policy is not yet available. Review the data-sharing explanation above before enabling AI coaching."
+          }
+        }
+      }
+    },
+    "expansion.privacyTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy & Data"
+          }
+        }
+      }
+    },
+    "expansion.storageRestartHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved data could not be opened. Close and reopen Volition to retry. Your data has not been reset."
+          }
+        }
+      }
+    },
+    "expansion.toneBalanced" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Balanced"
+          }
+        }
+      }
+    },
+    "expansion.toneDirect" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direct"
+          }
+        }
+      }
+    },
+    "expansion.toneWarm" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warm"
           }
         }
       }
@@ -1910,7 +2592,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This app will no longer be blocked by Volition."
+            "value" : "Removing this app lifts its Volition restriction immediately and ends any active access for it. You can add it again later."
           }
         }
       }

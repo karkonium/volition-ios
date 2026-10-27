@@ -20,12 +20,14 @@ nonisolated struct ConversationDiagnostics: Sendable {
 /// Safe error categories retain debugging information without retaining the
 /// server's free-form message (401 messages may contain part of the API key).
 nonisolated enum ConversationClientError: Error, Equatable {
+    case unavailable
     case http(status: Int, code: String)
     case transport(code: Int)
     case response(reason: String)
 
     var diagnosticSummary: String {
         switch self {
+        case .unavailable: return "service_unavailable"
         case let .http(status, code): return "http status=\(status) code=\(code)"
         case let .transport(code): return "transport code=\(code)"
         case let .response(reason): return "response reason=\(reason)"
@@ -34,6 +36,7 @@ nonisolated enum ConversationClientError: Error, Equatable {
 
     var copyKey: CopyKey {
         switch self {
+        case .unavailable: return .coachUnavailable
         case .http(status: 401, code: _): return .conversationAuthenticationError
         case .http(status: 403, code: _): return .conversationPermissionError
         case .http(status: 429, code: "insufficient_quota"), .http(status: 429, code: "billing_hard_limit_reached"):

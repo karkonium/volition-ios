@@ -12,13 +12,14 @@ import SwiftUI
 struct OpenAppLockApp: App {
     @UIApplicationDelegateAdaptor(CustomAppDelegate.self) private var delegate
     
-    private let container: ModelContainer
+    private let container: ModelContainer?
     private let launchSettleDelay: Duration
     @State private var authorization: ScreenTimeAuthorization
     @State private var notificationAuthorization: NotificationAuthorization
     @State private var enforcer: RuleEnforcer
     @State private var settings: AppSettingsStore
     @State private var logStore: LogStore
+    @State private var focus: FocusController
     @State private var conversation: ConversationCoordinator
 
     init() {
@@ -73,7 +74,7 @@ struct OpenAppLockApp: App {
         let appSettings = AppSettingsStore()
         _settings = State(initialValue: appSettings)
 
-        let schema = Schema(versionedSchema: OpenAppLockSchemaV4.self)
+        let schema = Schema(versionedSchema: OpenAppLockSchemaV5.self)
         let modelConfiguration = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: config.isUITesting
@@ -85,7 +86,8 @@ struct OpenAppLockApp: App {
                 configurations: [modelConfiguration]
             )
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            container = nil
+            Diag.error(.migration, "model storage unavailable; preserving saved store")
         }
 
         let accessURL: URL?
@@ -98,7 +100,7 @@ struct OpenAppLockApp: App {
 
         let usageLedger: UsageReading = config.isUITesting ? MockUsageLedger() : UsageLedger()
 
-        if let scenario = config.seedScenario {
+        if let scenario = config.seedScenario, let container {
             SampleRules.seed(
                 scenario, into: container.mainContext, usage: usageLedger as? MockUsageLedger
             )
@@ -140,7 +142,21 @@ struct OpenAppLockApp: App {
                 shields: shields, usage: usageLedger, scheduler: scheduler,
                 notificationScheduler: notificationScheduler,
                 openSessions: openSessions, settings: appSettings, conversationStore: conversationStore))
-        _conversation = State(initialValue: ConversationCoordinator(context: container.mainContext,
+        _focus = State(initialValue: FocusController(access: ConversationEnforcement(store: conversationStore, shields: shields),
+            monitor: config.isUITesting ? MockFocusMonitor() : DeviceFocusMonitor()))
+        let coachService: (any CoachService)?
+        #if DEBUG
+        coachService = nil
+        #else
+        coachService = UnavailableCoachService()
+        #endif
+        let historyStore: any ConversationHistoryStoring
+        if let container { historyStore = ConversationHistoryStore(context: container.mainContext) }
+        else { historyStore = UnavailableHistoryStore() }
+        let preferences = config.isUITesting ? CoachPreferences.testing() : CoachPreferences()
+        if config.isUITesting, ProcessInfo.processInfo.arguments.contains("-ai-consent-required") { preferences.setConsent(false) }
+        _conversation = State(initialValue: ConversationCoordinator(historyStore: historyStore,
+            preferences: preferences, service: coachService,
             client: config.isUITesting ? MockConversationClient() : OpenAIConversationClient(),
             keys: config.isUITesting ? MockConversationKeyStore() : ConversationEnvironmentKeyStore(),
             access: ConversationEnforcement(store: conversationStore, shields: shields),
@@ -149,14 +165,23 @@ struct OpenAppLockApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(launchSettleDelay: launchSettleDelay)
+            Group {
+                if let container {
+                    RootView(launchSettleDelay: launchSettleDelay).modelContainer(container)
+                } else {
+                    ContentUnavailableView {
+                        Label(CopyKey.conversationStorageError.resource, systemImage: "externaldrive.badge.exclamationmark")
+                    } description: { Text(CopyKey.storageRestartHelp.resource) }
+                }
+            }
+                .modifier(UITestPresentation())
                 .environment(authorization)
                 .environment(notificationAuthorization)
                 .environment(enforcer)
                 .environment(settings)
                 .environment(logStore)
                 .environment(conversation)
+                .environment(focus)
         }
-        .modelContainer(container)
     }
 }
