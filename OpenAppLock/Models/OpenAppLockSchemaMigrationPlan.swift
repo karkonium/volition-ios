@@ -10,15 +10,19 @@ import Foundation
 
 enum OpenAppLockSchemaMigrationPlan: SchemaMigrationPlan {
     static var stages: [MigrationStage] {
-        [migrateV1toV2, migrateV2toV3, migrateV3toV4]
+        [migrateV1toV2, migrateV2toV3, migrateV3toV4, migrateV4toV5]
     }
 
     static var schemas: [any VersionedSchema.Type] = [
         OpenAppLockSchemaV1.self,
         OpenAppLockSchemaV2.self,
         OpenAppLockSchemaV3.self,
-        OpenAppLockSchemaV4.self
+        OpenAppLockSchemaV4.self,
+        OpenAppLockSchemaV5.self
     ]
+
+    static let migrateV4toV5 = MigrationStage.lightweight(
+        fromVersion: OpenAppLockSchemaV4.self, toVersion: OpenAppLockSchemaV5.self)
 
     static let migrateV3toV4 = MigrationStage.lightweight(
         fromVersion: OpenAppLockSchemaV3.self, toVersion: OpenAppLockSchemaV4.self)

@@ -14,6 +14,9 @@ nonisolated struct ConversationEnvironment: Sendable {
     enum InvalidConfiguration: Error { case malformed }
 
     static let bundled: ConversationEnvironment = {
+        #if !DEBUG
+        return try! ConversationEnvironment(contents: "")
+        #else
         do {
             let url = Bundle.main.url(forResource: "Conversation", withExtension: "env")
             return try ConversationEnvironment(contents: try url.map { try String(contentsOf: $0, encoding: .utf8) } ?? "")
@@ -22,6 +25,7 @@ nonisolated struct ConversationEnvironment: Sendable {
             if fallback.logsEnabled { Diag.error(.conversation, "///CONVO-LOG config.invalid source=bundled-env; check local file and rebuild") }
             return fallback
         }
+        #endif
     }()
 
     init(contents: String) throws {

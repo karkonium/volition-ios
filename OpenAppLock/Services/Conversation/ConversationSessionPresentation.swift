@@ -67,10 +67,10 @@ actor ConversationSessionPresentation {
             } catch { ConversationDiagnostics.live.log("live_activity.unavailable") }
         }
     }
-    private func active(_ id: UUID, in store: ConversationGrantStore) -> Bool {
+    func active(_ id: UUID, in store: ConversationGrantStore) -> Bool {
         guard !endedIDs.contains(id) else { return false }
         return (try? store.transaction { state in
-            state.activeGrants.contains { $0.plan.grantID == id && !$0.plan.hasExpired(at: .now) && $0.fingerprint == ConversationGrantStore.fingerprint(state.snapshots) }
+            state.activeGrants.contains { $0.plan.grantID == id && !$0.plan.hasExpired(at: .now) && ConversationGrantStore.isValid($0, in: state.snapshots) }
         }) == true
     }
 }

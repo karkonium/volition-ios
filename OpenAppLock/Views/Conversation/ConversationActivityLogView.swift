@@ -47,6 +47,7 @@ struct ConversationActivityLogView: View {
             if clearFailed { Text(CopyKey.conversationStorageError.resource).foregroundStyle(.red) }
             if exportFailed { Text(CopyKey.activityExportError.resource).foregroundStyle(.red) }
         }
+        .volitionForm()
         .navigationTitle(CopyKey.activityLogTitle.resource)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -75,11 +76,12 @@ struct ConversationActivityLogView: View {
     private func export(_ format: ConversationActivityExport.Format) {
         guard !exporting else { return }
         let entries = conversation.history.activityLog
+        let exportEpoch = ConversationActivityExport.currentEpoch
         exporting = true; exportFailed = false
         Task {
             defer { exporting = false }
             do {
-                let url = try await Task.detached { try ConversationActivityExport.file(entries, format: format) }.value
+                let url = try await Task.detached { try ConversationActivityExport.file(entries, format: format, expectedEpoch: exportEpoch) }.value
                 sharing = SharedActivityFile(url: url)
             } catch { exportFailed = true }
         }

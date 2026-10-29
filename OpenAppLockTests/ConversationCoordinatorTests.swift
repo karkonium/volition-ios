@@ -29,7 +29,7 @@ struct ConversationCoordinatorTests {
             pause.state = .completed; pause.finishedAt = .now.addingTimeInterval(-45)
             history.value.reflections = [pause]
         }
-        let coordinator = ConversationCoordinator(historyStore: history, client: client,
+        let coordinator = ConversationCoordinator(historyStore: history, preferences: .testing(), client: client,
             keys: MockConversationKeyStore(),
             access: .init(store: .init(fileURL: directory.appendingPathComponent("access.json")), shields: shields),
             timer: MockConversationTimer(), requestStore: requests)
@@ -174,7 +174,7 @@ struct ConversationCoordinatorTests {
         #expect(history.value.cooldownUntil == until)
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let restored = ConversationCoordinator(historyStore: history, client: client, keys: MockConversationKeyStore(),
+        let restored = ConversationCoordinator(historyStore: history, preferences: .testing(), client: client, keys: MockConversationKeyStore(),
             access: .init(store: .init(fileURL: directory.appendingPathComponent("access.json")), shields: MockShieldController()), timer: MockConversationTimer())
         let another = try JSONDecoder().decode(ApplicationToken.self,
             from: JSONSerialization.data(withJSONObject: ["data": Data([8]).base64EncodedString()]))
@@ -198,7 +198,7 @@ struct ConversationCoordinatorTests {
             grantID: UUID(), expiresAt: Date().addingTimeInterval(-240), endedAt: Date().addingTimeInterval(-240))]
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let restored = ConversationCoordinator(historyStore: history, client: client, keys: MockConversationKeyStore(),
+        let restored = ConversationCoordinator(historyStore: history, preferences: .testing(), client: client, keys: MockConversationKeyStore(),
             access: .init(store: .init(fileURL: directory.appendingPathComponent("access.json")), shields: MockShieldController()), timer: MockConversationTimer())
         restored.select(token)
         await restored.send("Ready now", snapshots: { [rule] })
@@ -411,6 +411,93 @@ struct ConversationCoordinatorTests {
         #expect(coordinator.grant == nil)
     }
 
+    @Test("No consent means no provider transmission")
+    func explicitConsentRequired() async throws {
+        let client = RecordingConversationClient()
+        let (coordinator, history, rule, _) = try setup(client: client)
+        coordinator.setAIConsent(false)
+        await coordinator.send("Hello", snapshots: { [rule] })
+        #expect(await client.contexts().isEmpty)
+        #expect(history.value.messages.isEmpty)
+        #expect(coordinator.errorMessage == CopyKey.aiConsentRequired.string)
+    }
+
+    @Test("Withdrawing consent invalidates an in-flight approval")
+    func withdrawConsent() async throws {
+        let client = GatedConversationClient()
+        let (coordinator, _, rule, _) = try setup(client: client)
+        let task = Task { await coordinator.send("approve", snapshots: { [rule] }) }
+        await client.waitUntilStarted()
+        coordinator.setAIConsent(false)
+        #expect(!coordinator.isSending)
+        await client.complete()
+        await task.value
+        #expect(coordinator.grants.isEmpty)
+    }
+
+    @Test("A cancelled reply cannot clear the busy state or publish into a newer request")
+    func immediateResendAfterCancellation() async throws {
+        let client = SequencedConversationClient()
+        let (coordinator, _, rule, _) = try setup(client: client)
+        let first = Task { await coordinator.send("first", snapshots: { [rule] }) }
+        await client.waitFor(1)
+        coordinator.cancelRequest()
+        let second = Task { await coordinator.send("second", snapshots: { [rule] }) }
+        await client.waitFor(2)
+        await client.complete(0)
+        await first.value
+        #expect(coordinator.isSending)
+        #expect(coordinator.grants.isEmpty)
+        #expect(coordinator.errorMessage == nil)
+        await client.complete(1)
+        await second.value
+        #expect(!coordinator.isSending)
+        #expect(coordinator.grants.count == 1)
+    }
+
+    @Test("Content erasure preserves active waits without preserving reasons or replies")
+    func eraseContentRetainsOnlyDeadlines() async throws {
+        let (coordinator, history, rule, _) = try setup()
+        await coordinator.send("wait for a private reason", snapshots: { [rule] })
+        let deadline = coordinator.cooldownUntil
+        #expect(coordinator.eraseCoachingContent())
+        #expect(history.value.messages.isEmpty)
+        #expect(history.value.memory.isEmpty)
+        #expect(history.value.activityLog.isEmpty)
+        #expect(history.value.accessEvents.allSatisfy { $0.reason.isEmpty && $0.reply.isEmpty && $0.appName.isEmpty })
+        #expect(coordinator.cooldownUntil == deadline)
+    }
+
+    @Test("Summary failure keeps bounded context and still gets a decision")
+    func failedSummaryFallsBack() async throws {
+        let (original, history, rule, token) = try setup()
+        _ = original
+        history.value.messages = (0..<65).map { .init(role: .user, text: "Past \($0)") }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let client = SummaryFailureClient()
+        let coordinator = ConversationCoordinator(historyStore: history, preferences: .testing(), client: client, keys: MockConversationKeyStore(),
+            access: .init(store: .init(fileURL: directory.appendingPathComponent("access.json")), shields: MockShieldController()), timer: MockConversationTimer())
+        coordinator.select(token)
+        await coordinator.send("Hello", snapshots: { [rule] })
+        #expect(coordinator.errorMessage == nil)
+        #expect(history.value.messages.last?.text == "Still here")
+        #expect(history.value.memory.isEmpty)
+    }
+
+    @Test("Cancellation immediately restores the composer")
+    func cancellationRestoresComposer() async throws {
+        let client = GatedConversationClient()
+        let (coordinator, _, rule, _) = try setup(client: client)
+        let task = Task { await coordinator.send("approve", snapshots: { [rule] }) }
+        await client.waitUntilStarted()
+        coordinator.cancelRequest()
+        #expect(!coordinator.isSending)
+        await client.complete()
+        await task.value
+        #expect(coordinator.grants.isEmpty)
+    }
+
     @Test("Compaction retains the full archive and passes shared memory forward")
     func compaction() async throws {
         let (coordinator, history, rule, _) = try setup()
@@ -418,7 +505,7 @@ struct ConversationCoordinatorTests {
         // Reload through the same archive interface, as on app relaunch.
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let restored = ConversationCoordinator(historyStore: history, client: MockConversationClient(), keys: MockConversationKeyStore(),
+        let restored = ConversationCoordinator(historyStore: history, preferences: .testing(), client: MockConversationClient(), keys: MockConversationKeyStore(),
             access: .init(store: .init(fileURL: directory.appendingPathComponent("access.json")), shields: MockShieldController()), timer: MockConversationTimer())
         restored.select(try #require(coordinator.target))
         await restored.send("Hello", snapshots: { [rule] })
@@ -746,6 +833,18 @@ struct ConversationCoordinatorTests {
         #expect(coach.cooldownUntil != nil)
     }
 
+    @Test("Content erasure retains only the evidence needed for active unlock presentation")
+    func erasureKeepsActiveGrantProof() async throws {
+        let (coach, _, rule, _) = try setup()
+        await coach.send("approve a private purpose", snapshots: { [rule] })
+        let grant = try #require(coach.grant)
+        #expect(coach.eraseCoachingContent())
+        let event = try #require(coach.history.accessEvents.first { $0.grantID == grant.plan.grantID })
+        #expect(event.reason.isEmpty && event.reply.isEmpty && event.appName.isEmpty)
+        #expect(coach.history.messages.isEmpty && coach.history.activityLog.isEmpty)
+        #expect(coach.presentationID.contains(grant.plan.grantID.uuidString))
+    }
+
     @Test("A removal alternative stays bound to its app when feedback names another")
     func explicitRemovalAlternativeTarget() async throws {
         let client = RecordingConversationClient()
@@ -894,6 +993,28 @@ private actor ReflectionClient: ConversationClient {
     func respond(to context: ConversationContext, apiKey: String) async throws -> ConversationDecision {
         calls += 1
         return .init(reply: "Let’s take a moment.", decision: .pause, unlockMinutes: 5, pauseSeconds: seconds)
+    }
+    func summarize(memory: String, messages: [ConversationMessage], apiKey: String) async throws -> String { memory }
+}
+
+nonisolated private struct SummaryFailureClient: ConversationClient {
+    func respond(to context: ConversationContext, apiKey: String) async throws -> ConversationDecision {
+        #expect(context.recentMessages.count <= 60)
+        return .init(reply: "Still here", decision: .ask, unlockMinutes: nil)
+    }
+    func summarize(memory: String, messages: [ConversationMessage], apiKey: String) async throws -> String {
+        throw URLError(.timedOut)
+    }
+}
+
+private actor SequencedConversationClient: ConversationClient {
+    private var continuations: [CheckedContinuation<ConversationDecision, Error>] = []
+    func respond(to context: ConversationContext, apiKey: String) async throws -> ConversationDecision {
+        try await withCheckedThrowingContinuation { continuations.append($0) }
+    }
+    func waitFor(_ count: Int) async { while continuations.count < count { await Task.yield() } }
+    func complete(_ index: Int) {
+        continuations[index].resume(returning: .init(reply: "Approved", decision: .approve, unlockMinutes: 1))
     }
     func summarize(memory: String, messages: [ConversationMessage], apiKey: String) async throws -> String { memory }
 }

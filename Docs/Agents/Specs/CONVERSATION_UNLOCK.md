@@ -2,7 +2,7 @@
 
 ## Product contract
 
-Welcome → Screen Time permission → save apps → Chat. Each profile contains one
+Welcome → AI sharing choice → Screen Time permission → save apps → Chat. Each profile contains one
 individual app token and required name (1–300 characters). Optional structured
 intentions and free-text notes (up to 2,000 characters) live alongside the legacy
 intention; skipped notes get a neutral default, preserving old validation.
@@ -12,10 +12,18 @@ automatically. Cancel preserves the original choice. The App Name footer asks fo
 the selected app’s actual name, with SoundCloud as an example.
 
 Existing installs open Chat after VolitionApps.prepare retires legacy rules and
-splits multi-app conversation profiles. Chat, Apps and Settings are the only valid
-sections, using iPhone tabs/iPad sidebar. Old rule/editor screens are removed;
+splits multi-app conversation profiles. Chat, Apps, Insights, Focus and Settings use iPhone tabs/iPad sidebar. Old rule/editor screens are removed;
 saved models, migrations and legacy callback handling remain (COMPATIBILITY.md).
 The name and intention belong to the saved profile, not a repeated chat subject.
+
+The welcome page explains the three-part access flow with compact steps and
+back navigation between onboarding pages. Consent remains explicit and optional.
+The saved-app chooser supports name/intention search, marks the current selection,
+and distinguishes focus protection from conversation gating and active grants.
+Switching or cancelling selection preserves the chat draft. Adding an app uses
+three labeled steps, a native single-app picker, and a visible selected-app preview.
+The system picker still owns application discovery; tokens never resolve to names
+outside Apple's privacy-preserving labels.
 
 ## Countdown, pause-first coaching and exceptions
 
@@ -80,7 +88,7 @@ use without numerical usage targets. Old free-text intentions remain unchanged.
 Structured profiles are optional, keyed by rule ID in the existing private
 ConversationArchive JSON; no frozen SwiftData schema or extension DTO changes.
 
-The GPT-5.4 mini coach uses medium reasoning for decisions and low reasoning for
+CoachingPolicy owns the prompt. The GPT-5.4 mini coach uses medium reasoning for decisions and low reasoning for
 summaries. Each request needs a current stated intention; boredom is a valid one.
 Fresh practical tasks can receive short approvals. Rapid repeat unlocks progressively
 start with a short pause and optional trigger awareness, then a willingly negotiated
@@ -243,6 +251,45 @@ and persistence succeed. Old access events migrate once, with unknown approvals
 marked unconfirmed. Clear Chat retains this log; Clear Activity Log removes only
 log records, preserving enforcement history/waits. Exports are user-initiated.
 
+## Expansion contract
+
+Storage failures preserve the last valid restrictions; a successful empty fetch
+alone may remove them. Enforcement publishes healthy, degraded or failed state.
+Grant validity is scoped to its covering app configuration, while pending
+responses retain a full request revision. Cancellation immediately restores chat
+and owns transport cancellation. Summarization failure uses bounded recent context.
+
+AI consent precedes every transmission and withdrawal cancels pending work. Content
+erasure removes transcript, memory, content logs and reason/reply text from retained
+minimal active enforcement events. Release builds never bundle personal credentials;
+a production coach gateway and public privacy policy remain release blockers.
+
+Insights report grants/access opportunities, never measured usage. Warm/balanced/
+direct tone defaults to balanced without changing local policy. Focus protection
+covers all or selected saved apps, takes precedence over grants, and persists.
+Recurring local weekday periods may cross midnight and last at least 15 minutes;
+immediate sessions last 15–180 minutes (25 by default). Explicit ending is allowed.
+
+## Compact interface
+
+The main screens use compact inline navigation, white/adaptive surfaces, subtle
+outlined cards and explicit primary/secondary button styles. Read-only information
+must not resemble an action: actionable rows have a chevron or an outlined/filled
+control. Forms retain native inputs and sheets. Layout uses semantic type, 44-point
+minimum touch targets, and adapts to accessibility text and the iPad sidebar.
+This presentation change does not alter coaching, consent or enforcement policy.
+
+## Interaction polish
+
+Returning from the Screen Time step to defer AI coaching withdraws any consent
+accepted earlier in onboarding. Chat uses a compact review entry point; the full
+sharing disclosure appears before explicit re-enablement. Privacy settings group
+shared data, local data and erasure controls without hiding withdrawal consequences.
+Cancelling a send restores its draft immediately; late completions cannot replace
+a newer draft. Failures preserve the editable draft and offer an explicit retry.
+Only confirmed local grants show approval and timers; waits stay in coach replies.
+Chat notices/grants scroll with history so larger text leaves the composer usable.
+
 ## App removal, frustration feedback and short-pause progression
 
 Remove App opens a supportive two-step sheet: ask why, then ask whether requesting
@@ -265,21 +312,22 @@ Reply and displayed timer must agree; no silent duration changes after generatio
 
 ## Verification
 
-493 domain tests pass, covering compatibility/migrations, independent grants,
+515 domain tests pass, covering compatibility/migrations, independent grants,
 30-minute monitor deadlines, reminder identities, consent, pause-first gating,
 durable deal exceptions/rollback, progressive short-pause recommendations and
 removal feedback persistence/exports/app-bound routing.
 
-All 28 iPhone UI flows pass across the full run and focused reruns. The full run
-found one stale settings test expecting the notification shortcut to be hidden
-on newer iOS; its corrected all-OS reminder expectation passes in the final rerun.
-Native simulator checks verify the actual ActivityKit card/cleanup and delivered
-60/30/10-second reminders. The updated removal flow passes on iPhone and iPad;
-Continue lives in the navigation bar for reliable iPad keyboard interaction.
-Welcome/removal screenshots were exported and inspected on both idioms. Simulator
-shields are mocked, including native presentation tests. The iPad 30-second-pause/
-30-minute-unlock flow was previously verified in isolation; known XCTest keyboard
-animation stalls must not be addressed by extending production deadlines.
+Merge validation combines the compact UI/Focus/consent work from GitHub with
+progressive coaching, deals, removal and native reminders. Unit regressions cover
+unrelated app edits retaining live countdowns and content erasure preserving only
+sanitized active-grant proof. Focus changes revoke per-app reminders after durable
+state commits; monitor IPC runs outside the grant lock. A new unlock scrolls its
+card into view. All 45 iPhone UI flows passed across the broad run and focused reruns, plus
+four iPad Focus/consent/privacy/removal flows. Screenshots of the accepted deal
+and saved optional profile were inspected. An extra iPad chat run was interrupted
+after known XCTest keyboard-animation stalls; production deadlines were unchanged.
+The signed device build passes. Real shields/background callbacks still require
+device acceptance.
 
 Synthetic live GPT-5.4 mini checks cover intention → pause → deal → last-resort
 refusal, practical 30-minute requests and bounded deal exceptions. Additional

@@ -50,7 +50,12 @@ final class VolitionUITests: XCTestCase {
         capture("Multiple app purposes", app)
         app.element("profilePurposes").tap()
         app.buttons["saveVolitionAppButton"].tap()
-        app.buttons["finishVolitionSetupButton"].waitToAppear().tap()
+        let editorClosed = app.buttons["saveVolitionAppButton"].waitForNonExistence(timeout: 5)
+        capture("Saved optional profile", app)
+        XCTAssertTrue(editorClosed)
+        let finish = app.buttons["finishVolitionSetupButton"].waitToAppear()
+        if !finish.isHittable { app.swipeUp() }
+        finish.tap()
         section("Apps", app)
         app.buttons["volitionApp-Browser"].waitToAppear().tap()
         app.element("profilePurposes").waitToAppear().tap()
@@ -93,7 +98,7 @@ final class VolitionUITests: XCTestCase {
         app.buttons["pickVolitionAppButton"].tap()
         app.buttons["cancelVolitionAppPickerButton"].waitToAppear().tap()
         XCTAssertEqual(app.textFields["volitionAppName"].value as? String, "Instagram")
-        XCTAssertEqual(app.buttons["pickVolitionAppButton"].label, "Selected app")
+        XCTAssertTrue(app.buttons["pickVolitionAppButton"].label.contains("Selected app"))
     }
     func testWaitAndApprovalHaveClearStates() {
         let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")

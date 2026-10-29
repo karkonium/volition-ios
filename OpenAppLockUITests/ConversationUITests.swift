@@ -121,7 +121,7 @@ final class ConversationUITests: XCTestCase {
     func testReadingOlderMessagesAndSendingReturnsToLatest() {
         let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation-long")
         chooseApp(app)
-        let transcript = app.scrollViews["conversationTranscript"].waitToAppear()
+        let transcript = app.element("conversationTranscript").waitToAppear()
         transcript.swipeDown()
         transcript.swipeDown()
         app.buttons["conversationJumpLatest"].waitToAppear()

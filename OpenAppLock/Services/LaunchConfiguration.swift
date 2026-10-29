@@ -14,6 +14,7 @@ struct LaunchConfiguration: Equatable {
         case conversation
         case conversationLong = "conversation-long"
         case conversationMultiple = "conversation-multiple"
+        case conversationStress = "conversation-stress"
         case standard
         /// An actively blocking Lock While Blocking rule ("Locked In") plus an upcoming rule.
         case hardModeActive = "hard-mode-active"

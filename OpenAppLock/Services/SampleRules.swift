@@ -29,13 +29,16 @@ enum SampleRules {
 
         let rules: [BlockingRule]
         switch scenario {
-        case .conversationMultiple:
-            for byte: UInt8 in [11, 12] {
+        case .conversationMultiple, .conversationStress:
+            let stress = scenario == .conversationStress
+            for byte: UInt8 in stress ? Array(11...20) : [11, 12] {
                 guard let data = try? JSONSerialization.data(withJSONObject: ["data": Data([byte]).base64EncodedString()]),
                       let token = try? JSONDecoder().decode(ApplicationToken.self, from: data) else { continue }
                 var selection = FamilyActivitySelection(); selection.applicationTokens = [token]
-                let list = AppList(name: "App \(byte)", selectionData: AppSelectionCodec.encode(selection), selectionCount: 1)
-                let rule = BlockingRule(name: "App \(byte)", configuration: .conversation(.init(goal: "Contact friends with purpose.")))
+                let name = stress && byte == 11 ? "A deliberately long app name that needs several lines" : "App \(byte)"
+                let list = AppList(name: name, selectionData: AppSelectionCodec.encode(selection), selectionCount: 1)
+                let goal = stress ? "Keep in touch with the people I care about, then close the app without getting drawn into an endless feed." : "Contact friends with purpose."
+                let rule = BlockingRule(name: name, configuration: .conversation(.init(goal: goal)))
                 context.insert(list); context.insert(rule); rule.appLists = [list]
             }
             try? context.save()

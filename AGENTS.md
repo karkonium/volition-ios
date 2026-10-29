@@ -9,7 +9,7 @@ Suggested short pauses progress per app from 10 to 60 seconds over 24 hours.
 App removal asks why, offers a normal temporary-access request, and records private
 high-frustration feedback. Users always control removal.
 Legacy enforced waits remain readable and cannot be bypassed.
-The product has only Chat, Apps and Settings. iPhone uses tabs; iPad uses a sidebar.
+The product has Chat, Apps, Insights, Focus and Settings. iPhone uses tabs; iPad uses a sidebar.
 Minimum deployment target: iOS 18. Runtime checks currently use iOS 27; the iOS
 18.5 simulator was unavailable from Xcode's download catalog. Older-device
 enforcement and notification acceptance remain pending.
@@ -27,10 +27,12 @@ enforcement and notification acceptance remain pending.
 
 | Location | Responsibility |
 |---|---|
-| `OpenAppLock/Models/` | SwiftData V1–V4 schemas, migrations, BlockingRule/AppList, ConversationArchive; legacy value models and regression tests remain |
+| `OpenAppLock/Models/` | SwiftData V1–V5 schemas, migrations, BlockingRule/AppList, ConversationArchive/ConversationRecord; legacy value models and regression tests remain |
 | `OpenAppLock/Services/Conversation/` | Saved app setup/migration, name routing, shared chat/history, private activity log/exports, OpenAI client, diagnostics, approval support snapshots |
+| `OpenAppLock/Views/Design/` | Compact native card, button, section and form styles; preserve semantic type, adaptive colors and 44-point actions |
 | `OpenAppLock/Views/Conversation/` | App library/editor, chat, activity log and coach settings |
 | `OpenAppLock/Views/` | Root permission gate, onboarding, adaptive shell and diagnostic settings |
+| `OpenAppLock/Services/FocusController.swift`, `Shared/Focus/` | Focus sessions/schedules and stricter local protection |
 | `OpenAppLock/Services/RuleEnforcer.swift` | Foreground reconciliation, including a 30-second backstop |
 | `OpenAppLock/Services/RuleScheduler.swift` | DeviceActivity registration and removal of retired monitors |
 | `Shared/Stores/ConversationGrantStore.swift` | Coordinated App Group state, independent grants and pending shield target |
@@ -47,7 +49,7 @@ enforcement and notification acceptance remain pending.
 ## Invariants
 
 - `VolitionApps.prepare` disables legacy rules before the shell appears. Preserve
-  V1–V4 schemas and old callbacks; removing old screens does not remove old data.
+  V1–V5 schemas and old callbacks; removing old screens does not remove old data.
 - Each saved app has exactly one app token, a required name and intention.
   Optional structured purposes/changes/session style live in ConversationArchive,
   keyed by rule ID; optional notes retain old free text and get a neutral default
@@ -57,7 +59,8 @@ enforcement and notification acceptance remain pending.
   follows intention → short pause/optional trigger check-in → negotiated deal →
   last-resort refusal. Counts alone never justify skipping earlier interventions;
   declining a voluntary pause/deal is not disobedience.
-  GPT-5.4 mini uses medium decision reasoning. Counts describe allocated unlock
+  CoachingPolicy owns the progressive prompt. AI consent gates every transmission;
+  withdrawing consent cancels pending responses/reflections. GPT-5.4 mini uses medium decision reasoning. Counts describe allocated unlock
   sessions (short 1–5, longer 6–30 minutes), never measured foreground usage.
 - Pauses/delays are BEFORE access; deals are access THEN a block. Ask users to
   reflect on a suggested short pause first; longer pause lengths (10–1,800
@@ -69,7 +72,9 @@ enforcement and notification acceptance remain pending.
   pushbacks and cannot break two resolved deals consecutively across apps. A
   fulfilled deal resets eligibility; rollback restores overridden terms. Keep the
   shared commitment ledger after expiry; do not prune exception history.
-- Grant presentation: one ActivityKit countdown per published grant plus grouped
+- Grant presentation follows per-app configuration validity, including after
+  unrelated app edits. Focus revocations remove only affected reminders/cards.
+  Grant presentation: one ActivityKit countdown per published grant plus grouped
   local reminders at 60/30/10 seconds remaining. Native rendering/delivery is
   best-effort and never controls enforcement. Cancel only the ended grant's
   reminders/activity; late async work must not revive a completed activity.

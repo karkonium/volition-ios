@@ -23,7 +23,7 @@ struct VolitionUsageProfileFields: View {
                             .map { $0.copy.string }.joined(separator: ", "))
                             .font(.caption).foregroundStyle(Color.secondary)
                     }
-                }.accessibilityElement(children: .combine).accessibilityIdentifier("profilePurposes")
+                }.frame(minHeight: 44).accessibilityElement(children: .combine).accessibilityIdentifier("profilePurposes")
             }
             DisclosureGroup(isExpanded: $changesExpanded) {
                 ForEach(ConversationUsageProfile.Change.allCases, id: \.self) { change in
@@ -44,14 +44,14 @@ struct VolitionUsageProfileFields: View {
                             .map { $0.copy.string }.joined(separator: ", "))
                             .font(.caption).foregroundStyle(Color.secondary)
                     }
-                }.accessibilityElement(children: .combine).accessibilityIdentifier("profileChanges")
+                }.frame(minHeight: 44).accessibilityElement(children: .combine).accessibilityIdentifier("profileChanges")
             }
             Picker(selection: $profile.sessionStyle) {
                 ForEach(ConversationUsageProfile.SessionStyle.allCases, id: \.self) { style in
                     Text(style.copy.resource).tag(style)
                 }
             } label: { Text(CopyKey.profileStyle.resource) }
-                .accessibilityIdentifier("profileSessionStyle")
+                .frame(minHeight: 44).accessibilityIdentifier("profileSessionStyle")
         } footer: { Text(CopyKey.profileOptional.resource) }
         .onChange(of: purposesExpanded) { _, expanded in if expanded { onExpand() } }
         .onChange(of: changesExpanded) { _, expanded in if expanded { onExpand() } }
@@ -64,8 +64,9 @@ struct VolitionUsageProfileFields: View {
                 Spacer()
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(selected ? Color.accentColor : Color.secondary)
-            }
+            }.frame(minHeight: 44).contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityValue(selected ? "Selected" : "")
     }

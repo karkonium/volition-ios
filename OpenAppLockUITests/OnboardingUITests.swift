@@ -16,7 +16,7 @@ final class OnboardingUITests: XCTestCase {
         // Welcome step.
         app.staticTexts["Welcome to Volition"].waitToAppear()
         let branding = XCTAttachment(screenshot: app.screenshot())
-        branding.name = "Volition sunlit V welcome"
+        branding.name = "Volition open circle welcome"
         branding.lifetime = .keepAlways
         add(branding)
         app.buttons["onboardingContinueButton"].waitToAppear().tap()

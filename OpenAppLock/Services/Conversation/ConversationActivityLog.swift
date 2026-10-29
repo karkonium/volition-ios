@@ -94,6 +94,14 @@ nonisolated struct ConversationActivityEntry: Codable, Equatable, Identifiable, 
 }
 
 nonisolated enum ConversationActivityExport {
+    private static let exportLock = NSLock()
+    nonisolated(unsafe) private static var epoch = 0
+    static var currentEpoch: Int { exportLock.lock(); defer { exportLock.unlock() }; return epoch }
+    static func eraseFiles(directory: URL = FileManager.default.temporaryDirectory.appendingPathComponent("VolitionActivityExports")) throws {
+        exportLock.lock(); defer { exportLock.unlock() }
+        epoch += 1
+        if FileManager.default.fileExists(atPath: directory.path) { try FileManager.default.removeItem(at: directory) }
+    }
     enum Format: Sendable, Equatable { case text, jsonLines }
     static func jsonLines(_ entries: [ConversationActivityEntry]) throws -> String {
         let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
@@ -121,7 +129,10 @@ nonisolated enum ConversationActivityExport {
         }.joined(separator: "\n\n")
     }
     static func file(_ entries: [ConversationActivityEntry], format: Format,
-                     directory: URL = FileManager.default.temporaryDirectory.appendingPathComponent("VolitionActivityExports")) throws -> URL {
+                     directory: URL = FileManager.default.temporaryDirectory.appendingPathComponent("VolitionActivityExports"),
+                     expectedEpoch: Int? = nil) throws -> URL {
+        exportLock.lock(); defer { exportLock.unlock() }
+        if let expectedEpoch, expectedEpoch != epoch { throw CancellationError() }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = directory.appendingPathComponent("Volition-activity.\(format == .text ? "txt" : "jsonl")")
         let content = try format == .text ? text(entries) : jsonLines(entries)
