@@ -157,7 +157,9 @@ struct OpenAppLockApp: App {
         if config.isUITesting, ProcessInfo.processInfo.arguments.contains("-ai-consent-required") { preferences.setConsent(false) }
         _conversation = State(initialValue: ConversationCoordinator(historyStore: historyStore,
             preferences: preferences, service: coachService,
-            client: config.isUITesting ? MockConversationClient() : OpenAIConversationClient(),
+            client: config.isUITesting ? MockConversationClient(
+                delay: ProcessInfo.processInfo.arguments.contains("-slow-coach") ? .seconds(15) : .zero,
+                fails: ProcessInfo.processInfo.arguments.contains("-failing-coach")) : OpenAIConversationClient(),
             keys: config.isUITesting ? MockConversationKeyStore() : ConversationEnvironmentKeyStore(),
             access: ConversationEnforcement(store: conversationStore, shields: shields),
             timer: config.isUITesting ? MockConversationTimer() : DeviceConversationTimer()))

@@ -5,8 +5,8 @@
       "layers": [
         {
           "glass": false,
-          "image-name": "volition-sunlit-v.png",
-          "name": "Volition Sunlit V"
+          "image-name": "volition-open-circle.png",
+          "name": "Volition Open Circle"
         }
       ],
       "name": "Volition",

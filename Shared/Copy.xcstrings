@@ -1618,6 +1618,842 @@
         }
       }
     },
+    "interface.uiAISharingHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review what is shared before you start a conversation."
+          }
+        }
+      }
+    },
+    "interface.uiAISharingOff" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI coaching is off"
+          }
+        }
+      }
+    },
+    "interface.uiAccessDetail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An approval gives you a short window. Then protection returns."
+          }
+        }
+      }
+    },
+    "interface.uiAccessStep" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open with intention"
+          }
+        }
+      }
+    },
+    "interface.uiActivitySubtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requests, replies and access outcomes"
+          }
+        }
+      }
+    },
+    "interface.uiAppInsights" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d grants · %d minutes allowed"
+          }
+        }
+      }
+    },
+    "interface.uiApproved" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access approved"
+          }
+        }
+      }
+    },
+    "interface.uiAppsIntro" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A clear intention for every app you open."
+          }
+        }
+      }
+    },
+    "interface.uiAsked" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Let’s talk it through"
+          }
+        }
+      }
+    },
+    "interface.uiBack" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        }
+      }
+    },
+    "interface.uiCancelledDraft" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Request cancelled. Your draft is ready to edit."
+          }
+        }
+      }
+    },
+    "interface.uiChangeApp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change app"
+          }
+        }
+      }
+    },
+    "interface.uiChatIntro" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name what you need and how long you need it. We’ll take it one opening at a time."
+          }
+        }
+      }
+    },
+    "interface.uiChooseDetail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Protect the apps you tend to open on autopilot."
+          }
+        }
+      }
+    },
+    "interface.uiChooseStep" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose your apps"
+          }
+        }
+      }
+    },
+    "interface.uiCoachName" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volition"
+          }
+        }
+      }
+    },
+    "interface.uiCoachSubtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tone and conversation history"
+          }
+        }
+      }
+    },
+    "interface.uiConversationDetail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tell your coach what you need and how long you need it."
+          }
+        }
+      }
+    },
+    "interface.uiConversationHistory" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation history"
+          }
+        }
+      }
+    },
+    "interface.uiConversationStep" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Talk it through"
+          }
+        }
+      }
+    },
+    "interface.uiDataControls" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data controls"
+          }
+        }
+      }
+    },
+    "interface.uiDenied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not approved"
+          }
+        }
+      }
+    },
+    "interface.uiDiagnosticsSubtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Troubleshooting and exports"
+          }
+        }
+      }
+    },
+    "interface.uiErasureDetails" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What gets erased?"
+          }
+        }
+      }
+    },
+    "interface.uiFocusIntro" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A little space from the apps that pull you away."
+          }
+        }
+      }
+    },
+    "interface.uiFocusScheduleEmpty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set a regular time for fewer distractions."
+          }
+        }
+      }
+    },
+    "interface.uiFocusStatus" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Protected by Focus"
+          }
+        }
+      }
+    },
+    "interface.uiHistorySupport" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "History & support"
+          }
+        }
+      }
+    },
+    "interface.uiHowItWorks" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A little space before you open."
+          }
+        }
+      }
+    },
+    "interface.uiIntentionStep" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3. Set your intention"
+          }
+        }
+      }
+    },
+    "interface.uiLatestMessages" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Latest messages"
+          }
+        }
+      }
+    },
+    "interface.uiLocalDataDetail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple’s app-selection tokens stay here. Chat and activity history are saved locally; exported files contain your messages and replies."
+          }
+        }
+      }
+    },
+    "interface.uiLocalDataTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kept on this device"
+          }
+        }
+      }
+    },
+    "interface.uiMinutes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d min"
+          }
+        }
+      }
+    },
+    "interface.uiNameStep" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2. Give it a name"
+          }
+        }
+      }
+    },
+    "interface.uiPeriodEditorTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Protected period"
+          }
+        }
+      }
+    },
+    "interface.uiPermissionStep" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen Time"
+          }
+        }
+      }
+    },
+    "interface.uiPermissions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permissions"
+          }
+        }
+      }
+    },
+    "interface.uiPermissionsHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen Time permission lets Volition protect your chosen apps. Permission alone does not confirm that a restriction is currently active."
+          }
+        }
+      }
+    },
+    "interface.uiPickerEmpty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No saved apps yet"
+          }
+        }
+      }
+    },
+    "interface.uiPickerEmptyHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add an app and an intention to start a conversation."
+          }
+        }
+      }
+    },
+    "interface.uiPickerGuidanceDetail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open a category or use search, then tap an individual app. Your choice returns here automatically."
+          }
+        }
+      }
+    },
+    "interface.uiPickerGuidanceTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One app at a time"
+          }
+        }
+      }
+    },
+    "interface.uiPickerIntro" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose an app to talk about. Your conversation and draft stay with you."
+          }
+        }
+      }
+    },
+    "interface.uiPreferences" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preferences"
+          }
+        }
+      }
+    },
+    "interface.uiPrivacyStep" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your privacy"
+          }
+        }
+      }
+    },
+    "interface.uiPrivacySubtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI permission and your data"
+          }
+        }
+      }
+    },
+    "interface.uiRequestFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t complete this request"
+          }
+        }
+      }
+    },
+    "interface.uiRequestFor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Request access to"
+          }
+        }
+      }
+    },
+    "interface.uiRetry" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try again"
+          }
+        }
+      }
+    },
+    "interface.uiReviewSharing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review AI sharing"
+          }
+        }
+      }
+    },
+    "interface.uiSave" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save"
+          }
+        }
+      }
+    },
+    "interface.uiSavedApps" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your apps"
+          }
+        }
+      }
+    },
+    "interface.uiScreenTimeOff" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen Time access needed"
+          }
+        }
+      }
+    },
+    "interface.uiScreenTimeOn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen Time access enabled"
+          }
+        }
+      }
+    },
+    "interface.uiSearchApps" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search your apps"
+          }
+        }
+      }
+    },
+    "interface.uiSearchEmpty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No matching apps"
+          }
+        }
+      }
+    },
+    "interface.uiSearchEmptyHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try another app name or a word from your intention."
+          }
+        }
+      }
+    },
+    "interface.uiSelectStep" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1. Choose an app"
+          }
+        }
+      }
+    },
+    "interface.uiSelected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected"
+          }
+        }
+      }
+    },
+    "interface.uiSelectedApp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected app"
+          }
+        }
+      }
+    },
+    "interface.uiSending" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thinking about your request…"
+          }
+        }
+      }
+    },
+    "interface.uiServiceStatus" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coach availability"
+          }
+        }
+      }
+    },
+    "interface.uiSharedApps" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App names & intentions"
+          }
+        }
+      }
+    },
+    "interface.uiSharedAppsDetail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The names and intentions you save give your requests context."
+          }
+        }
+      }
+    },
+    "interface.uiSharedMessages" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messages & memory"
+          }
+        }
+      }
+    },
+    "interface.uiSharedMessagesDetail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messages, replies and conversation memory help the coach respond."
+          }
+        }
+      }
+    },
+    "interface.uiSharedOutcomes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recent access outcomes"
+          }
+        }
+      }
+    },
+    "interface.uiSharedOutcomesDetail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requests, approvals, denials and waits help the coach understand recent choices."
+          }
+        }
+      }
+    },
+    "interface.uiSharedWithAI" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shared with OpenAI"
+          }
+        }
+      }
+    },
+    "interface.uiSharingDetails" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sharing details"
+          }
+        }
+      }
+    },
+    "interface.uiSystemSettings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open system settings"
+          }
+        }
+      }
+    },
+    "interface.uiVoluntaryDetail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your restrictions are voluntary. You can deliberately change or remove them."
+          }
+        }
+      }
+    },
+    "interface.uiVoluntaryTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You stay in control"
+          }
+        }
+      }
+    },
+    "interface.uiWaiting" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wait before access"
+          }
+        }
+      }
+    },
+    "interface.uiWelcomeStep" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welcome"
+          }
+        }
+      }
+    },
     "nav.appTitle" : {
       "extractionState" : "manual",
       "localizations" : {

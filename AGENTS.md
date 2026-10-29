@@ -3,7 +3,7 @@
 Volition is a conversation-first iOS Screen Time app. The Xcode project and target
 are still named OpenAppLock. Users save individual apps with a name and intention;
 a respectful coach asks, denies, approves 1–10 minutes, or waits 1–5 minutes.
-The product has only Chat, Apps and Settings. iPhone uses tabs; iPad uses a sidebar.
+The product has Chat, Apps, Insights, Focus and Settings. iPhone uses tabs; iPad uses a sidebar.
 Minimum deployment target: iOS 18. Runtime checks currently use iOS 27; the iOS
 18.5 simulator was unavailable from Xcode's download catalog. Older-device
 enforcement and notification acceptance remain pending.
@@ -23,6 +23,7 @@ enforcement and notification acceptance remain pending.
 |---|---|
 | `OpenAppLock/Models/` | SwiftData V1–V4 schemas, migrations, BlockingRule/AppList, ConversationArchive; legacy value models and regression tests remain |
 | `OpenAppLock/Services/Conversation/` | Saved app setup/migration, name routing, shared chat/history, private activity log/exports, OpenAI client, diagnostics, approval support snapshots |
+| `OpenAppLock/Views/Design/` | Compact native card, button, section and form styles; preserve semantic type, adaptive colors and 44-point actions |
 | `OpenAppLock/Views/Conversation/` | App library/editor, chat, activity log and coach settings |
 | `OpenAppLock/Views/` | Root permission gate, onboarding, adaptive shell and diagnostic settings |
 | `OpenAppLock/Services/RuleEnforcer.swift` | Foreground reconciliation, including a 30-second backstop |

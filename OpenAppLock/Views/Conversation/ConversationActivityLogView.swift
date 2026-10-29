@@ -47,6 +47,7 @@ struct ConversationActivityLogView: View {
             if clearFailed { Text(CopyKey.conversationStorageError.resource).foregroundStyle(.red) }
             if exportFailed { Text(CopyKey.activityExportError.resource).foregroundStyle(.red) }
         }
+        .volitionForm()
         .navigationTitle(CopyKey.activityLogTitle.resource)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

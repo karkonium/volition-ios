@@ -173,7 +173,11 @@ nonisolated struct OpenAIConversationClient: ConversationClient {
 }
 
 nonisolated struct MockConversationClient: ConversationClient {
+    var delay: Duration = .zero
+    var fails = false
     func respond(to context: ConversationContext, apiKey: String) async throws -> ConversationDecision {
+        if delay > .zero { try await Task.sleep(for: delay) }
+        if fails { throw ConversationClientError.transport(code: URLError.notConnectedToInternet.rawValue) }
         let text = context.recentMessages.last(where: { $0.role == .user })?.text.lowercased() ?? ""
         if text.contains("wait") { return .init(reply: "Let’s leave this app closed for now. What were you hoping to do?", decision: .wait, unlockMinutes: nil, waitMinutes: 1) }
         if text.contains("deny") { return .init(reply: "This does not support your goal.", decision: .deny, unlockMinutes: nil) }

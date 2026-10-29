@@ -8,32 +8,42 @@ struct ConversationSettingsView: View {
     @State private var confirmingClear = false
     var body: some View {
         @Bindable var preferences = conversation.preferences
-        Form {
-            Section {
+        VolitionScroll {
+            VolitionCard {
                 Picker(CopyKey.coachTone.string, selection: $preferences.tone) {
                     ForEach(CoachTone.allCases, id: \.self) { tone in Text(tone.title).tag(tone) }
-                }.accessibilityIdentifier("coachTonePicker")
-            } footer: { Text(CopyKey.coachToneHelp.resource) }
-            Section {
+                }.pickerStyle(.menu).frame(minHeight: 44)
+                    .accessibilityIdentifier("coachTonePicker")
+                Text(CopyKey.coachToneHelp.resource).font(.footnote).foregroundStyle(.secondary)
+            }
+            VolitionCard {
+                Label(CopyKey.uiServiceStatus.resource, systemImage: "bubble.left.and.bubble.right")
+                    .font(.subheadline.weight(.semibold))
                 Text((conversation.coachAvailable ? CopyKey.coachReady : .coachUnavailable).resource)
+                    .font(.footnote).foregroundStyle(.secondary)
                     .accessibilityIdentifier("openAIKeyStatus")
             }
             if ConversationShieldRoute.current == .notification {
-                Section {
+                VolitionCard {
                     Button((notifications.status == .notDetermined ? CopyKey.conversationEnableNotifications : .conversationNotificationSettings).resource) {
                         if notifications.status == .notDetermined { Task { await notifications.request() } }
                         else if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
-                    }.accessibilityIdentifier("conversationNotificationSettingsButton")
-                } footer: {
-                    Text(CopyKey.conversationNotificationHelp.resource).accessibilityIdentifier("conversationNotificationHelp")
+                    }.buttonStyle(VolitionButtonStyle(primary: false))
+                        .accessibilityIdentifier("conversationNotificationSettingsButton")
+                    Text(CopyKey.conversationNotificationHelp.resource).font(.footnote).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("conversationNotificationHelp")
                 }
             }
-            Section {
+            VolitionCard {
+                VolitionSectionHeading(title: CopyKey.uiConversationHistory.string)
+                Text(CopyKey.volitionClearHelp.resource).font(.footnote).foregroundStyle(.secondary)
                 Button(CopyKey.conversationHistoryClear.resource, role: .destructive) { confirmingClear = true }
+                    .buttonStyle(VolitionButtonStyle(primary: false))
                     .accessibilityIdentifier("clearConversationHistoryButton")
-            } footer: { Text(CopyKey.volitionClearHelp.resource) }
+            }
         }
-        .navigationTitle(CopyKey.volitionCoachSettings.resource)
+        .tint(VolitionStyle.accent)
+        .volitionRoot(CopyKey.volitionCoachSettings.string)
         .confirmationDialog(CopyKey.conversationHistoryClear.string, isPresented: $confirmingClear, titleVisibility: .visible) {
             Button(CopyKey.conversationHistoryClear.resource, role: .destructive) { conversation.clearHistory() }
         } message: { Text(CopyKey.volitionClearHelp.resource) }
