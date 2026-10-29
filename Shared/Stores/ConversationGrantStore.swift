@@ -12,6 +12,17 @@ nonisolated struct ConversationGrantStore: Sendable {
         let token: ApplicationToken
         let fingerprint: String
     }
+    /// Accepted terms survive chat clearing, relaunch, early ending and expiry.
+    struct DealCommitment: Codable, Equatable, Sendable {
+        let grantID: UUID
+        let token: ApplicationToken
+        let blockedUntil: Date
+        var overriddenAt: Date? = nil
+        var overrideGrantID: UUID? = nil
+        var pushbackCount: Int? = nil
+        var resolutionDate: Date { overriddenAt ?? blockedUntil }
+        func isBlocking(at now: Date) -> Bool { overriddenAt == nil && blockedUntil > now }
+    }
     struct State: Codable {
         var snapshots: [RuleSnapshotDTO] = []
         // Keep the first grant in the legacy field so old archives still decode.
@@ -20,6 +31,11 @@ nonisolated struct ConversationGrantStore: Sendable {
         var activeGrants: [Grant] {
             get { (grant.map { [$0] } ?? []) + (additionalGrants ?? []) }
             set { grant = newValue.first; additionalGrants = Array(newValue.dropFirst()) }
+        }
+        private var acceptedDeals: [DealCommitment]?
+        var dealCommitments: [DealCommitment] {
+            get { acceptedDeals ?? [] }
+            set { acceptedDeals = newValue }
         }
         var pendingToken: ApplicationToken?
         var pendingAt: Date?

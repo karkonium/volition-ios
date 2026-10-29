@@ -36,12 +36,20 @@ nonisolated struct ConversationEnforcement {
     /// A remaining configured blocker revokes the grant and stops its timer.
     /// Readback is configuration evidence, not proof of the OS-visible screen.
     func approve(token: ApplicationToken, minutes: Int, fingerprint: String,
-                 now: Date = .now, timer: any ConversationTimerScheduling = DeviceConversationTimer()) throws -> ConversationGrantStore.Grant {
+                 now: Date = .now, timer: any ConversationTimerScheduling = DeviceConversationTimer(),
+                 blockMinutes: Int? = nil, overridingDealID: UUID? = nil) throws -> ConversationGrantStore.Grant {
+        if let blockMinutes, !(1...1440).contains(blockMinutes) { throw ConversationUnlockPlan.ValidationError.invalidDuration }
         let plan = try ConversationUnlockPlan(grantID: UUID(), minutes: minutes,
             start: Date(timeIntervalSince1970: floor(now.timeIntervalSince1970)))
         do {
             try store.transaction { state in
                 guard !state.activeGrants.contains(where: { $0.token == token && !$0.plan.hasExpired(at: now) }) else { throw ConversationAccessError.alreadyUnlocked }
+                let commitment = state.dealCommitments.firstIndex { $0.token == token && $0.isBlocking(at: now) }
+                if let commitment {
+                    let deal = state.dealCommitments[commitment]
+                    guard overridingDealID == deal.grantID, (deal.pushbackCount ?? 0) >= 2,
+                          !Self.lastResolvedDealWasBroken(state, at: now) else { throw ConversationAccessError.waiting }
+                } else if overridingDealID != nil { throw ConversationAccessError.staleRequest }
                 guard fingerprint == ConversationGrantStore.fingerprint(state.snapshots) else { throw ConversationAccessError.staleRequest }
                 guard !ConversationGrantStore.applicable(to: token, in: state.snapshots).isEmpty else { throw ConversationAccessError.noApplicableRule }
                 let expired = state.activeGrants.filter { $0.plan.hasExpired(at: now) }
@@ -49,6 +57,14 @@ nonisolated struct ConversationEnforcement {
                 state.activeGrants.removeAll { $0.plan.hasExpired(at: now) }
                 try timer.start(plan)
                 state.activeGrants.append(.init(plan: plan, token: token, fingerprint: fingerprint))
+                if let commitment {
+                    state.dealCommitments[commitment].overriddenAt = now
+                    state.dealCommitments[commitment].overrideGrantID = plan.grantID
+                }
+                if let blockMinutes {
+                    state.dealCommitments.append(.init(grantID: plan.grantID, token: token,
+                        blockedUntil: plan.expiresAt.addingTimeInterval(Double(blockMinutes * 60))))
+                }
             }
         } catch {
             timer.stop(plan.activityName)
@@ -72,31 +88,59 @@ nonisolated struct ConversationEnforcement {
         } catch {
             // A saved timer alone is not a successful unlock. Revoke and re-shield
             // before surfacing the failure; do not let it consume a grant record.
-            try? end(grantID: plan.grantID)
+            try? end(grantID: plan.grantID, cancelDeal: true)
             timer.stop(plan.activityName)
             throw error
         }
     }
 
-    func end(grantID: UUID? = nil, now: Date = .now) throws {
+    /// Shared exception eligibility cannot be reset by deleting the transcript.
+    static func lastResolvedDealWasBroken(_ state: ConversationGrantStore.State, at now: Date) -> Bool {
+        state.dealCommitments.filter { $0.resolutionDate <= now }
+            .max { $0.resolutionDate < $1.resolutionDate }?.overriddenAt != nil
+    }
+
+    func recordDealPushback(token: ApplicationToken, now: Date = .now) throws {
         try store.transaction { state in
+            guard !state.activeGrants.contains(where: { $0.token == token && !$0.plan.hasExpired(at: now) }),
+                  let index = state.dealCommitments.firstIndex(where: { $0.token == token && $0.isBlocking(at: now) }) else { return }
+            state.dealCommitments[index].pushbackCount = min(1000, (state.dealCommitments[index].pushbackCount ?? 0) + 1)
+        }
+    }
+
+    /// User ending preserves accepted terms. Rollback alone cancels the new deal.
+    /// Commit re-blocking before slow monitor IPC, which never holds the file lock.
+    func end(grantID: UUID? = nil, now: Date = .now, cancelDeal: Bool = false) throws {
+        let names = try store.transaction { state in
             let ended = state.activeGrants.filter { grantID == nil || $0.plan.grantID == grantID }
             state.activeGrants.removeAll { grantID == nil || $0.plan.grantID == grantID }
+            if cancelDeal {
+                state.dealCommitments.removeAll { grantID == nil || $0.grantID == grantID }
+                for index in state.dealCommitments.indices where state.dealCommitments[index].overrideGrantID == grantID {
+                    state.dealCommitments[index].overriddenAt = nil
+                    state.dealCommitments[index].overrideGrantID = nil
+                }
+            }
             _ = apply(state, now: now)
-            for grant in ended { DeviceActivityCenter().stopMonitoring([DeviceActivityName(grant.plan.activityName)]) }
+            return ended.map(\.plan.activityName)
         }
+        ConversationUnlockNotifications.cancel(grantIDs: names.compactMap(ConversationUnlockPlan.grantID))
+        if !names.isEmpty { DeviceActivityCenter().stopMonitoring(names.map { DeviceActivityName($0) }) }
     }
 
     func expire(activity: String, now: Date = .now) {
         do {
-            try store.transaction { state in
+            let expired: ConversationGrantStore.Grant? = try store.transaction { state in
                 guard let grant = state.activeGrants.first(where: { $0.plan.activityName == activity }),
-                      grant.plan.hasExpired(at: now) else { return }
+                      grant.plan.hasExpired(at: now) else { return nil }
                 state.activeGrants.removeAll { $0.plan.grantID == grant.plan.grantID }
                 _ = apply(state, now: now)
-                Diag.log(.session, .event, "conversation grant expired id=\(grant.plan.grantID)")
-                DeviceActivityCenter().stopMonitoring([DeviceActivityName(activity)])
+                return grant
             }
+            guard let expired else { return }
+            ConversationUnlockNotifications.cancel(grantIDs: [expired.plan.grantID])
+            Diag.log(.session, .event, "conversation grant expired id=\(expired.plan.grantID)")
+            DeviceActivityCenter().stopMonitoring([DeviceActivityName(activity)])
         } catch { Diag.error(.monitor, "conversation expiry storage failed") }
     }
 
@@ -120,7 +164,10 @@ nonisolated struct ConversationEnforcement {
     }
 
     private func apply(_ state: ConversationGrantStore.State, now: Date) -> Set<UUID> {
-        let valid = state.activeGrants.filter { !$0.plan.hasExpired(at: now) && $0.fingerprint == ConversationGrantStore.fingerprint(state.snapshots) }
+        let valid = state.activeGrants.filter { grant in
+            !grant.plan.hasExpired(at: now) && grant.fingerprint == ConversationGrantStore.fingerprint(state.snapshots) &&
+            !state.dealCommitments.contains { $0.token == grant.token && $0.grantID != grant.plan.grantID && $0.isBlocking(at: now) }
+        }
         var blocking: Set<UUID> = []
         for snapshot in state.snapshots where snapshot.kind == .conversation {
             guard snapshot.isEnabled else { shields.clearShield(ruleID: snapshot.id); continue }

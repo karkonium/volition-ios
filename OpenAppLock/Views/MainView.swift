@@ -64,7 +64,7 @@ struct MainView: View {
                     await enforcer.refresh(rules: current)
                     await conversation.refresh(snapshots: current.map(\.dto), consumeRequests: sceneIsActive)
                     prepared = true
-                    if ConversationShieldRoute.current == .notification {
+                    if !LaunchConfiguration.current.isUITesting {
                         await notificationAuthorization.refresh()
                         if notificationAuthorization.status == .notDetermined { await notificationAuthorization.request() }
                     }
@@ -79,11 +79,26 @@ struct MainView: View {
             }
             .onChange(of: scenePhase, initial: true) { _, phase in
                 sceneIsActive = phase == .active
+                conversation.isForeground = sceneIsActive
                 if phase == .active {
                     Diag.log(.lifecycle, "refresh trigger: scenePhase active")
                     refreshEnforcement()
                 }
             }
+            .task(id: "\(prepared)-\(sceneIsActive)-\(conversation.reflectionScheduleID)") {
+                guard prepared, sceneIsActive else { return }
+                while !Task.isCancelled {
+                    await conversation.resumeReflections(snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) })
+                    guard !Task.isCancelled, let deadline = conversation.nextReflectionDeadline else { return }
+                    do { try await Task.sleep(for: .seconds(max(0.05, deadline.timeIntervalSinceNow))) }
+                    catch { return }
+                }
+            }
+            .task(id: "presentation-\(prepared)-\(sceneIsActive)-\(conversation.presentationID)") {
+                guard prepared, sceneIsActive else { return }
+                await conversation.updateSessionPresentation()
+            }
+            .onDisappear { conversation.isForeground = false }
             .onOpenURL { url in
                 Diag.log(.lifecycle, "handling URL open: coach")
                 conversation.selectedSection = .chat

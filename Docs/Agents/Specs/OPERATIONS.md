@@ -19,8 +19,8 @@ preferences. On iOS 26.5+ the handler immediately returns openParentalControlsAp
 no notification APIs or permission prompts are needed. Below iOS 26.5 it schedules
 a unique “Chat here” notification and defers/redraws the shield with notification,
 permission and manual-opening instructions. Older-OS notification permission is
-requested from the main flow, never the extension; Coach settings offers its
-settings shortcut only on that route. Delivery is best-effort and cannot grant
+requested from the main flow, never the extension. Coach settings offers its
+notification shortcut on every OS because unlock reminders also need permission. Delivery is best-effort and cannot grant
 access. Both routes retain manual opening. Metadata logs identify the chosen route
 and response timing, plus notification scheduled/unavailable events when relevant.
 The action callback completes once, with a one-second fallback. The request/render
@@ -32,7 +32,7 @@ and older-device verification remain pending.
 ## Personal OpenAI configuration
 
 Copy `Config/Conversation.env.example` to ignored `OpenAppLock/Conversation.env`.
-Set OPENAI_API_KEY locally; the client currently uses gpt-4.1-mini. Rebuild/reinstall
+Set OPENAI_API_KEY locally; the client currently uses gpt-5.4-mini (medium decision reasoning; low summary reasoning). Rebuild/reinstall
 when changing the file. Confirm the built app contains the local config without
 printing its contents. This is a personal prototype; do not distribute its key.
 
@@ -90,3 +90,29 @@ Signed local runs retain it; deterministic enforcement tests still run in CI.
 The activity export menu must dismiss normally before the share sheet appears;
 do not disable the menu from inside its own export action. Its UI test uses
 the exported filename rather than OS-specific Close labels/private preview IDs.
+
+## Access reminders and Live Activities
+
+Notifications are offered on all supported iOS versions; Settings → Coach Settings
+links to notification permissions. They are separate from direct shield routing.
+One Live Activity per confirmed grant uses a native date countdown. Three local
+reminders share a grant-specific thread but keep distinct pending identifiers;
+using the same pending identifier would replace earlier warnings. No server or
+push credentials are required. Focus, permissions and OS delivery rules can hide
+or delay alerts. ActivityKit failure never prevents access. Foreground recovery
+removes stale presentation; monitor callbacks attempt activity cleanup at expiry.
+The opt-in `-ui-testing-live-activity` test schedules real native presentation on
+the owned simulator with mocked enforcement; ordinary UI tests remain hermetic.
+
+## Keyboard diagnostics
+
+On the iOS 27 simulator, `cannot add handler to 0 from 0 - dropping` is logged by
+Core Animation during keyboard presentation, typing and dismissal. A temporary
+control screen with only a standard single-line TextField and Done button
+reproduced the same messages without the chat transcript, app picker, animations
+or safe-area composer. Replacing the picker keyframe animation did not remove
+them, so that speculative change was discarded. Do not suppress system logs or
+disable prediction/accessibility to hide these messages. Focus/draft/picker/tab
+and reply-following UI tests pass. The previously supplied predictive-keyboard
+constraint/frame warnings did not reproduce in these runs; device observation is
+still needed if they recur. Extension build versions must match the host app.

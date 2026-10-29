@@ -4,13 +4,19 @@ import Foundation
 /// diagnostics never receive these messages/replies. Outcome describes the local
 /// result, independently of the model decision; exports are explicit user actions.
 nonisolated struct ConversationActivityEntry: Codable, Equatable, Identifiable, Sendable {
+    enum FeedbackSignal: String, Codable, Sendable { case highFrustration = "high_frustration" }
     enum Outcome: String, Codable, Sendable {
         case pending, unlocked, asked, denied, wait, failed, cancelled, unconfirmed, interrupted
         case blockedByWait = "blocked_by_wait"
         case alreadyUnlocked = "already_unlocked"
+        case reflection, dealOffered, dealDeclined, removalRequested
         case selectionRequired = "app_selection_required"
         var title: String {
             switch self {
+            case .removalRequested: CopyKey.removalFeedbackTitle.string
+            case .dealOffered: CopyKey.dealOffered.string
+            case .dealDeclined: CopyKey.dealDeclined.string
+            case .reflection: CopyKey.reflectionRecorded.string
             case .pending: CopyKey.activityPending.string
             case .unlocked: CopyKey.activityUnlocked.string
             case .asked: CopyKey.activityAsked.string
@@ -41,10 +47,20 @@ nonisolated struct ConversationActivityEntry: Codable, Equatable, Identifiable, 
     var grantID: UUID?
     var endedAt: Date?
     var waitUntil: Date?
+    var reflectionID: UUID?
+    var emotion: ConversationReflection.Emotion?
+    var pauseSeconds: Int?
+    var reflectionSkipped: Bool?
+    var blockMinutes: Int?
+    var feedbackSignal: FeedbackSignal?
+    var removalID: UUID?
     var failureStage: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, message, outcome
+        case feedbackSignal = "feedback_signal", removalID = "removal_id"
+        case blockMinutes = "block_minutes"
+        case id, message, outcome, emotion
+        case reflectionID = "reflection_id", pauseSeconds = "pause_seconds", reflectionSkipped = "reflection_skipped"
         case date = "timestamp", appID = "app_id", appName = "app_name"
         case modelDecision = "model_decision", coachResponse = "coach_response", systemResponse = "system_response"
         case completedAt = "completed_at", unlockMinutes = "unlock_minutes", unlockUntil = "unlock_until"
@@ -56,10 +72,12 @@ nonisolated struct ConversationActivityEntry: Codable, Equatable, Identifiable, 
         message = event.reason; modelDecision = event.decision; coachResponse = event.reply
         grantID = event.grantID; unlockUntil = event.expiresAt; endedAt = event.endedAt; waitUntil = event.waitUntil
         switch event.decision {
+        case .deal: outcome = .dealOffered
+        case .pause: outcome = .reflection
         case .ask: outcome = .asked
         case .deny: outcome = .denied
         case .wait: outcome = .wait
-        case .approve: outcome = event.grantID == nil ? .unconfirmed : .unlocked
+        case .approve, .override: outcome = event.grantID == nil ? .unconfirmed : .unlocked
         }
         systemResponse = outcome.title
         if let until = event.expiresAt { unlockMinutes = Int(until.timeIntervalSince(event.date) / 60) }
@@ -93,6 +111,11 @@ nonisolated enum ConversationActivityExport {
             if let until = entry.unlockUntil { lines.append("Unlocked until: \(iso.string(from: until))") }
             if let until = entry.waitUntil { lines.append("Reconsider after: \(iso.string(from: until))") }
             if let ended = entry.endedAt { lines.append("Access ended: \(iso.string(from: ended))") }
+            if let minutes = entry.blockMinutes { lines.append("Deal break minutes: \(minutes)") }
+            if let seconds = entry.pauseSeconds { lines.append("Pause seconds: \(seconds)") }
+            if let emotion = entry.emotion { lines.append("Check-in: \(emotion.rawValue)") }
+            if let skipped = entry.reflectionSkipped { lines.append("Pause skipped: \(skipped)") }
+            if let signal = entry.feedbackSignal { lines.append("Feedback signal: \(signal.rawValue)") }
             if let stage = entry.failureStage { lines.append("Failure stage: \(stage)") }
             return lines.joined(separator: "\n")
         }.joined(separator: "\n\n")

@@ -1,6 +1,6 @@
 import Foundation
 
-/// A 1–10 minute wall-clock grant. DeviceActivity monitors a 16-minute interval;
+/// A 1–30 minute wall-clock grant. DeviceActivity monitors at least 16 minutes;
 /// its end warning is requested at the grant expiry. Device verification is
 /// required before this mechanism can authorize production conversation grants.
 /// A unique activity per grant prevents old callbacks ending a newer grant.
@@ -11,7 +11,7 @@ nonisolated struct ConversationUnlockPlan: Codable, Equatable, Sendable {
     let start: Date
 
     init(grantID: UUID, minutes: Int, start: Date) throws {
-        guard (1...10).contains(minutes) else { throw ValidationError.invalidDuration }
+        guard (1...30).contains(minutes) else { throw ValidationError.invalidDuration }
         self.grantID = grantID
         self.minutes = minutes
         self.start = start
@@ -27,8 +27,8 @@ nonisolated struct ConversationUnlockPlan: Codable, Equatable, Sendable {
     }
 
     var expiresAt: Date { start.addingTimeInterval(Double(minutes * 60)) }
-    var monitoringEndsAt: Date { start.addingTimeInterval(16 * 60) }
-    var warningMinutes: Int { 16 - minutes }
+    var monitoringEndsAt: Date { start.addingTimeInterval(Double(max(16, minutes + 5) * 60)) }
+    var warningMinutes: Int { max(16, minutes + 5) - minutes }
     var activityName: String { Self.prefix + grantID.uuidString }
     func hasExpired(at now: Date) -> Bool { now >= expiresAt }
 

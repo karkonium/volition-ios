@@ -201,6 +201,136 @@ struct ConversationAccessTests {
         func start(_ plan: ConversationUnlockPlan) throws { throw ConversationAccessError.monitoringUnavailable }
         func stop(_ name: String) {}
     }
+    @Test("Accepted deal survives early ending and cannot be bypassed by a new approval")
+    func acceptedDealEnforcesBreak() throws {
+        let app = try token(71)
+        let (access, _) = try makeAccess()
+        let rule = snapshot([app]); let rules = [rule]
+        _ = try access.sync(rules)
+        let fingerprint = ConversationGrantStore.fingerprint(rules)
+        let grant = try access.approve(token: app, minutes: 3, fingerprint: fingerprint,
+            timer: MockConversationTimer(), blockMinutes: 10)
+        let until = grant.plan.expiresAt.addingTimeInterval(600)
+        try access.end(grantID: grant.plan.grantID)
+        #expect(try access.store.transaction { $0.dealCommitments.first?.blockedUntil } == until)
+        #expect(throws: ConversationAccessError.waiting) {
+            try access.approve(token: app, minutes: 1, fingerprint: fingerprint, timer: MockConversationTimer())
+        }
+        // Advance the persisted restriction rather than mixing an injected future
+        // registration clock with the real activation/readback clock.
+        try access.store.transaction { $0.dealCommitments = [.init(grantID: grant.plan.grantID, token: app, blockedUntil: .now.addingTimeInterval(-1))] }
+        let next = try access.approve(token: app, minutes: 1, fingerprint: fingerprint,
+            timer: MockConversationTimer())
+        #expect(next.plan.grantID != grant.plan.grantID)
+    }
+
+    @Test("Accepted breaks persist independently while another app remains unlocked")
+    func independentAcceptedDeals() throws {
+        let app = try token(73), other = try token(74)
+        let (access, shields) = try makeAccess()
+        let one = snapshot([app]), two = snapshot([other]), rules = [one, two]
+        _ = try access.sync(rules)
+        let fingerprint = ConversationGrantStore.fingerprint(rules)
+        let first = try access.approve(token: app, minutes: 3, fingerprint: fingerprint, timer: MockConversationTimer(), blockMinutes: 10)
+        let second = try access.approve(token: other, minutes: 5, fingerprint: fingerprint, timer: MockConversationTimer(), blockMinutes: 20)
+        try access.end(grantID: first.plan.grantID)
+        access.expire(activity: first.plan.activityName, now: first.plan.expiresAt)
+        let reopened = ConversationGrantStore(fileURL: access.store.fileURL)
+        let state = try reopened.transaction { $0 }
+        #expect(state.dealCommitments.count == 2)
+        #expect(state.activeGrants == [second])
+        #expect(shields.shieldedRuleIDs.contains(one.id))
+        #expect(!shields.shieldedRuleIDs.contains(two.id))
+    }
+
+    @Test("Exceptions need pushback, cannot happen consecutively, and rollback restores terms")
+    func dealExceptionLedger() throws {
+        let app = try token(85)
+        let (access, _) = try makeAccess()
+        let rule = snapshot([app]), rules = [rule]
+        _ = try access.sync(rules)
+        let fp = ConversationGrantStore.fingerprint(rules)
+        let original = try access.approve(token: app, minutes: 30, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 1440)
+        try access.end(grantID: original.plan.grantID)
+        #expect(throws: ConversationAccessError.waiting) {
+            try access.approve(token: app, minutes: 3, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: original.plan.grantID)
+        }
+        try access.recordDealPushback(token: app)
+        try access.recordDealPushback(token: app)
+        let exception = try access.approve(token: app, minutes: 3, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: original.plan.grantID)
+        try access.end(grantID: exception.plan.grantID, cancelDeal: true)
+        #expect(try access.store.transaction { $0.dealCommitments.first?.overriddenAt } == nil)
+        let retry = try access.approve(token: app, minutes: 3, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: original.plan.grantID)
+        try access.end(grantID: retry.plan.grantID)
+        let next = try access.approve(token: app, minutes: 2, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 30)
+        try access.end(grantID: next.plan.grantID)
+        try access.recordDealPushback(token: app); try access.recordDealPushback(token: app)
+        #expect(throws: ConversationAccessError.waiting) {
+            try access.approve(token: app, minutes: 3, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: next.plan.grantID)
+        }
+    }
+
+    @Test("One honored deal resets exception eligibility across apps")
+    func honoredDealResetsGlobalException() throws {
+        let app = try token(86), other = try token(87)
+        let (access, _) = try makeAccess()
+        let rules = [snapshot([app]), snapshot([other])]
+        _ = try access.sync(rules)
+        let fp = ConversationGrantStore.fingerprint(rules)
+        let first = try access.approve(token: app, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 10)
+        try access.end(grantID: first.plan.grantID)
+        try access.recordDealPushback(token: app); try access.recordDealPushback(token: app)
+        let exception = try access.approve(token: app, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: first.plan.grantID)
+        try access.end(grantID: exception.plan.grantID)
+        let second = try access.approve(token: other, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 10)
+        try access.end(grantID: second.plan.grantID)
+        try access.recordDealPushback(token: other); try access.recordDealPushback(token: other)
+        #expect(throws: ConversationAccessError.waiting) {
+            try access.approve(token: other, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: second.plan.grantID)
+        }
+        try access.store.transaction { state in
+            let i = state.dealCommitments.firstIndex { $0.grantID == second.plan.grantID }!
+            state.dealCommitments[i] = .init(grantID: second.plan.grantID, token: other, blockedUntil: .now)
+        }
+        let third = try access.approve(token: other, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 10)
+        try access.end(grantID: third.plan.grantID)
+        try access.recordDealPushback(token: other); try access.recordDealPushback(token: other)
+        let permitted = try access.approve(token: other, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: third.plan.grantID)
+        #expect(permitted.token == other)
+    }
+
+    @Test("A failed exception release restores its original break")
+    func failedExceptionRestoresDeal() throws {
+        let app = try token(88)
+        let (normal, _) = try makeAccess()
+        let rule = snapshot([app]), rules = [rule]
+        _ = try normal.sync(rules)
+        let fp = ConversationGrantStore.fingerprint(rules)
+        let original = try normal.approve(token: app, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 60)
+        try normal.end(grantID: original.plan.grantID)
+        try normal.recordDealPushback(token: app); try normal.recordDealPushback(token: app)
+        let failing = ConversationEnforcement(store: normal.store, shields: RefusingReleaseShields())
+        #expect(throws: ConversationAccessError.shieldReleaseFailed) {
+            try failing.approve(token: app, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: original.plan.grantID)
+        }
+        #expect(try normal.store.transaction { $0.dealCommitments.first?.overriddenAt } == nil)
+        #expect(try normal.store.transaction { $0.activeGrants.isEmpty })
+    }
+
+    @Test("Failed activation removes its proposed deal commitment")
+    func failedDealLeavesNoBreak() throws {
+        let app = try token(72)
+        let (normal, _) = try makeAccess()
+        let rule = snapshot([app])
+        let access = ConversationEnforcement(store: normal.store, shields: RefusingReleaseShields())
+        _ = try access.sync([rule])
+        #expect(throws: ConversationAccessError.shieldReleaseFailed) {
+            try access.approve(token: app, minutes: 3, fingerprint: ConversationGrantStore.fingerprint([rule]),
+                timer: MockConversationTimer(), blockMinutes: 10)
+        }
+        #expect(try access.store.transaction { $0.dealCommitments.isEmpty })
+    }
+
 }
 
 nonisolated private final class RefusingReleaseShields: ShieldApplying, @unchecked Sendable {

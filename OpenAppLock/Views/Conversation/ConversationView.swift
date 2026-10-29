@@ -7,7 +7,9 @@ import SwiftUI
 /// local request target; model output cannot choose a different app. Full local
 /// history is visible, including actual approval/expiry events. Independent per-app unlocks.
 /// Saved app names replace nickname entry. The app selector sits above the chat.
-/// Only active unlocks display timers; waiting stays in coach replies.
+/// Only unlocks display top timers. Soft reflection lives inline above the composer.
+/// A stable bottom target follows sends/loading/layout changes only while following
+/// latest content; user-driven scrolling suspends following until bottom or Send.
 /// Clear app names in messages select their saved app; unresolved sends preserve
 /// the draft and draw attention to the picker, respecting Reduce Motion.
 /// The composer uses one focus binding. Opening the app picker, sending,
@@ -22,11 +24,13 @@ struct ConversationView: View {
     private enum ComposerField: Hashable { case message }
     @FocusState private var focusedField: ComposerField?
     @State private var choosingApp = false
+    @State private var followingLatest = true
+    @State private var userScrolling = false
+    @State private var nearBottom = true
 
     var body: some View {
         let motionReduced = reduceMotion
         Group {
-            @Bindable var conversation = conversation
             NavigationStack {
                 VStack(spacing: 0) {
                     HStack {
@@ -66,7 +70,17 @@ struct ConversationView: View {
                             .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal).padding(.bottom, 8)
                             .accessibilityIdentifier("conversationAppSelectionHint")
                     }
-                    ForEach(conversation.grants, id: \.plan.grantID) { grant in
+                    if let summary = conversation.selectedActivitySummary {
+                        Text(CopyKey.sessionCounts.string(summary.sameAppShortGrantsToday, summary.sameAppLongGrantsToday))
+                            .font(.caption).foregroundStyle(.secondary)
+                            .accessibilityHint(CopyKey.sessionCountsHelp.string)
+                            .accessibilityIdentifier("conversationSessionCounts")
+                    }
+                    if let until = conversation.cooldownUntil {
+                        Text(CopyKey.dealBlockedUntil.string(until.formatted(date: Calendar.current.isDateInToday(until) ? .omitted : .abbreviated, time: .shortened)))
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                    ForEach(conversation.displayedGrants, id: \.plan.grantID) { grant in
                         TimelineView(.periodic(from: .now, by: 1)) { timeline in
                             VStack {
                                 Text(conversation.appName(for: grant)).font(.headline)
@@ -86,67 +100,8 @@ struct ConversationView: View {
                             }
                         }
                     }
-                    ScrollViewReader { proxy in
-                        List {
-                            if conversation.history.messages.isEmpty {
-                                Text(CopyKey.volitionChatEmpty.resource)
-                                    .foregroundStyle(.secondary)
-                                    .listRowSeparator(.hidden)
-                            }
-                            ForEach(conversation.history.messages) { item in
-                                HStack {
-                                    if item.role == .user { Spacer(minLength: 24) }
-                                    Text(item.text)
-                                        .padding(item.role == .event ? 4 : 12)
-                                        .background(item.role == .user ? Color.accentColor.opacity(0.10) : Color.clear, in: RoundedRectangle(cornerRadius: 16))
-                                        .textSelection(.enabled)
-                                        .foregroundStyle(item.role == .event ? Color.secondary : Color.primary)
-                                    if item.role != .user { Spacer(minLength: 24) }
-                                }
-                                .listRowSeparator(.hidden)
-                                .id(item.id)
-                                .accessibilityIdentifier("conversationMessage-\(item.role.rawValue)")
-                            }
-                            if conversation.isSending { ProgressView(CopyKey.conversationWaiting.resource) }
-                        }
-                        .listStyle(.plain)
-                        .scrollDismissesKeyboard(.interactively)
-                        .onAppear {
-                            if let last = conversation.history.messages.last { proxy.scrollTo(last.id, anchor: .bottom) }
-                        }
-                        .onChange(of: conversation.history.messages.count) {
-                            if let last = conversation.history.messages.last { proxy.scrollTo(last.id, anchor: .bottom) }
-                        }
-                    }
-                    VStack(alignment: .leading) {
-                        HStack(alignment: .bottom) {
-                            TextField(CopyKey.conversationMessagePrompt.string, text: $conversation.draftMessage, axis: .vertical)
-                                .lineLimit(1...5)
-                                .focused($focusedField, equals: .message)
-                                .disabled(composerDisabled)
-                                .accessibilityIdentifier("conversationMessageField")
-                            Button(CopyKey.conversationSend.resource, systemImage: "arrow.up.circle.fill") {
-                                let text = conversation.draftMessage
-                                focusedField = nil
-                                conversation.draftMessage = ""
-                                Task {
-                                    await conversation.send(text, rules: rules)
-                                    if conversation.errorMessage != nil && conversation.draftMessage.isEmpty { conversation.draftMessage = text }
-                                    await enforcer.refresh(rules: rules)
-                                }
-                            }
-                            .labelStyle(.iconOnly)
-                            .disabled(conversation.draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || conversation.draftMessage.count > 4000 || composerDisabled)
-                            .accessibilityIdentifier("conversationSendButton")
-                        }
-                        if conversation.isSending {
-                            Button(CopyKey.conversationCancel.resource) { conversation.cancelRequest() }
-                        }
-                        if let error = conversation.errorMessage, !conversation.appSelectionNeeded {
-                            Text(error).font(.callout).foregroundStyle(.red)
-                                .accessibilityIdentifier("conversationErrorLabel")
-                        }
-                    }.padding().background(.bar)
+                    transcript
+                        .safeAreaInset(edge: .bottom, spacing: 0) { composer }
                 }
                 .navigationTitle(CopyKey.conversationChatTitle.resource)
                 .navigationBarTitleDisplayMode(.inline)
@@ -170,6 +125,113 @@ struct ConversationView: View {
                 }
             }
         }
+    }
+
+    private var transcript: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    if conversation.history.messages.isEmpty {
+                        Text(CopyKey.volitionChatEmpty.resource).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    ForEach(conversation.history.messages) { item in
+                        HStack {
+                            if item.role == .user { Spacer(minLength: 24) }
+                            Text(item.text)
+                                .padding(item.role == .event ? 4 : 12)
+                                .background(item.role == .user ? Color.accentColor.opacity(0.10) : Color.clear,
+                                    in: RoundedRectangle(cornerRadius: 16))
+                                .textSelection(.enabled)
+                                .foregroundStyle(item.role == .event ? Color.secondary : Color.primary)
+                            if item.role != .user { Spacer(minLength: 24) }
+                        }
+                        .id(item.id)
+                        .accessibilityIdentifier("conversationMessage-\(item.role.rawValue)")
+                    }
+                    if conversation.isSending {
+                        ProgressView(CopyKey.conversationWaiting.resource)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityIdentifier("conversationThinking")
+                    }
+                    ForEach(conversation.pendingReflections) { reflection in
+                        if reflection.isDeal {
+                            ConversationDealCard(reflection: reflection, snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) })
+                        } else {
+                            ConversationReflectionCard(reflection: reflection, snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) })
+                        }
+                    }
+                }.padding(.horizontal).padding(.top, 12)
+                Color.clear.frame(height: 12).id("conversationBottom")
+            }
+            .accessibilityIdentifier("conversationTranscript")
+            .defaultScrollAnchor(.bottom, for: .initialOffset)
+            .scrollDismissesKeyboard(.interactively)
+            .onScrollPhaseChange { _, phase in
+                userScrolling = phase == .interacting || phase == .decelerating
+                if userScrolling { followingLatest = nearBottom }
+            }
+            .onScrollGeometryChange(for: ConversationScrollMetrics.self) { geometry in
+                .init(height: geometry.contentSize.height, viewport: geometry.containerSize.height,
+                    nearBottom: geometry.contentOffset.y + geometry.containerSize.height >= geometry.contentSize.height + geometry.contentInsets.bottom - 80)
+            } action: { old, new in
+                nearBottom = new.nearBottom
+                if userScrolling { followingLatest = new.nearBottom }
+                if followingLatest && (old.height != new.height || old.viewport != new.viewport) {
+                    proxy.scrollTo("conversationBottom", anchor: .bottom)
+                }
+            }
+            .onChange(of: conversation.isSending) { _, sending in
+                if sending { followingLatest = true }
+                if followingLatest { proxy.scrollTo("conversationBottom", anchor: .bottom) }
+            }
+            .onChange(of: conversation.history.messages.count) {
+                if followingLatest { proxy.scrollTo("conversationBottom", anchor: .bottom) }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if !followingLatest {
+                    Button(CopyKey.conversationJumpLatest.resource, systemImage: "arrow.down") {
+                        followingLatest = true
+                        proxy.scrollTo("conversationBottom", anchor: .bottom)
+                    }.buttonStyle(.borderedProminent).padding()
+                        .accessibilityIdentifier("conversationJumpLatest")
+                }
+            }
+        }
+    }
+
+    private var composer: some View {
+        @Bindable var conversation = conversation
+        return VStack(alignment: .leading) {
+            HStack(alignment: .bottom) {
+                TextField(CopyKey.conversationMessagePrompt.string, text: $conversation.draftMessage, axis: .vertical)
+                    .lineLimit(1...5)
+                    .focused($focusedField, equals: .message)
+                    .disabled(composerDisabled)
+                    .accessibilityIdentifier("conversationMessageField")
+                Button(CopyKey.conversationSend.resource, systemImage: "arrow.up.circle.fill") {
+                    followingLatest = true
+                    let text = conversation.draftMessage
+                    focusedField = nil
+                    conversation.draftMessage = ""
+                    Task {
+                        await conversation.send(text, rules: rules)
+                        if conversation.errorMessage != nil && conversation.draftMessage.isEmpty { conversation.draftMessage = text }
+                        await enforcer.refresh(rules: rules)
+                    }
+                }
+                .labelStyle(.iconOnly)
+                .disabled(conversation.draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || conversation.draftMessage.count > 4000 || composerDisabled)
+                .accessibilityIdentifier("conversationSendButton")
+            }
+            if conversation.isSending {
+                Button(CopyKey.conversationCancel.resource) { conversation.cancelRequest() }
+            }
+            if let error = conversation.errorMessage, !conversation.appSelectionNeeded {
+                Text(error).font(.callout).foregroundStyle(.red)
+                    .accessibilityIdentifier("conversationErrorLabel")
+            }
+        }.padding().background(.bar)
     }
 
     private var composerDisabled: Bool { conversation.isSending }
@@ -197,4 +259,10 @@ struct ConversationAppPicker: View {
         }
         .navigationTitle(CopyKey.conversationChooseApp.resource)
     }
+}
+
+private struct ConversationScrollMetrics: Equatable {
+    let height: CGFloat
+    let viewport: CGFloat
+    let nearBottom: Bool
 }

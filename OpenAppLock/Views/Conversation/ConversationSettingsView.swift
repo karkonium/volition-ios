@@ -9,7 +9,7 @@ struct ConversationSettingsView: View {
     @State private var confirmingClear = false
     var body: some View {
         Form {
-            if ConversationShieldRoute.current == .notification {
+            Group {
                 Section {
                     Button((notifications.status == .notDetermined ? CopyKey.conversationEnableNotifications : .conversationNotificationSettings).resource) {
                         if notifications.status == .notDetermined { Task { await notifications.request() } }

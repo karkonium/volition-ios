@@ -6,13 +6,10 @@ final class SettingsUITests: XCTestCase {
         app.goToSettingsTab()
         app.element("conversationSettingsButton").waitToAppear().tap()
         app.element("openAIKeyStatus").waitToAppear()
-        if #available(iOS 26.5, *) {
-            XCTAssertFalse(app.buttons["conversationNotificationSettingsButton"].exists)
-            XCTAssertFalse(app.staticTexts["conversationNotificationHelp"].exists)
-        } else {
-            app.buttons["conversationNotificationSettingsButton"].waitToAppear()
-            app.staticTexts["conversationNotificationHelp"].waitToAppear()
-        }
+        // Shield routing is direct on newer iOS, but unlock reminders still
+        // require a notification-permission/settings entry on every version.
+        app.buttons["conversationNotificationSettingsButton"].waitToAppear()
+        app.staticTexts["conversationNotificationHelp"].waitToAppear()
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "Coach settings for this iOS version"; shot.lifetime = .keepAlways; add(shot)
     }

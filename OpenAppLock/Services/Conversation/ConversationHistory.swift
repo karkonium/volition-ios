@@ -32,6 +32,27 @@ nonisolated struct ConversationHistory: Codable, Sendable {
             activityLog[index].systemResponse = CopyKey.activityInterruptedHelp.string
         }
     }
+    private var savedProfiles: [UUID: ConversationUsageProfile]?
+    var usageProfiles: [UUID: ConversationUsageProfile] {
+        get { savedProfiles ?? [:] }
+        set { savedProfiles = newValue }
+    }
+    private var savedReflections: [ConversationReflection]?
+    var reflections: [ConversationReflection] {
+        get { savedReflections ?? [] }
+        set { savedReflections = newValue }
+    }
+    private var recordedRemovals: [ConversationRemovalAttempt]?
+    var removalAttempts: [ConversationRemovalAttempt] {
+        get { recordedRemovals ?? [] }
+        set { recordedRemovals = newValue }
+    }
+    func recommendedPauseSeconds(for appID: UUID, now: Date) -> Int {
+        let started = reflections.filter {
+            $0.appID == appID && !$0.isDeal && $0.deadline != nil && $0.createdAt <= now && now.timeIntervalSince($0.createdAt) < 86400
+        }.count
+        return 10 + min(5, started) * 10
+    }
     var lastGrantID: UUID?
     var lastGrantExpiry: Date?
     var recentMessages: [ConversationMessage] { Array(messages.dropFirst(summarizedCount)) }
