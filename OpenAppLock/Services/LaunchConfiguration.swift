@@ -13,6 +13,7 @@ struct LaunchConfiguration: Equatable {
         /// One app-only Conversation rule with mocked coach responses.
         case conversation
         case conversationMultiple = "conversation-multiple"
+        case conversationStress = "conversation-stress"
         case standard
         /// An actively blocking Lock While Blocking rule ("Locked In") plus an upcoming rule.
         case hardModeActive = "hard-mode-active"

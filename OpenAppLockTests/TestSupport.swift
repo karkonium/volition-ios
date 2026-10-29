@@ -19,7 +19,7 @@ import SwiftData
 private let sharedTestContainer: ModelContainer = {
     do {
         return try ModelContainer(
-            for: Schema(versionedSchema: OpenAppLockSchemaV4.self),
+            for: Schema(versionedSchema: OpenAppLockSchemaV5.self),
             migrationPlan: OpenAppLockSchemaMigrationPlan.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
@@ -40,6 +40,8 @@ func makeInMemoryContext() throws -> ModelContext {
     for list in try context.fetch(FetchDescriptor<AppList>()) {
         context.delete(list)
     }
+    for record in try context.fetch(FetchDescriptor<ConversationRecord>()) { context.delete(record) }
+    for archive in try context.fetch(FetchDescriptor<ConversationArchive>()) { context.delete(archive) }
     try context.save()
     return context
 }

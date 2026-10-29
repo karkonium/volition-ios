@@ -59,6 +59,10 @@ final class DeviceActivityMonitorExtension: DeviceActivityMonitor {
 
     override func intervalDidStart(for activity: DeviceActivityName) {
         super.intervalDidStart(for: activity)
+        if activity.rawValue.hasPrefix("focus-") {
+            ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController()).reconcileStored()
+            return
+        }
         Diag.log(.monitor, .event, "intervalDidStart \(activity.rawValue)")
         if let ruleID = MonitoringPlan.ruleID(fromDailyActivityName: activity.rawValue) {
             enforcement.handleDayStart(ruleID: ruleID)
@@ -84,6 +88,11 @@ final class DeviceActivityMonitorExtension: DeviceActivityMonitor {
 
     override func intervalDidEnd(for activity: DeviceActivityName) {
         super.intervalDidEnd(for: activity)
+        if activity.rawValue.hasPrefix("focus-") {
+            ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController()).reconcileStored()
+            if activity.rawValue.hasPrefix("focus-session-") { DeviceActivityCenter().stopMonitoring([activity]) }
+            return
+        }
         ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController())
             .expire(activity: activity.rawValue)
         #if DEBUG

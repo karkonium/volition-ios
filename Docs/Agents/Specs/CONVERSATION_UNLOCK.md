@@ -2,7 +2,7 @@
 
 ## Product contract
 
-Welcome → Screen Time permission → save apps → Chat. Each profile contains one
+Welcome → AI sharing choice → Screen Time permission → save apps → Chat. Each profile contains one
 individual app token, a required name (1–100 characters) and intention (1–2,000).
 Text is trimmed. Categories, websites, duplicate apps and empty/oversized text are
 rejected. Choose App opens a separate empty draft; one valid app closes the picker
@@ -10,10 +10,18 @@ automatically. Cancel preserves the original choice. The App Name footer asks fo
 the selected app’s actual name, with SoundCloud as an example.
 
 Existing installs open Chat after VolitionApps.prepare retires legacy rules and
-splits multi-app conversation profiles. Chat, Apps and Settings are the only valid
-sections, using iPhone tabs/iPad sidebar. Old rule/editor screens are removed;
+splits multi-app conversation profiles. Chat, Apps, Insights, Focus and Settings use iPhone tabs/iPad sidebar. Old rule/editor screens are removed;
 saved models, migrations and legacy callback handling remain (COMPATIBILITY.md).
 The name and intention belong to the saved profile, not a repeated chat subject.
+
+The welcome page explains the three-part access flow with compact steps and
+back navigation between onboarding pages. Consent remains explicit and optional.
+The saved-app chooser supports name/intention search, marks the current selection,
+and distinguishes focus protection from conversation gating and active grants.
+Switching or cancelling selection preserves the chat draft. Adding an app uses
+three labeled steps, a native single-app picker, and a visible selected-app preview.
+The system picker still owns application discovery; tokens never resolve to names
+outside Apple's privacy-preserving labels.
 
 ## Coach and history
 
@@ -169,3 +177,42 @@ requests as well as model outcomes; an approval is unlocked only after activatio
 and persistence succeed. Old access events migrate once, with unknown approvals
 marked unconfirmed. Clear Chat retains this log; Clear Activity Log removes only
 log records, preserving enforcement history/waits. Exports are user-initiated.
+
+## Expansion contract
+
+Storage failures preserve the last valid restrictions; a successful empty fetch
+alone may remove them. Enforcement publishes healthy, degraded or failed state.
+Grant validity is scoped to its covering app configuration, while pending
+responses retain a full request revision. Cancellation immediately restores chat
+and owns transport cancellation. Summarization failure uses bounded recent context.
+
+AI consent precedes every transmission and withdrawal cancels pending work. Content
+erasure removes transcript, memory, content logs and reason/reply text from retained
+minimal active enforcement events. Release builds never bundle personal credentials;
+a production coach gateway and public privacy policy remain release blockers.
+
+Insights report grants/access opportunities, never measured usage. Warm/balanced/
+direct tone defaults to balanced without changing local policy. Focus protection
+covers all or selected saved apps, takes precedence over grants, and persists.
+Recurring local weekday periods may cross midnight and last at least 15 minutes;
+immediate sessions last 15–180 minutes (25 by default). Explicit ending is allowed.
+
+## Compact interface
+
+The main screens use compact inline navigation, white/adaptive surfaces, subtle
+outlined cards and explicit primary/secondary button styles. Read-only information
+must not resemble an action: actionable rows have a chevron or an outlined/filled
+control. Forms retain native inputs and sheets. Layout uses semantic type, 44-point
+minimum touch targets, and adapts to accessibility text and the iPad sidebar.
+This presentation change does not alter coaching, consent or enforcement policy.
+
+## Interaction polish
+
+Returning from the Screen Time step to defer AI coaching withdraws any consent
+accepted earlier in onboarding. Chat uses a compact review entry point; the full
+sharing disclosure appears before explicit re-enablement. Privacy settings group
+shared data, local data and erasure controls without hiding withdrawal consequences.
+Cancelling a send restores its draft immediately; late completions cannot replace
+a newer draft. Failures preserve the editable draft and offer an explicit retry.
+Only confirmed local grants show approval and timers; waits stay in coach replies.
+Chat notices/grants scroll with history so larger text leaves the composer usable.

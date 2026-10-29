@@ -44,6 +44,8 @@ struct MainSidebarView: View {
         case .apps:
             VolitionAppsView()
         case .chat: ConversationView()
+        case .insights: InsightsView()
+        case .focus: FocusView()
         case .settings:
             SettingsView()
         }
