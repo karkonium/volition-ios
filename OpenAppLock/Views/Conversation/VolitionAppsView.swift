@@ -17,35 +17,47 @@ struct VolitionAppsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    Text((onComplete == nil ? CopyKey.volitionAppsHelp : .volitionSetupHelp).resource)
-                        .foregroundStyle(.secondary)
-                }
-                Section {
+            VolitionScroll {
+                Text((onComplete == nil ? CopyKey.uiAppsIntro : .volitionSetupHelp).resource)
+                    .font(.subheadline).foregroundStyle(.secondary)
+                VStack(spacing: 10) {
+                    VolitionSectionHeading(title: CopyKey.uiSavedApps.string, count: apps.count)
+                        .accessibilityIdentifier("compactAppsHeader")
                     ForEach(apps) { rule in
+                        let unlocked = conversation.grants.contains { grant in
+                            ConversationGrantStore.applicable(to: grant.token, in: [rule.dto]).contains { $0.id == rule.id }
+                        }
                         Button { editing = rule } label: {
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text(rule.name).foregroundStyle(Color.primary)
-                                Text(rule.conversationGoal).font(.subheadline).foregroundStyle(Color.secondary).lineLimit(3)
-                                Label((conversation.grants.contains { grant in ConversationGrantStore.applicable(to: grant.token, in: [rule.dto]).contains { $0.id == rule.id } } ? CopyKey.appTemporarilyOpen : .appConversationProtected).resource,
-                                    systemImage: "shield.lefthalf.filled")
-                                    .font(.caption).foregroundStyle(Color.secondary)
-                            }.padding(.vertical, 4)
-                        }.accessibilityIdentifier("volitionApp-\(rule.name)")
+                            VolitionCard(accented: unlocked) {
+                                HStack(alignment: .top, spacing: 12) {
+                                    if let token = AppSelectionCodec.decode(rule.combinedSelectionData).applicationTokens.first {
+                                        VolitionAppIcon(token: token)
+                                    } else { VolitionIcon(symbol: "app") }
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text(rule.name).font(.subheadline.weight(.semibold)).foregroundStyle(Color.primary)
+                                        Text(rule.conversationGoal).font(.caption).foregroundStyle(Color.secondary).lineLimit(3)
+                                        Label((unlocked ? CopyKey.appTemporarilyOpen : .appConversationProtected).resource,
+                                            systemImage: unlocked ? "lock.open" : "shield")
+                                            .font(.caption2.weight(.medium)).foregroundStyle(Color.secondary)
+                                    }
+                                    Spacer(minLength: 4)
+                                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Color.secondary)
+                                        .padding(.top, 10)
+                                }
+                            }
+                        }.buttonStyle(.plain).accessibilityIdentifier("volitionApp-\(rule.name)")
                     }
                     Button(CopyKey.volitionAddApp.resource, systemImage: "plus") { adding = true }
+                        .buttonStyle(VolitionButtonStyle(primary: false))
                         .accessibilityIdentifier("addVolitionAppButton")
                 }
                 if let onComplete {
-                    Section {
-                        Button(CopyKey.volitionStartChat.resource, action: onComplete)
-                            .disabled(apps.isEmpty)
-                            .accessibilityIdentifier("finishVolitionSetupButton")
-                    }
+                    Button(CopyKey.volitionStartChat.resource, action: onComplete)
+                        .buttonStyle(VolitionButtonStyle())
+                        .disabled(apps.isEmpty).accessibilityIdentifier("finishVolitionSetupButton")
                 }
             }
-            .navigationTitle((onComplete == nil ? CopyKey.volitionApps : .volitionSetupTitle).resource)
+            .volitionRoot((onComplete == nil ? CopyKey.volitionApps : .volitionSetupTitle).string)
             .sheet(isPresented: $adding) { VolitionAppEditor() }
             .sheet(item: $editing) { rule in VolitionAppEditor(rule: rule) }
         }
@@ -77,40 +89,69 @@ struct VolitionAppEditor: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
+            VolitionScroll {
+                VStack(alignment: .leading, spacing: 10) {
+                    VolitionSectionHeading(title: CopyKey.uiSelectStep.string)
+                        .accessibilityIdentifier("appSelectionStep")
                     Button {
                         focused = nil
                         pickerSelection = FamilyActivitySelection()
                         pickerError = nil
                         picking = true
                     } label: {
-                        if let token = selection.applicationTokens.first, selection.applicationTokens.count == 1 {
-                            if LaunchConfiguration.current.isUITesting { Text("Selected app") }
-                            else { Label(token).frame(height: 32) }
-                        } else { Label(CopyKey.conversationChooseApp.resource, systemImage: "apps.iphone") }
-                    }.accessibilityIdentifier("pickVolitionAppButton")
+                        VolitionCard(accented: selection.applicationTokens.count == 1) {
+                            HStack(spacing: 12) {
+                                if let token = selection.applicationTokens.first, selection.applicationTokens.count == 1 {
+                                    VolitionAppIcon(token: token)
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        if LaunchConfiguration.current.isUITesting {
+                                            Text(CopyKey.uiSelectedApp.resource).font(.subheadline.weight(.semibold))
+                                        } else { Label(token).labelStyle(.titleOnly).font(.subheadline.weight(.semibold)) }
+                                        Text(CopyKey.uiChangeApp.resource).font(.caption).foregroundStyle(VolitionStyle.accent)
+                                    }
+                                    Spacer(minLength: 4)
+                                    Image(systemName: "checkmark.circle.fill").foregroundStyle(VolitionStyle.accent)
+                                } else {
+                                    VolitionIcon(symbol: "apps.iphone", accented: true)
+                                    Text(CopyKey.conversationChooseApp.resource).font(.subheadline.weight(.semibold))
+                                    Spacer(minLength: 4)
+                                    Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                                }
+                            }.foregroundStyle(Color.primary)
+                        }
+                    }
+                    .buttonStyle(.plain).accessibilityIdentifier("pickVolitionAppButton")
+                }
+                VolitionCard {
+                    VolitionSectionHeading(title: CopyKey.uiNameStep.string)
                     TextField(CopyKey.volitionAppName.string, text: $name)
+                        .textFieldStyle(.roundedBorder).submitLabel(.next)
+                        .onSubmit { focused = .intention }
                         .focused($focused, equals: .name).accessibilityIdentifier("volitionAppName")
-                } footer: {
-                    Text(CopyKey.volitionAppNameHelp.resource)
+                    Text(CopyKey.volitionAppNameHelp.resource).font(.caption).foregroundStyle(.secondary)
                         .accessibilityIdentifier("volitionAppNameHelp")
                 }
-                Section {
+                VolitionCard {
+                    VolitionSectionHeading(title: CopyKey.uiIntentionStep.string)
+                    Text(CopyKey.volitionIntentionHelp.resource).font(.caption).foregroundStyle(.secondary)
                     TextEditor(text: $intention)
-                        .frame(minHeight: 120)
+                        .frame(minHeight: 100)
+                        .scrollContentBackground(.hidden)
+                        .padding(8)
+                        .background(VolitionStyle.background, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(VolitionStyle.border, lineWidth: 1) }
                         .focused($focused, equals: .intention)
                         .accessibilityLabel(CopyKey.volitionIntention.resource)
                         .accessibilityIdentifier("volitionAppIntention")
-                } header: { Text(CopyKey.volitionIntention.resource).textCase(nil) }
-                  footer: { Text(CopyKey.volitionIntentionHelp.resource) }
-                if let error { Section { Text(error).foregroundStyle(.red) } }
+                }
+                if let error { Text(error).font(.subheadline).foregroundStyle(.red) }
                 if rule != nil {
-                    Section {
-                        Button(CopyKey.volitionRemoveApp.resource, role: .destructive) { confirmingRemoval = true }
-                    }
+                    Button(CopyKey.volitionRemoveApp.resource, role: .destructive) { confirmingRemoval = true }
+                        .buttonStyle(VolitionButtonStyle(primary: false))
                 }
             }
+            .tint(VolitionStyle.accent)
+            .navigationBarTitleDisplayMode(.inline)
             .scrollDismissesKeyboard(.interactively)
             .disabled(saving)
             .navigationTitle((rule == nil ? CopyKey.volitionAddApp : .volitionEditApp).resource)
@@ -130,8 +171,13 @@ struct VolitionAppEditor: View {
             .sheet(isPresented: $picking) {
                 NavigationStack {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(CopyKey.volitionPickOneHelp.resource)
-                            .font(.subheadline).foregroundStyle(.secondary).padding()
+                        VolitionCard(accented: true) {
+                            Label(CopyKey.uiPickerGuidanceTitle.resource, systemImage: "hand.tap")
+                                .font(.subheadline.weight(.semibold))
+                            Text(CopyKey.uiPickerGuidanceDetail.resource).font(.caption).foregroundStyle(.secondary)
+                        }.padding(.horizontal, 16).padding(.vertical, 10)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityIdentifier("nativePickerGuidance")
                         if let pickerError {
                             Text(pickerError).foregroundStyle(.red).padding(.horizontal)
                                 .accessibilityIdentifier("volitionPickerError")
@@ -147,7 +193,8 @@ struct VolitionAppEditor: View {
                             FamilyActivityPicker(selection: $pickerSelection)
                         }
                     }
-                    .navigationTitle(CopyKey.conversationChooseApp.resource)
+                    .volitionRoot(CopyKey.conversationChooseApp.string)
+                    .tint(VolitionStyle.accent)
                     .toolbar { ToolbarItem(placement: .cancellationAction) {
                         Button(CopyKey.conversationCancel.resource) { picking = false }
                             .accessibilityIdentifier("cancelVolitionAppPickerButton")

@@ -25,7 +25,11 @@ final class ConversationCoordinator {
     private(set) var selectionAttention = 0
     private var selectionPromptText: String?
     private var confirmedSelectionText: String?
-    var draftMessage = ""
+    let composer = ConversationDraft()
+    var draftMessage: String {
+        get { composer.text }
+        set { composer.text = newValue }
+    }
     var coachAvailable: Bool { service.isConfigured }
     var selectedAppID: UUID? { target.flatMap { ConversationGrantStore.applicable(to: $0, in: knownSnapshots).first?.id } }
     private(set) var history = ConversationHistory()
@@ -426,6 +430,7 @@ final class ConversationCoordinator {
     }
 
     func cancelRequest() {
+        composer.cancel()
         generation = UUID(); requestID = nil
         requests.cancel()
         isSending = false

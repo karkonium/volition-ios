@@ -51,9 +51,10 @@ final class ExpansionUITests: XCTestCase {
         capture("Privacy dark", app)
         app.switches["aiConsentToggle"].tap()
         app.goToChatTab()
-        app.buttons["acceptAIConsentButton"].waitToAppear()
+        app.buttons["reviewAIConsentButton"].waitToAppear()
         capture("Consent withdrawn dark", app)
-        app.buttons["acceptAIConsentButton"].tap()
+        app.buttons["reviewAIConsentButton"].tap()
+        app.buttons["acceptAIConsentButton"].waitToAppear().tap()
         XCTAssertFalse(app.buttons["acceptAIConsentButton"].exists)
     }
 }

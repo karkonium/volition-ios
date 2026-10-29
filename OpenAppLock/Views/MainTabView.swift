@@ -32,6 +32,6 @@ struct MainTabView: View {
             SettingsView()
                 .tag(AppSection.settings)
                 .tabItem { Label(AppSection.settings.title, systemImage: AppSection.settings.systemImage) }
-        }
+        }.tint(.primary)
     }
 }

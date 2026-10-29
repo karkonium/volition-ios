@@ -1,42 +1,44 @@
-# Volition identity and cleanup
+# Volition identity
 
 ## Identity
 
-A single gold V with precise flared terminals and three restrained sun rays on a
-midnight navy field. Warm, professional and legible as a small iOS icon. Keep the
-native blue interface tint; this change does not reskin the controls.
+The owner selected concept C: an open charcoal ring with a separate blue segment
+on an off-white field. The flat, simple silhouette matches the restrained native
+interface. Keep the native blue control tint.
 
 Production assets:
 
-- `OpenAppLock/Assets.xcassets/VolitionLogo.imageset/volition-sunlit-v.png`: 1024px
-  opaque square, used by the welcome screen via Image("VolitionLogo").
-- `OpenAppLock/AppIcon.icon/Assets/volition-sunlit-v.png`: identical bitmap in the
-  existing Icon Composer package. The icon name/target build settings stay AppIcon.
-- `OpenAppLock/AppIcon.icon/icon.json`: one non-glass image layer. System icon masks
-  supply the rounded shape; no rounded rectangle is baked into the bitmap.
+- `OpenAppLock/Assets.xcassets/VolitionLogo.imageset/volition-open-circle.png`:
+  1024px opaque square, used by the welcome screen through `Image("VolitionLogo")`.
+- `OpenAppLock/AppIcon.icon/Assets/volition-open-circle.png`: identical bitmap
+  inside the existing Icon Composer package. The icon name remains `AppIcon`.
+- `OpenAppLock/AppIcon.icon/icon.json`: one non-glass image layer, no added shadow.
+  The system applies its icon mask; no rounded outer corners are baked in.
 
-Generated with the built-in imagegen tool, then resized to 1024px for iOS packaging.
-The generated original is retained outside the repo; both production copies live
-inside the project. No runtime downloads or new package dependencies.
+The selected built-in imagegen output was downsampled for packaging without
+changing the design. Both production copies live in the project. No runtime
+asset download or new dependencies. The original is retained with the four
+concepts in the chat workspace, outside the app source.
 
-## Final generation prompt
+## Selected generation prompt
 
-Use case: logo-brand. Create the final professional iOS app icon for Volition,
-a thoughtful screen-time app about choosing how to spend your attention. One
-single uppercase letter V, custom elegant contemporary typography: strong precise
-tapered strokes, refined slightly flared terminals, striking and immediately
-legible at small sizes. The V itself glows with warm golden sunlight, a few short
-restrained sun rays radiate outward from its upper right stroke like a small rising
-sun, tastefully integrated into the letter rather than a separate sun illustration.
-Premium, calm, optimistic identity, minimal design with vector-clean edges, not a
-generic wellness illustration. Center the large V optically within a perfect square
-full-bleed deep midnight navy background. Golden amber to pale warm gold on the V
-with a subtle polished luminous highlight, no lens flare or photorealistic
-reflections. The V occupies roughly 60 percent of canvas width and height; rays
-remain within an ample safe margin. No rounded square outline or corners drawn
-into image: iOS applies its own mask. No extra letters, no wordmark, no caption,
-no watermarks, no device mockup. Only one finalized icon, not a sheet of options.
-Square high-resolution production asset.
+Use case: logo-brand. Asset type: square iOS app icon concept for Volition, a calm
+adult voluntary self-control app where a conversation precedes access. Match a
+quiet native interface with fine outlined cards, black/white typography and a
+restrained system-blue accent. Flat vector-like graphic, exceptionally clean edges,
+strong silhouette legible at 40 pixels, intentional optical alignment. Full-bleed
+opaque square canvas, no inset rounded-square frame, no device mockup, no text
+labels, no watermark. No gold, serif lettering, sparkles, gloss, bevel, lighting
+effects, 3D, gradients, texture, drop shadows, or decorative detail. One icon only,
+centered with generous but not excessive breathing room.
+
+Direction C — Open circle. Off-white background #F5F3EE. One bold charcoal circular
+arc with rounded ends, deliberately open at the upper right, resembling an
+intentional pause in a continuous habit. A small muted blue rounded lozenge sits
+in the opening and follows the arc’s angle while remaining clearly separated by
+negative space from both ends. The circle occupies about 55% of the square. A
+quiet distinctive emblem of choice and space, with an elegant balanced silhouette.
+Not a power button or letter C; make it feel like a considered open ring.
 
 ## Conservative cleanup boundary
 
@@ -55,8 +57,7 @@ Do not remove compatibility enforcement as another cosmetic cleanup.
 
 ## Validation
 
-The full iPhone suite passed 449 tests (435 unit + 14 UI); seven affected iPad UI
-tests also passed. Read the welcome screenshots on both devices. The signed
-generic iPhone build passed, and its bundled personal configuration matches the
-local ignored file without printing it. No schemas, services, shared stores,
-enforcement implementations or extension targets changed in this cleanup.
+The simulator build, bundled-logo check and onboarding UI check passed after this
+replacement (two tests). The welcome render was inspected. Simulator validation does not establish actual
+home-screen icon appearance on a physical device. No schemas, enforcement logic,
+services or extension targets change with this asset replacement.

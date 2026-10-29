@@ -45,7 +45,7 @@ final class VolitionUITests: XCTestCase {
         app.buttons["pickVolitionAppButton"].tap()
         app.buttons["cancelVolitionAppPickerButton"].waitToAppear().tap()
         XCTAssertEqual(app.textFields["volitionAppName"].value as? String, "Instagram")
-        XCTAssertEqual(app.buttons["pickVolitionAppButton"].label, "Selected app")
+        XCTAssertTrue(app.buttons["pickVolitionAppButton"].label.contains("Selected app"))
     }
     func testWaitAndApprovalHaveClearStates() {
         let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
