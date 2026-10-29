@@ -3,6 +3,7 @@
 //  OpenAppLockMonitor
 //
 
+import ActivityKit
 import DeviceActivity
 import Foundation
 
@@ -57,10 +58,29 @@ final class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         }
     }
 
+    private func endExpiredLiveActivity(_ name: String) {
+        guard let id = ConversationUnlockPlan.grantID(from: name) else { return }
+        Task {
+            for activity in Activity<ConversationUnlockActivityAttributes>.activities where activity.attributes.grantID == id && activity.content.state.expiresAt <= Date() {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
+        }
+    }
+
+    private func endRevokedLiveActivities() {
+        Task {
+            guard let activeIDs = try? ConversationGrantStore().transaction({ Set($0.activeGrants.map(\.plan.grantID)) }) else { return }
+            for activity in Activity<ConversationUnlockActivityAttributes>.activities where !activeIDs.contains(activity.attributes.grantID) {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
+        }
+    }
+
     override func intervalDidStart(for activity: DeviceActivityName) {
         super.intervalDidStart(for: activity)
         if activity.rawValue.hasPrefix("focus-") {
             ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController()).reconcileStored()
+            endRevokedLiveActivities()
             return
         }
         Diag.log(.monitor, .event, "intervalDidStart \(activity.rawValue)")
@@ -81,6 +101,7 @@ final class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         super.intervalWillEndWarning(for: activity)
         ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController())
             .expire(activity: activity.rawValue)
+        endExpiredLiveActivity(activity.rawValue)
         #if DEBUG
         ConversationTimerProbe.handle(activity: activity.rawValue, kind: "warning")
         #endif
@@ -90,11 +111,13 @@ final class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         super.intervalDidEnd(for: activity)
         if activity.rawValue.hasPrefix("focus-") {
             ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController()).reconcileStored()
+            endRevokedLiveActivities()
             if activity.rawValue.hasPrefix("focus-session-") { DeviceActivityCenter().stopMonitoring([activity]) }
             return
         }
         ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController())
             .expire(activity: activity.rawValue)
+        endExpiredLiveActivity(activity.rawValue)
         #if DEBUG
         ConversationTimerProbe.handle(activity: activity.rawValue, kind: "interval-end")
         #endif

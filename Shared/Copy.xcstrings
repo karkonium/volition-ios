@@ -612,7 +612,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Notifications take you from a blocked app back to chat. Enable alerts in notification settings. You can always open Volition directly."
+            "value" : "Enable notifications for access reminders at 1 minute, 30 seconds and 10 seconds remaining. Older iOS versions also use notifications to open Chat. iOS may silence or delay alerts."
           }
         }
       }
@@ -826,6 +826,94 @@
         }
       }
     },
+    "conversation.dealAccept" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accept deal"
+          }
+        }
+      }
+    },
+    "conversation.dealAccepted" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deal accepted. %@ is unlocked for %lld minutes."
+          }
+        }
+      }
+    },
+    "conversation.dealBlockedUntil" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agreed break until %@"
+          }
+        }
+      }
+    },
+    "conversation.dealDecline" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Decline"
+          }
+        }
+      }
+    },
+    "conversation.dealDeclined" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deal declined. The app stays blocked."
+          }
+        }
+      }
+    },
+    "conversation.dealHelp" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The break starts when access ends and lasts until the agreed time, even if you end access early."
+          }
+        }
+      }
+    },
+    "conversation.dealOffered" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deal offered"
+          }
+        }
+      }
+    },
+    "conversation.dealTerms" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock %@ for %@, then keep it blocked for %@."
+          }
+        }
+      }
+    },
     "conversation.openManually" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -833,6 +921,94 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Open Volition to talk through your request."
+          }
+        }
+      }
+    },
+    "conversation.pauseProposal" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Before making a deal, let’s try a pause before opening. How long do you think you could wait?"
+          }
+        }
+      }
+    },
+    "conversation.sessionCounts" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today’s unlocks: %lld short · %lld longer"
+          }
+        }
+      }
+    },
+    "conversation.sessionCountsHelp" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For this app. Short: 1–5 minutes; longer: 6–30. Counts unlocks granted, not time spent."
+          }
+        }
+      }
+    },
+    "conversation.unlockActivityExpired" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access window ended"
+          }
+        }
+      }
+    },
+    "conversation.unlockActivityWindow" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access window · finish before the timer ends"
+          }
+        }
+      }
+    },
+    "conversation.unlockReminderMinute" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 minute left in your access window. Time to wrap up."
+          }
+        }
+      }
+    },
+    "conversation.unlockReminderSeconds" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld seconds left in your access window. Finish up and step away."
+          }
+        }
+      }
+    },
+    "conversation.unlockReminderTitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · wrapping up"
           }
         }
       }
@@ -2350,7 +2526,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Messages, replies and conversation memory help the coach respond."
+            "value" : "Messages, replies, conversation memory and app-removal feedback help the coach respond."
           }
         }
       }
@@ -2372,7 +2548,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Requests, approvals, denials and waits help the coach understand recent choices."
+            "value" : "Requests, grants, pauses, optional check-in choices, deals and removal feedback help the coach understand recent choices."
           }
         }
       }
@@ -2714,6 +2890,699 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Screen-Free Sunday"
+          }
+        }
+      }
+    },
+    "reflection.conversationJumpLatest" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Latest messages"
+          }
+        }
+      }
+    },
+    "reflection.profileBoth" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Both"
+          }
+        }
+      }
+    },
+    "reflection.profileChange" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What would you like to change?"
+          }
+        }
+      }
+    },
+    "reflection.profileCommunication" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Communication"
+          }
+        }
+      }
+    },
+    "reflection.profileDefaultGoal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use this app intentionally, with room for work, connection and enjoyment."
+          }
+        }
+      }
+    },
+    "reflection.profileDistraction" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Using it when I mean to do something else"
+          }
+        }
+      }
+    },
+    "reflection.profileDuration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spending longer than intended"
+          }
+        }
+      }
+    },
+    "reflection.profileFrequency" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Using it too frequently"
+          }
+        }
+      }
+    },
+    "reflection.profileHabit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opening it automatically or out of habit"
+          }
+        }
+      }
+    },
+    "reflection.profileIntentional" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Just want to be more intentional"
+          }
+        }
+      }
+    },
+    "reflection.profileLearning" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learning or information"
+          }
+        }
+      }
+    },
+    "reflection.profileLong" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Longer, intentional sessions"
+          }
+        }
+      }
+    },
+    "reflection.profileNotes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anything else?"
+          }
+        }
+      }
+    },
+    "reflection.profileNotesHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional. Describe your goals in your own words."
+          }
+        }
+      }
+    },
+    "reflection.profileOptional" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose what fits, or leave these for later. You can always edit them."
+          }
+        }
+      }
+    },
+    "reflection.profileOther" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other"
+          }
+        }
+      }
+    },
+    "reflection.profileProductivity" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Work or productivity"
+          }
+        }
+      }
+    },
+    "reflection.profilePurpose" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What do you want to use this app for?"
+          }
+        }
+      }
+    },
+    "reflection.profileRelaxation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entertainment or relaxation"
+          }
+        }
+      }
+    },
+    "reflection.profileShort" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Occasional short visits"
+          }
+        }
+      }
+    },
+    "reflection.profileStyle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What would good usage look like?"
+          }
+        }
+      }
+    },
+    "reflection.profileTiming" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Using it at certain times"
+          }
+        }
+      }
+    },
+    "reflection.profileUnsure" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not sure yet"
+          }
+        }
+      }
+    },
+    "reflection.reflectionAnswerHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose an option to continue. Not sure / Skip is fine, too."
+          }
+        }
+      }
+    },
+    "reflection.reflectionAnxiety" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anxiety"
+          }
+        }
+      }
+    },
+    "reflection.reflectionAvoidance" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avoiding something"
+          }
+        }
+      }
+    },
+    "reflection.reflectionBoredom" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Boredom"
+          }
+        }
+      }
+    },
+    "reflection.reflectionCancel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep app closed"
+          }
+        }
+      }
+    },
+    "reflection.reflectionCancelled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause cancelled; app stays closed."
+          }
+        }
+      }
+    },
+    "reflection.reflectionCompleted" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause complete. %@ is unlocked for %ld minutes."
+          }
+        }
+      }
+    },
+    "reflection.reflectionExpired" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This pause is no longer current. Send a new request when you’re ready."
+          }
+        }
+      }
+    },
+    "reflection.reflectionHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An optional check-in. You don’t need to share a feeling to continue."
+          }
+        }
+      }
+    },
+    "reflection.reflectionLoneliness" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loneliness"
+          }
+        }
+      }
+    },
+    "reflection.reflectionLongPlan" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause for %@ before opening. You can skip or cancel."
+          }
+        }
+      }
+    },
+    "reflection.reflectionNotSure" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not sure / Skip"
+          }
+        }
+      }
+    },
+    "reflection.reflectionOffer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause before opening"
+          }
+        }
+      }
+    },
+    "reflection.reflectionOpening" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opening app…"
+          }
+        }
+      }
+    },
+    "reflection.reflectionOther" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Something else"
+          }
+        }
+      }
+    },
+    "reflection.reflectionPlan" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %ld-minute unlock afterward"
+          }
+        }
+      }
+    },
+    "reflection.reflectionQuestion" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What’s pulling you here right now?"
+          }
+        }
+      }
+    },
+    "reflection.reflectionReady" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready when you are"
+          }
+        }
+      }
+    },
+    "reflection.reflectionRecorded" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause before opening"
+          }
+        }
+      }
+    },
+    "reflection.reflectionRelaxation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Just want to relax"
+          }
+        }
+      }
+    },
+    "reflection.reflectionSkip" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip pause & open app"
+          }
+        }
+      }
+    },
+    "reflection.reflectionStart" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start pause"
+          }
+        }
+      }
+    },
+    "reflection.reflectionStress" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stress"
+          }
+        }
+      }
+    },
+    "reflection.reflectionTaking" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pausing before opening"
+          }
+        }
+      }
+    },
+    "removal.removalAlternative" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Would a temporary unlock help instead?"
+          }
+        }
+      }
+    },
+    "removal.removalAlternativeHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can ask the coach for a short unlock, keep your current setup, or remove the app. Existing agreements still apply to unlock requests."
+          }
+        }
+      }
+    },
+    "removal.removalAnyway" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove app anyway"
+          }
+        }
+      }
+    },
+    "removal.removalAsk" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask for %lld minutes instead"
+          }
+        }
+      }
+    },
+    "removal.removalCompleted" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removed this app from Volition."
+          }
+        }
+      }
+    },
+    "removal.removalContinue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue"
+          }
+        }
+      }
+    },
+    "removal.removalFeedbackTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "High frustration · app removal"
+          }
+        }
+      }
+    },
+    "removal.removalIntentRecorded" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "User is considering removing this app from Volition."
+          }
+        }
+      }
+    },
+    "removal.removalKeep" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep this app"
+          }
+        }
+      }
+    },
+    "removal.removalKept" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kept this app in Volition."
+          }
+        }
+      }
+    },
+    "removal.removalMinutes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minutes: %lld"
+          }
+        }
+      }
+    },
+    "removal.removalReason" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your reason"
+          }
+        }
+      }
+    },
+    "removal.removalRequestMessage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I was considering removing this app because: %@. Would you unlock it for %lld minutes instead?"
+          }
+        }
+      }
+    },
+    "removal.removalTemporaryRequested" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kept this app and requested %lld minutes instead. Access still requires coach approval."
+          }
+        }
+      }
+    },
+    "removal.removalWhy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What is making you want to remove this app?"
+          }
+        }
+      }
+    },
+    "removal.removalWhyHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tell us what feels frustrating or is getting in your way. This stays in your private activity log."
           }
         }
       }
@@ -3307,7 +4176,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clear the chat messages and summary? Saved app intentions, the activity log, coaching history and active waits are kept."
+            "value" : "Clear the chat messages and summary, and cancel pending pauses and deal offers? Saved app intentions, the activity log, coaching history and agreed breaks are kept."
           }
         }
       }
@@ -3406,7 +4275,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your app names, intentions and conversation are sent to OpenAI when you chat. Your history is stored on this device."
+            "value" : "Your app names, intentions, conversation and recent optional check-ins are sent to OpenAI when you chat. Your history is stored on this device."
           }
         }
       }

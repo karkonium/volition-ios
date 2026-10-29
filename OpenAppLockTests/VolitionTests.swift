@@ -43,6 +43,21 @@ struct VolitionTests {
         #expect(throws: (any Error).self) { try VolitionApps.save(name: "Apps", intention: "Purpose", selection: self.selection([22,23]), in: context) }
     }
 
+    @Test func structuredProfilePreservesFreeTextAndPersistsWithRule() throws {
+        let context = try makeInMemoryContext()
+        let profile = ConversationUsageProfile(purposes: [.learning, .relaxation], changes: [.habit, .duration], sessionStyle: .both)
+        let rule = try VolitionApps.save(name: "Browser", intention: "Read thoughtfully", selection: selection([40]), profile: profile, in: context)
+        let store = ConversationHistoryStore(context: context)
+        #expect(try store.load().usageProfiles[rule.id] == profile)
+        #expect(rule.conversationGoal == "Read thoughtfully")
+        let updated = ConversationUsageProfile(purposes: [.communication], changes: [], sessionStyle: .shortVisits)
+        _ = try VolitionApps.save(name: rule.name, intention: rule.conversationGoal, selection: selection([40]), editing: rule, profile: updated, in: context)
+        #expect(try store.load().usageProfiles[rule.id] == updated)
+        #expect(rule.conversationGoal == "Read thoughtfully")
+        let skipped = try VolitionApps.save(name: "Game", intention: "", selection: selection([41]), profile: .init(), in: context)
+        #expect(skipped.conversationGoal == CopyKey.profileDefaultGoal.string)
+    }
+
     @Test func migrationRetiresLegacyAndSplitsAppsIdempotently() throws {
         let context = try makeInMemoryContext()
         let old = BlockingRule(name: "Old schedule", hardMode: true)

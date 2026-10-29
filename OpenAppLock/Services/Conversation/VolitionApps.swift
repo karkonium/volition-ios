@@ -4,7 +4,8 @@ import Foundation
 import SwiftData
 
 /// Volition stores one named application and intention per conversation rule.
-/// Saves reject categories, domains, duplicate apps and blank/oversized text.
+/// Saves reject categories, domains, duplicate apps and blank/oversized names.
+/// Structured setup may omit free text; a neutral intention keeps legacy rules valid.
 /// Legacy rules are disabled, never silently left enforcing behind the new UI.
 /// Multi-app conversation rules are split once; legacy data remains recoverable.
 enum VolitionApps {
@@ -28,11 +29,12 @@ enum VolitionApps {
     }
 
     static func save(name: String, intention: String, selection: FamilyActivitySelection,
-                     editing: BlockingRule? = nil, in context: ModelContext) throws -> BlockingRule {
+                     editing: BlockingRule? = nil, profile: ConversationUsageProfile? = nil, in context: ModelContext) throws -> BlockingRule {
         _ = try selectedApp(in: selection)
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let intention = intention.trimmingCharacters(in: .whitespacesAndNewlines)
+        var intention = intention.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, name.count <= 100 else { throw ValidationError.name }
+        if intention.isEmpty, profile != nil { intention = CopyKey.profileDefaultGoal.string }
         guard !intention.isEmpty, intention.count <= 2000 else { throw ValidationError.intention }
         let rules = try context.fetch(FetchDescriptor<BlockingRule>())
         guard !rules.contains(where: {
@@ -49,7 +51,14 @@ enum VolitionApps {
         rule.isEnabled = true
         rule.appLists = [list]
         for previous in previousLists where previous.rules.allSatisfy({ $0.id == rule.id }) { context.delete(previous) }
-        do { try context.save() }
+        do {
+            if let profile {
+                let store = ConversationHistoryStore(context: context)
+                var history = try store.load()
+                history.usageProfiles[rule.id] = profile
+                try store.save(history)
+            } else { try context.save() }
+        }
         catch { context.rollback(); throw error }
         return rule
     }

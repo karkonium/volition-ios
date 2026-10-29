@@ -43,7 +43,7 @@ enum SampleRules {
             }
             try? context.save()
             return
-        case .conversation:
+        case .conversation, .conversationLong:
             // Synthetic tokens are strictly UI harness data; no real picker authorization is needed.
             var selection = FamilyActivitySelection()
             if let data = try? JSONSerialization.data(withJSONObject: ["data": Data([1]).base64EncodedString()]),
@@ -95,6 +95,14 @@ enum SampleRules {
         for rule in rules {
             context.insert(rule)
             rule.appLists = [distractions]
+        }
+        if scenario == .conversationLong {
+            var history = ConversationHistory()
+            history.messages = (0..<40).map { index in
+                .init(role: index.isMultiple(of: 2) ? .user : .assistant,
+                    text: "Earlier message \(index). A saved conversation about making room for a thoughtful, intentional activity.")
+            }
+            try? ConversationHistoryStore(context: context).save(history)
         }
     }
 

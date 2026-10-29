@@ -12,6 +12,7 @@ struct LaunchConfiguration: Equatable {
         /// One actively blocking rule ("Work Time") and one upcoming rule ("Sleep").
         /// One app-only Conversation rule with mocked coach responses.
         case conversation
+        case conversationLong = "conversation-long"
         case conversationMultiple = "conversation-multiple"
         case conversationStress = "conversation-stress"
         case standard

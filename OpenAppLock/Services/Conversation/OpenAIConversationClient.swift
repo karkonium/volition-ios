@@ -11,9 +11,25 @@ nonisolated struct ConversationContext: Codable, Sendable {
     var activitySummary: ConversationActivitySummary? = nil
     var activeUnlocks: [ConversationActiveUnlock] = []
     var waitUntil: Date? = nil
+    var usageProfile: ConversationUsageProfile? = nil
+    var recentReflections: [ConversationReflection.Context] = []
+    var pauseBeforeDealRequired: Bool = true
+    var deal: ConversationDealContext? = nil
+    var waitUntilLocal: String? = nil
+    var recommendedPauseSeconds: Int = 10
+    var recentRemovalAttempts: [ConversationRemovalAttempt] = []
     var timeZone: String = TimeZone.current.identifier
     var tone: CoachTone = .balanced
     var focusProtected: Bool = false
+}
+
+/// Enforcement-derived eligibility, never user-asserted consent or message text.
+nonisolated struct ConversationDealContext: Codable, Sendable {
+    let grantID: UUID
+    let blockedUntil: Date
+    let pushbackCount: Int
+    let lastResolvedDealWasBroken: Bool
+    let canOverride: Bool
 }
 
 nonisolated struct ConversationActiveUnlock: Codable, Sendable {
@@ -30,10 +46,12 @@ nonisolated protocol ConversationClient: Sendable {
 /// A direct, user-key client for the personal prototype. Stateless Responses
 /// requests use store=false; local storage owns history. No credentials, chat
 /// text, or server response bodies are logged. Tagged diagnostics report request
-/// stages and typed HTTP/transport/response failures. Uses GPT-4.1 mini with
-/// strict structured output and no reasoning-only parameters. Transport retains system TLS/ATS.
+/// stages and typed HTTP/transport/response failures. Uses GPT-5.4 mini with
+/// strict structured output and bounded reasoning. Coaching progresses through
+/// intention, a short pause/check-in, negotiated deals, then last-resort refusal.
+/// Transport retains system TLS/ATS.
 nonisolated struct OpenAIConversationClient: ConversationClient {
-    static let model = "gpt-4.1-mini"
+    static let model = "gpt-5.4-mini"
     let modelName: String
     let session: URLSession
     let diagnostics: ConversationDiagnostics
@@ -47,12 +65,14 @@ nonisolated struct OpenAIConversationClient: ConversationClient {
         let content = try jsonText(context)
         let schema: [String: Any] = [
             "type": "object", "additionalProperties": false,
-            "required": ["reply", "decision", "unlock_minutes", "wait_minutes"],
+            "required": ["reply", "decision", "unlock_minutes", "wait_minutes", "pause_seconds", "block_minutes"],
             "properties": [
                 "reply": ["type": "string"],
-                "decision": ["type": "string", "enum": ["ask", "deny", "approve", "wait"]],
-                "unlock_minutes": ["type": ["integer", "null"]],
-                "wait_minutes": ["type": ["integer", "null"]]
+                "decision": ["type": "string", "enum": ["ask", "deny", "approve", "wait", "pause", "deal", "override"]],
+                "unlock_minutes": ["type": ["integer", "null"], "description": "REQUIRED integer 1–30 for approve, pause, deal AND override. A pause plans an unlock, so never null for pause. Null only for ask, deny, wait."],
+                "wait_minutes": ["type": ["integer", "null"]],
+                "pause_seconds": ["type": ["integer", "null"]],
+                "block_minutes": ["type": ["integer", "null"]]
             ]
         ]
         let text = try await request(operation: "decision", key: apiKey, instructions: Self.instructions, input: content,
@@ -110,7 +130,8 @@ nonisolated struct OpenAIConversationClient: ConversationClient {
         request.httpBody = try JSONSerialization.data(withJSONObject: [
             "model": modelName, "store": false, "instructions": instructions,
             "input": [["role": "user", "content": input]],
-            "text": ["format": format], "max_output_tokens": 4096
+            "text": ["format": format], "max_output_tokens": 8192,
+            "reasoning": ["effort": operation == "decision" ? "medium" : "low"]
         ])
         let id = UUID().logTag
         let started = Date()
@@ -179,8 +200,14 @@ nonisolated struct MockConversationClient: ConversationClient {
         if delay > .zero { try await Task.sleep(for: delay) }
         if fails { throw ConversationClientError.transport(code: URLError.notConnectedToInternet.rawValue) }
         let text = context.recentMessages.last(where: { $0.role == .user })?.text.lowercased() ?? ""
+        if text.contains("test-loading") { try await Task.sleep(for: .seconds(10)) }
+        if text.contains("override") { return .init(reply: "One small exception, then stop.", decision: .override, unlockMinutes: 1) }
+        if text.contains("deal") { return .init(reply: "Three minutes, then ten minutes away?", decision: .deal, unlockMinutes: 3, blockMinutes: 10) }
+        if text.contains("pause 30") { return .init(reply: "Thirty seconds before a thirty-minute intentional session.", decision: .pause, unlockMinutes: 30, pauseSeconds: 30) }
+        if text.contains("reflect") { return .init(reply: "Let’s take ten seconds. What’s pulling you here?", decision: .pause, unlockMinutes: 5, pauseSeconds: 10) }
         if text.contains("wait") { return .init(reply: "Let’s leave this app closed for now. What were you hoping to do?", decision: .wait, unlockMinutes: nil, waitMinutes: 1) }
         if text.contains("deny") { return .init(reply: "This does not support your goal.", decision: .deny, unlockMinutes: nil) }
+        if text.contains("approve 2") { return .init(reply: "Two minutes for that purpose.", decision: .approve, unlockMinutes: 2) }
         if text.contains("approve") { return .init(reply: "Take one minute for that purpose.", decision: .approve, unlockMinutes: 1) }
         return .init(reply: "What would you like to accomplish in this app?", decision: .ask, unlockMinutes: nil)
     }

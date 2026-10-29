@@ -39,7 +39,17 @@ struct ConversationView: View {
                                     .font(.footnote).foregroundStyle(.secondary)
                             }
                         }.chatRow()
-                        if !conversation.grants.isEmpty { grantCards.chatRow() }
+                        if let summary = conversation.selectedActivitySummary {
+                            Text(CopyKey.sessionCounts.string(summary.sameAppShortGrantsToday, summary.sameAppLongGrantsToday))
+                                .font(.caption).foregroundStyle(.secondary)
+                                .accessibilityHint(CopyKey.sessionCountsHelp.string)
+                                .accessibilityIdentifier("conversationSessionCounts").chatRow()
+                        }
+                        if let until = conversation.cooldownUntil {
+                            Text(CopyKey.dealBlockedUntil.string(until.formatted(date: .omitted, time: .shortened)))
+                                .font(.footnote).foregroundStyle(.secondary).chatRow()
+                        }
+                        if !conversation.displayedGrants.isEmpty { grantCards.id("conversationActiveGrants").chatRow() }
                         if conversation.history.messages.isEmpty { emptyConversation.chatRow() }
                         if conversation.history.messages.count > visibleMessages {
                             Button(CopyKey.chatLoadEarlier.resource) { visibleMessages += 60 }
@@ -52,10 +62,20 @@ struct ConversationView: View {
                         if let error = conversation.errorMessage, !conversation.appSelectionNeeded {
                             failureNotice(error).chatRow()
                         }
+                        ForEach(conversation.pendingReflections) { reflection in
+                            Group {
+                                if reflection.isDeal {
+                                    ConversationDealCard(reflection: reflection, snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) })
+                                } else {
+                                    ConversationReflectionCard(reflection: reflection, snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) })
+                                }
+                            }.chatRow()
+                        }
                         Color.clear.frame(height: 1).id("latest")
                             .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Color.clear)
                     }
                     .listStyle(.plain).scrollContentBackground(.hidden)
+                    .accessibilityIdentifier("conversationTranscript")
                     .environment(\.defaultMinListRowHeight, 0)
                     .scrollDismissesKeyboard(.interactively)
                     .onScrollGeometryChange(for: Bool.self) { geometry in
@@ -64,7 +84,22 @@ struct ConversationView: View {
                     .onAppear {
                         if !conversation.history.messages.isEmpty { proxy.scrollTo("latest", anchor: .bottom) }
                     }
+                    .onChange(of: conversation.displayedGrants.map(\.plan.grantID)) { old, current in
+                        guard current.contains(where: { !old.contains($0) }) else { return }
+                        followsLatest = false
+                        Task { @MainActor in
+                            await Task.yield()
+                            proxy.scrollTo("conversationActiveGrants", anchor: .top)
+                        }
+                    }
                     .onChange(of: conversation.history.messages.count) {
+                        if followsLatest { proxy.scrollTo("latest", anchor: .bottom) }
+                    }
+                    .onChange(of: conversation.isSending) { _, sending in
+                        if sending { followsLatest = true }
+                        if followsLatest { proxy.scrollTo("latest", anchor: .bottom) }
+                    }
+                    .onChange(of: conversation.reflectionScheduleID) {
                         if followsLatest { proxy.scrollTo("latest", anchor: .bottom) }
                     }
                     .onChange(of: conversation.errorMessage) {
@@ -79,7 +114,7 @@ struct ConversationView: View {
                                     .font(.caption.weight(.semibold)).padding(12)
                                     .background(VolitionStyle.surface, in: Capsule())
                                     .overlay { Capsule().strokeBorder(VolitionStyle.border) }
-                            }.buttonStyle(.plain).padding(12)
+                            }.buttonStyle(.plain).padding(12).accessibilityIdentifier("conversationJumpLatest")
                         }
                     }
                 }
@@ -92,7 +127,7 @@ struct ConversationView: View {
                 if section != .chat { messageFocused = false }
             }
             .onChange(of: scenePhase) { _, phase in if phase != .active { messageFocused = false } }
-            .onChange(of: conversation.grants.map(\.plan.grantID)) { _, ids in if !ids.isEmpty { messageFocused = false } }
+            .onChange(of: conversation.displayedGrants.map(\.plan.grantID)) { _, ids in if !ids.isEmpty { messageFocused = false } }
             .onDisappear { messageFocused = false }
             .sheet(isPresented: $reviewingSharing) { AIConsentReviewView() }
             .sheet(isPresented: $choosingApp) {
@@ -161,11 +196,11 @@ struct ConversationView: View {
 
     @ViewBuilder private var grantCards: some View {
         if typeSize.isAccessibilitySize {
-            VStack(spacing: 10) { ForEach(conversation.grants, id: \.plan.grantID) { grant in grantCard(grant) } }
+            VStack(spacing: 10) { ForEach(conversation.displayedGrants, id: \.plan.grantID) { grant in grantCard(grant) } }
         } else {
             ScrollView(.horizontal) {
                 HStack(spacing: 10) {
-                    ForEach(conversation.grants, id: \.plan.grantID) { grant in grantCard(grant).frame(width: 260) }
+                    ForEach(conversation.displayedGrants, id: \.plan.grantID) { grant in grantCard(grant).frame(width: 260) }
                 }
             }.scrollIndicators(.visible)
         }
@@ -231,8 +266,10 @@ struct ConversationView: View {
         return VStack(alignment: .leading, spacing: 8) {
             if conversation.isSending {
                 HStack(spacing: 10) {
-                    ProgressView().controlSize(.small)
-                    Text(CopyKey.uiSending.resource).font(.footnote).foregroundStyle(.secondary)
+                    ProgressView(CopyKey.uiSending.resource).controlSize(.small)
+                        .font(.footnote).foregroundStyle(.secondary)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("conversationThinking")
                     Spacer(minLength: 0)
                     Button(CopyKey.conversationCancel.resource) { conversation.cancelRequest() }
                         .font(.subheadline.weight(.semibold)).frame(minWidth: 44, minHeight: 44)

@@ -2,7 +2,13 @@
 
 Volition is a conversation-first iOS Screen Time app. The Xcode project and target
 are still named OpenAppLock. Users save individual apps with a name and intention;
-a respectful coach asks, denies, approves 1–10 minutes, or waits 1–5 minutes.
+a respectful coach asks for intention, approves 1–30 minutes, offers reflections
+or explicit access/break deals, and progressively challenges rapid repeat use.
+Ten-second reflections are skippable; longer pauses require explicit agreement.
+Suggested short pauses progress per app from 10 to 60 seconds over 24 hours.
+App removal asks why, offers a normal temporary-access request, and records private
+high-frustration feedback. Users always control removal.
+Legacy enforced waits remain readable and cannot be bypassed.
 The product has Chat, Apps, Insights, Focus and Settings. iPhone uses tabs; iPad uses a sidebar.
 Minimum deployment target: iOS 18. Runtime checks currently use iOS 27; the iOS
 18.5 simulator was unavailable from Xcode's download catalog. Older-device
@@ -13,7 +19,7 @@ enforcement and notification acceptance remain pending.
 - `Docs/Agents/Specs/CONVERSATION_UNLOCK.md`: current product/enforcement contract.
 - `Docs/Agents/Specs/COMPATIBILITY.md`: why legacy models/services remain.
 - `Docs/Agents/Specs/OPERATIONS.md`: permissions, logs, local config and copy.
-- `Docs/Agents/Specs/BRANDING.md`: logo assets and generation prompt.
+- `Docs/Agents/Specs/BRANDING.md`: logo assets and provenance.
 - `Docs/AGENT_SWIFT_GUIDELINES.md`: Swift, concurrency, testing and security rules.
 - Behavior-owning source `///` comments are authoritative; update them with code.
 
@@ -21,11 +27,12 @@ enforcement and notification acceptance remain pending.
 
 | Location | Responsibility |
 |---|---|
-| `OpenAppLock/Models/` | SwiftData V1–V4 schemas, migrations, BlockingRule/AppList, ConversationArchive; legacy value models and regression tests remain |
+| `OpenAppLock/Models/` | SwiftData V1–V5 schemas, migrations, BlockingRule/AppList, ConversationArchive/ConversationRecord; legacy value models and regression tests remain |
 | `OpenAppLock/Services/Conversation/` | Saved app setup/migration, name routing, shared chat/history, private activity log/exports, OpenAI client, diagnostics, approval support snapshots |
 | `OpenAppLock/Views/Design/` | Compact native card, button, section and form styles; preserve semantic type, adaptive colors and 44-point actions |
 | `OpenAppLock/Views/Conversation/` | App library/editor, chat, activity log and coach settings |
 | `OpenAppLock/Views/` | Root permission gate, onboarding, adaptive shell and diagnostic settings |
+| `OpenAppLock/Services/FocusController.swift`, `Shared/Focus/` | Focus sessions/schedules and stricter local protection |
 | `OpenAppLock/Services/RuleEnforcer.swift` | Foreground reconciliation, including a 30-second backstop |
 | `OpenAppLock/Services/RuleScheduler.swift` | DeviceActivity registration and removal of retired monitors |
 | `Shared/Stores/ConversationGrantStore.swift` | Coordinated App Group state, independent grants and pending shield target |
@@ -35,20 +42,56 @@ enforcement and notification acceptance remain pending.
 | `Shared/` | Cross-process DTOs, domain logic, stores, diagnostics, copy and platform IDs |
 | `OpenAppLockMonitor/` | Background expiry plus legacy activity callbacks |
 | `OpenAppLockShieldConfig/`, `OpenAppLockShieldAction/` | Shield presentation and Request access → Chat routing |
+| `ActivityShared/`, `VolitionLiveActivity/` | Shared ActivityKit attributes; native Lock Screen/Dynamic Island countdown |
 | `OpenAppLockReport/` | Legacy usage-report extension; retained for compatibility |
 | `OpenAppLockTests/`, `OpenAppLockUITests/` | Swift Testing domain suites and XCUITest flows |
 
 ## Invariants
 
 - `VolitionApps.prepare` disables legacy rules before the shell appears. Preserve
-  V1–V4 schemas and old callbacks; removing old screens does not remove old data.
-- Each saved app has exactly one app token, a required name and intention. The
+  V1–V5 schemas and old callbacks; removing old screens does not remove old data.
+- Each saved app has exactly one app token, a required name and intention.
+  Optional structured purposes/changes/session style live in ConversationArchive,
+  keyed by rule ID; optional notes retain old free text and get a neutral default
+  when skipped. Do not modify frozen SwiftData schemas for profile fields. The
   picker closes on one valid app; cancelling preserves the previous selection.
+- The coach asks for a current intention (boredom is valid) and progressively
+  follows intention → short pause/optional trigger check-in → negotiated deal →
+  last-resort refusal. Counts alone never justify skipping earlier interventions;
+  declining a voluntary pause/deal is not disobedience.
+  CoachingPolicy owns the progressive prompt. AI consent gates every transmission;
+  withdrawing consent cancels pending responses/reflections. GPT-5.4 mini uses medium decision reasoning. Counts describe allocated unlock
+  sessions (short 1–5, longer 6–30 minutes), never measured foreground usage.
+- Pauses/delays are BEFORE access; deals are access THEN a block. Ask users to
+  reflect on a suggested short pause first; longer pause lengths (10–1,800
+  seconds) and deal terms are chosen willingly. A completed, unskipped
+  pause for that app within 24 hours is required before offering a deal.
+- Deal offers require Accept/Decline. Accepted 1–30-minute grants atomically store
+  a 1–1,440-minute break until original expiry plus break, retained after early end,
+  relaunch and Clear Chat. Rare overrides require two prior actual coach
+  pushbacks and cannot break two resolved deals consecutively across apps. A
+  fulfilled deal resets eligibility; rollback restores overridden terms. Keep the
+  shared commitment ledger after expiry; do not prune exception history.
+- Grant presentation follows per-app configuration validity, including after
+  unrelated app edits. Focus revocations remove only affected reminders/cards.
+  Grant presentation: one ActivityKit countdown per published grant plus grouped
+  local reminders at 60/30/10 seconds remaining. Native rendering/delivery is
+  best-effort and never controls enforcement. Cancel only the ended grant's
+  reminders/activity; late async work must not revive a completed activity.
 - Chat and app selection remain available during timers. Grants/waits are per
   app. Ending one grant must not change another app’s original deadline.
 - The coach receives cross-app access history, active grants and the selected
   app’s wait. A local wait prevents early approval but does not disable chat.
-  Only unlocks show timers; a declined request has no waiting countdown.
+  Only unlocks show top timers; a declined request has no waiting countdown.
+  Soft reflection has its own inline seconds countdown, optional emotion choice,
+  skip and cancel. Keep unanswered choices visible after the pause; normal
+  completion needs a choice (including Not sure / Skip) and elapsed time.
+  It persists a deadline and planned unlock, claims activation
+  durably once, and uses the same grant checks without another model request.
+  Service it from the foreground shell even outside Chat; never grant in background.
+  Recovered activating claims are interrupted, not replayed. Long offers require
+  Start; new model wait responses are voluntary offers, not fresh hard cooldowns.
+  Emotion context is limited to ten records in 24 hours, outside chat summaries.
 - Saved app names can route messages before sending. Ambiguous/missing targets
   preserve the draft and highlight the picker; explicit selection resolves them.
 - The private activity log records content and actual local outcomes separately
@@ -71,10 +114,10 @@ enforcement and notification acceptance remain pending.
   acceptance matters. Maps/SoundCloud, the native picker and repeated notification
   requests with working Home navigation are verified on the connected iPhone;
   long-run repetition and background/terminated short expiry need observation.
-- Background grants use a 16-minute DeviceActivity interval and an end warning at
-  the 1–10-minute deadline. OS callbacks may be late; do not promise exact expiry.
+- Background grants use a max(16, requested minutes + 5)-minute DeviceActivity
+  interval and an end warning at the 1–30-minute deadline. OS callbacks may be late; do not promise exact expiry.
 - Never remove compatibility schemas, enforcement or extension targets as a
-  cosmetic cleanup. Shared files compile into the app and four extensions.
+  cosmetic cleanup. Shared files compile into the app and the original four extensions; ActivityShared compiles into the app, monitor and Live Activity widget.
 
 ## Build and test
 
@@ -146,7 +189,10 @@ no manual pbxproj source registration is needed.
   `conversationActivityLogButton`, `exportActivityLogButton`, `clearActivityLogButton`,
   `endConversationUnlockButton`, `addVolitionAppButton`, `pickVolitionAppButton`,
   `volitionAppName`, `volitionAppNameHelp`, `volitionAppIntention`,
-  `saveVolitionAppButton`, `finishVolitionSetupButton`, and `sidebarItem-chat/apps/settings`.
+  `saveVolitionAppButton`, `finishVolitionSetupButton`, `profilePurposes`,
+  `profilePurpose-<value>`, `conversationTranscript`, `conversationJumpLatest`,
+  `reflectionCountdown`, `reflectionEmotion-<value>`, `skipReflectionButton`,
+  `startReflectionButton`, `cancelReflectionButton`, and `sidebarItem-chat/apps/settings`.
 
 ## Credentials
 

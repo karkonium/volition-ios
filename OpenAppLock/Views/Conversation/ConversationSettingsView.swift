@@ -23,7 +23,7 @@ struct ConversationSettingsView: View {
                     .font(.footnote).foregroundStyle(.secondary)
                     .accessibilityIdentifier("openAIKeyStatus")
             }
-            if ConversationShieldRoute.current == .notification {
+            Group {
                 VolitionCard {
                     Button((notifications.status == .notDetermined ? CopyKey.conversationEnableNotifications : .conversationNotificationSettings).resource) {
                         if notifications.status == .notDetermined { Task { await notifications.request() } }

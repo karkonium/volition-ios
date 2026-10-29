@@ -10,8 +10,20 @@ nonisolated struct ConversationActivitySummary: Codable, Equatable, Sendable {
     let minutesSinceLastGrantEnded: Double?
     let denialsLastHour: Int
 
+    /// Short means 1–5 granted minutes; longer means 6–30, never observed usage.
+    let shortGrantsToday: Int
+    let longGrantsToday: Int
+    let sameAppShortGrantsToday: Int
+    let sameAppLongGrantsToday: Int
+
     init(events: [ConversationAccessEvent], appID: UUID, now: Date) {
         let grants = events.filter { $0.date <= now && $0.decision == .approve && $0.grantID != nil }
+        let today = grants.filter { Calendar.current.isDate($0.date, inSameDayAs: now) }
+        let short = today.filter { (60...300).contains(($0.expiresAt ?? $0.date).timeIntervalSince($0.date)) }
+        let long = today.filter { ($0.expiresAt ?? $0.date).timeIntervalSince($0.date) > 300 && ($0.expiresAt ?? $0.date).timeIntervalSince($0.date) <= 1800 }
+        shortGrantsToday = short.count; longGrantsToday = long.count
+        sameAppShortGrantsToday = short.filter { $0.appID == appID }.count
+        sameAppLongGrantsToday = long.filter { $0.appID == appID }.count
         let hour = grants.filter { now.timeIntervalSince($0.date) < 3600 }
         grantsLastHour = hour.count
         grantsLast30Minutes = hour.filter { now.timeIntervalSince($0.date) < 1800 }.count

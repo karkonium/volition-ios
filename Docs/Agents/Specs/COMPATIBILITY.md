@@ -8,14 +8,17 @@ both arm64 and universal iOS 18.5 runtime downloads; older-device checks remain
 pending. One build selects direct opening on iOS 26.5+ and notification/manual
 routing below that version. Both share the same lightweight pending request store.
 
-The product exposes only conversation-based access. Old screens, editor navigation
+The product exposes conversation-based access plus optional Focus protection. Old screens, editor navigation
 and completed planning docs were removed after the conversation MVP was verified.
 The clean baseline is commit `410fc5b`; removed code/docs remain recoverable in Git.
 
 ## Retained deliberately
 
-- SwiftData schemas V1–V4, BlockingRule/AppList relationships and migration plan:
+- SwiftData schemas V1–V5, BlockingRule/AppList relationships and migration plan:
   existing installs must still open their databases without resetting user data.
+  V5 adds ConversationRecord beside unchanged V4 model identities. The history
+  store converts legacy archive content atomically into independent records;
+  profiles, reflections and removal feedback remain in versioned archive metadata.
 - `VolitionApps.prepare`: disables old schedule/time/open rules and splits legacy
   multi-app conversation selections idempotently. Do not enable old rules again.
 - RuleEnforcer, RuleScheduler and shared schedule/limit/open-session stores and

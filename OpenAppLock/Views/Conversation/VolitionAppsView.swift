@@ -13,6 +13,9 @@ struct VolitionAppsView: View {
     @Query(sort: \BlockingRule.createdAt) private var rules: [BlockingRule]
     @State private var adding = false
     @State private var editing: BlockingRule?
+    @State private var queuedRemoval: BlockingRule?
+    @State private var removing: BlockingRule?
+    @State private var alternative: (BlockingRule, String)?
     private var apps: [BlockingRule] { rules.filter { $0.kind == .conversation && $0.isEnabled } }
 
     var body: some View {
@@ -59,7 +62,20 @@ struct VolitionAppsView: View {
             }
             .volitionRoot((onComplete == nil ? CopyKey.volitionApps : .volitionSetupTitle).string)
             .sheet(isPresented: $adding) { VolitionAppEditor() }
-            .sheet(item: $editing) { rule in VolitionAppEditor(rule: rule) }
+            .sheet(item: $editing, onDismiss: {
+                removing = queuedRemoval; queuedRemoval = nil
+            }) { rule in
+                VolitionAppEditor(rule: rule) { queuedRemoval = rule; editing = nil }
+            }
+            .sheet(item: $removing, onDismiss: {
+                guard let (rule, message) = alternative else { return }
+                alternative = nil
+                if let token = AppSelectionCodec.decode(rule.combinedSelectionData).applicationTokens.first {
+                    Task { await conversation.sendToApp(message, token: token, snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) }) }
+                }
+            }) { rule in
+                VolitionAppRemovalView(rule: rule) { message in alternative = (rule, message) }
+            }
         }
     }
 }
@@ -71,6 +87,7 @@ struct VolitionAppsView: View {
 /// Saving immediately reconciles shields and chat context.
 struct VolitionAppEditor: View {
     var rule: BlockingRule? = nil
+    var onRemove: (() -> Void)? = nil
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(RuleEnforcer.self) private var enforcer
@@ -78,11 +95,11 @@ struct VolitionAppEditor: View {
     @State private var selection = FamilyActivitySelection()
     @State private var name = ""
     @State private var intention = ""
+    @State private var profile = ConversationUsageProfile()
     @State private var picking = false
     @State private var pickerSelection = FamilyActivitySelection()
     @State private var pickerError: String?
     @State private var saving = false
-    @State private var confirmingRemoval = false
     @State private var error: String?
     private enum Field: Hashable { case name, intention }
     @FocusState private var focused: Field?
@@ -131,9 +148,10 @@ struct VolitionAppEditor: View {
                     Text(CopyKey.volitionAppNameHelp.resource).font(.caption).foregroundStyle(.secondary)
                         .accessibilityIdentifier("volitionAppNameHelp")
                 }
+                VolitionCard { VolitionUsageProfileFields(profile: $profile) { focused = nil } }
                 VolitionCard {
                     VolitionSectionHeading(title: CopyKey.uiIntentionStep.string)
-                    Text(CopyKey.volitionIntentionHelp.resource).font(.caption).foregroundStyle(.secondary)
+                    Text(CopyKey.profileNotesHelp.resource).font(.caption).foregroundStyle(.secondary)
                     TextEditor(text: $intention)
                         .frame(minHeight: 100)
                         .scrollContentBackground(.hidden)
@@ -146,7 +164,8 @@ struct VolitionAppEditor: View {
                 }
                 if let error { Text(error).font(.subheadline).foregroundStyle(.red) }
                 if rule != nil {
-                    Button(CopyKey.volitionRemoveApp.resource, role: .destructive) { confirmingRemoval = true }
+                    Button(CopyKey.volitionRemoveApp.resource, role: .destructive) { focused = nil; onRemove?() }
+                        .accessibilityIdentifier("removeVolitionAppButton")
                         .buttonStyle(VolitionButtonStyle(primary: false))
                 }
             }
@@ -161,12 +180,17 @@ struct VolitionAppEditor: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(CopyKey.volitionSaveApp.resource) { save() }
-                        .disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || name.count > 100 || intention.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || intention.count > 2000 || selection.applicationTokens.count != 1)
+                        .disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || name.count > 300 || intention.count > 2000 || selection.applicationTokens.count != 1)
                         .accessibilityIdentifier("saveVolitionAppButton")
                 }
             }
             .onAppear {
-                if let rule { name = rule.name; intention = rule.conversationGoal; selection = AppSelectionCodec.decode(rule.combinedSelectionData) }
+                if let rule {
+                    name = rule.name
+                    intention = rule.conversationGoal == CopyKey.profileDefaultGoal.string ? "" : rule.conversationGoal
+                    profile = conversation.history.usageProfiles[rule.id] ?? .init()
+                    selection = AppSelectionCodec.decode(rule.combinedSelectionData)
+                }
             }
             .sheet(isPresented: $picking) {
                 NavigationStack {
@@ -211,9 +235,7 @@ struct VolitionAppEditor: View {
                     }
                 }
             }
-            .confirmationDialog(CopyKey.volitionRemoveApp.string, isPresented: $confirmingRemoval) {
-                Button(CopyKey.volitionRemoveApp.resource, role: .destructive) { remove() }
-            } message: { Text(CopyKey.volitionRemoveMessage.resource) }
+
         }
         .interactiveDismissDisabled(saving)
     }
@@ -230,18 +252,10 @@ struct VolitionAppEditor: View {
     private func save() {
         focused = nil
         do {
-            _ = try VolitionApps.save(name: name, intention: intention, selection: selection, editing: rule, in: context)
+            _ = try VolitionApps.save(name: name, intention: intention, selection: selection, editing: rule, profile: profile, in: context)
+            try conversation.reloadUsageProfiles()
             reconcile()
         } catch { self.error = (error as? VolitionApps.ValidationError)?.errorDescription ?? CopyKey.volitionSaveError.string }
-    }
-    private func remove() {
-        guard let rule else { return }
-        focused = nil
-        do {
-            rule.isEnabled = false
-            try context.save()
-            reconcile()
-        } catch { context.rollback(); self.error = CopyKey.volitionSaveError.string }
     }
     private func reconcile() {
         saving = true

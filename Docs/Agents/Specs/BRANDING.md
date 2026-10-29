@@ -1,44 +1,25 @@
-# Volition identity
+# Volition identity and cleanup
 
 ## Identity
 
-The owner selected concept C: an open charcoal ring with a separate blue segment
-on an off-white field. The flat, simple silhouette matches the restrained native
-interface. Keep the native blue control tint.
+The user-supplied white V on an opaque black field, with broad clean strokes and
+softened inner shoulders/bottom. Preserve the supplied artwork and proportions.
+Keep the native blue interface tint; this does not reskin the controls.
 
 Production assets:
 
-- `OpenAppLock/Assets.xcassets/VolitionLogo.imageset/volition-open-circle.png`:
-  1024px opaque square, used by the welcome screen through `Image("VolitionLogo")`.
-- `OpenAppLock/AppIcon.icon/Assets/volition-open-circle.png`: identical bitmap
-  inside the existing Icon Composer package. The icon name remains `AppIcon`.
-- `OpenAppLock/AppIcon.icon/icon.json`: one non-glass image layer, no added shadow.
-  The system applies its icon mask; no rounded outer corners are baked in.
+- `OpenAppLock/Assets.xcassets/VolitionLogo.imageset/volition-sunlit-v.png`: 1024px
+  opaque square, used by the welcome screen via Image("VolitionLogo").
+- `OpenAppLock/AppIcon.icon/Assets/volition-sunlit-v.png`: identical bitmap in the
+  existing Icon Composer package. The icon name/target build settings stay AppIcon.
+- `OpenAppLock/AppIcon.icon/icon.json`: one non-glass image layer. System icon masks
+  supply the rounded shape; no rounded rectangle is baked into the bitmap.
 
-The selected built-in imagegen output was downsampled for packaging without
-changing the design. Both production copies live in the project. No runtime
-asset download or new dependencies. The original is retained with the four
-concepts in the chat workspace, outside the app source.
-
-## Selected generation prompt
-
-Use case: logo-brand. Asset type: square iOS app icon concept for Volition, a calm
-adult voluntary self-control app where a conversation precedes access. Match a
-quiet native interface with fine outlined cards, black/white typography and a
-restrained system-blue accent. Flat vector-like graphic, exceptionally clean edges,
-strong silhouette legible at 40 pixels, intentional optical alignment. Full-bleed
-opaque square canvas, no inset rounded-square frame, no device mockup, no text
-labels, no watermark. No gold, serif lettering, sparkles, gloss, bevel, lighting
-effects, 3D, gradients, texture, drop shadows, or decorative detail. One icon only,
-centered with generous but not excessive breathing room.
-
-Direction C — Open circle. Off-white background #F5F3EE. One bold charcoal circular
-arc with rounded ends, deliberately open at the upper right, resembling an
-intentional pause in a continuous habit. A small muted blue rounded lozenge sits
-in the opening and follows the arc’s angle while remaining clearly separated by
-negative space from both ends. The circle occupies about 55% of the square. A
-quiet distinctive emblem of choice and space, with an elegant balanced silhouette.
-Not a power button or letter C; make it feel like a considered open ring.
+The user supplied the current square image on 2026-10-28. It was resized to
+1024px with `sips` for packaging and copied identically into both production
+locations above. No regeneration, recoloring or design changes. The legacy
+`volition-sunlit-v.png` filenames remain stable resource references; the icon's
+layer display name is now Volition V. No generation prompt applies to this asset.
 
 ## Conservative cleanup boundary
 
@@ -57,7 +38,9 @@ Do not remove compatibility enforcement as another cosmetic cleanup.
 
 ## Validation
 
-The simulator build, bundled-logo check and onboarding UI check passed after this
-replacement (two tests). The welcome render was inspected. Simulator validation does not establish actual
-home-screen icon appearance on a physical device. No schemas, enforcement logic,
-services or extension targets change with this asset replacement.
+Both production bitmaps are identical opaque 1024px squares. The white-V welcome
+screen was verified with an iPhone UI test and its exported screenshot inspected.
+493 domain tests (including branding resource loading) and the signed generic iOS
+build pass. The artifact includes all five extensions; the local ignored config
+remains bundled without exposing its contents. Physical-device icon appearance
+has not been verified or installed in this revision.
