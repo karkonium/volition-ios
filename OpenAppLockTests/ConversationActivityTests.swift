@@ -3,6 +3,14 @@ import Testing
 @testable import OpenAppLock
 
 @Suite struct ConversationActivityTests {
+    @Test func oneHourCountsAsALongerAllocatedSession() {
+        let now = Date(), app = UUID()
+        let event = ConversationAccessEvent(date: now, appID: app, appName: "Lesson", reason: "Study",
+            decision: .approve, reply: "An hour", grantID: UUID(), expiresAt: now.addingTimeInterval(3600))
+        let summary = ConversationActivitySummary(events: [event], appID: app, now: now)
+        #expect(summary.sameAppLongGrantsToday == 1)
+        #expect(summary.shortGrantsToday == 0)
+    }
     @Test func summaryCountsActualGrantsAcrossAppsAndRespectsTime() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let app = UUID(), other = UUID()

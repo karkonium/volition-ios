@@ -15,9 +15,9 @@ struct ConversationDealCard: View {
             HStack {
                 Button(CopyKey.dealAccept.resource) {
                     Task { await conversation.completeReflection(reflection.id, acceptDeal: true, snapshots: snapshots) }
-                }.buttonStyle(.borderedProminent).accessibilityIdentifier("conversationDealAccept")
+                }.buttonStyle(VolitionButtonStyle()).accessibilityIdentifier("conversationDealAccept")
                 Button(CopyKey.dealDecline.resource) { conversation.declineDeal(reflection.id) }
-                    .buttonStyle(.bordered).accessibilityIdentifier("conversationDealDecline")
+                    .buttonStyle(VolitionButtonStyle(primary: false)).accessibilityIdentifier("conversationDealDecline")
             }.disabled(reflection.state == .activating)
         }.padding().background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
     }

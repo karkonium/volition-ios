@@ -26,7 +26,7 @@ struct VolitionAppRemovalView: View {
                     Section {
                         Text(CopyKey.removalAlternative.resource).font(.headline)
                         Text(CopyKey.removalAlternativeHelp.resource).foregroundStyle(.secondary)
-                        Stepper(CopyKey.removalMinutes.string(minutes), value: $minutes, in: 1...30)
+                        Stepper(CopyKey.removalMinutes.string(minutes), value: $minutes, in: 1...60)
                             .accessibilityIdentifier("removalMinutes")
                         Button(CopyKey.removalAsk.string(minutes)) { finish(.temporaryUnlockRequested) }
                             .disabled(conversation.isSending)

@@ -104,7 +104,7 @@ nonisolated struct ConversationEnforcement {
                 if let commitment {
                     let deal = state.dealCommitments[commitment]
                     guard overridingDealID == deal.grantID, (deal.pushbackCount ?? 0) >= 2,
-                          !Self.lastResolvedDealWasBroken(state, at: now) else { throw ConversationAccessError.waiting }
+                          let blockMinutes, blockMinutes >= Self.minimumReplacementBreakMinutes(for: deal, at: now) else { throw ConversationAccessError.waiting }
                 } else if overridingDealID != nil { throw ConversationAccessError.staleRequest }
                 guard fingerprint == ConversationGrantStore.fingerprint(state.snapshots) else { throw ConversationAccessError.staleRequest }
                 guard !ConversationGrantStore.applicable(to: token, in: state.snapshots).isEmpty else { throw ConversationAccessError.noApplicableRule }
@@ -151,7 +151,13 @@ nonisolated struct ConversationEnforcement {
         }
     }
 
-    /// Shared exception eligibility cannot be reset by deleting the transcript.
+    /// Breaking an agreement replaces it atomically with an explicitly accepted,
+    /// longer break: remaining time plus 15 minutes, at least 30, at most 24 hours.
+    static func minimumReplacementBreakMinutes(for deal: ConversationGrantStore.DealCommitment, at now: Date) -> Int {
+        min(1440, max(30, Int(ceil(max(0, deal.blockedUntil.timeIntervalSince(now)) / 60)) + 15))
+    }
+
+    /// Shared exception history cannot be reset by deleting the transcript.
     static func lastResolvedDealWasBroken(_ state: ConversationGrantStore.State, at now: Date) -> Bool {
         state.dealCommitments.filter { $0.resolutionDate <= now }
             .max { $0.resolutionDate < $1.resolutionDate }?.overriddenAt != nil

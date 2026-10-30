@@ -5,7 +5,7 @@ import Testing
 @MainActor
 @Suite("Conversation unlock timing")
 struct ConversationUnlockPlanTests {
-    @Test("Grants up to thirty minutes use a valid interval with a warning at expiry", arguments: [1, 5, 10, 15, 30])
+    @Test("Grants up to sixty minutes use a valid interval with a warning at expiry", arguments: [1, 5, 10, 15, 30, 45, 60])
     func warningAtExpiry(minutes: Int) throws {
         let start = Date(timeIntervalSince1970: 1_800_000_000)
         let plan = try ConversationUnlockPlan(grantID: UUID(), minutes: minutes, start: start)
@@ -16,7 +16,7 @@ struct ConversationUnlockPlanTests {
         #expect(plan.hasExpired(at: plan.expiresAt))
     }
 
-    @Test("Invalid durations are rejected", arguments: [-1, 0, 31, 60])
+    @Test("Invalid durations are rejected", arguments: [-1, 0, 61, 120])
     func invalidDuration(minutes: Int) {
         #expect(throws: ConversationUnlockPlan.ValidationError.invalidDuration) {
             try ConversationUnlockPlan(grantID: UUID(), minutes: minutes, start: .now)

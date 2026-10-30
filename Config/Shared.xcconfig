@@ -22,6 +22,12 @@ CODE_SIGN_STYLE = Automatic
 // compliance prompt on every upload.
 INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO
 
+// Check actor boundaries across the app and extensions while retaining Swift 5
+// compatibility. Infer Sendable for immutable closures/key-path literals so SDK
+// SortDescriptor initializers are checked correctly in this language mode.
+SWIFT_STRICT_CONCURRENCY = complete
+OTHER_SWIFT_FLAGS = $(inherited) -enable-upcoming-feature InferSendableFromCaptures
+
 // --- App metadata links ------------------------------------------------------
 // Outbound URLs surfaced on the Settings screen (GitHub repo + marketing site).
 // They are user-defined build settings so the destinations are configurable

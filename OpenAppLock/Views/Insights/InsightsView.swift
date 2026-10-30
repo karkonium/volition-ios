@@ -74,7 +74,7 @@ struct InsightsView: View {
                         }
                     }
                     Text(CopyKey.insightsHelp.resource).font(.caption).foregroundStyle(.secondary)
-                }.volitionRoot(CopyKey.insightsTitle.string)
+                }.volitionTabRoot()
             }
         }
     }

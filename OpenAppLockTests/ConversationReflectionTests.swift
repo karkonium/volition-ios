@@ -13,10 +13,29 @@ struct ConversationReflectionTests {
         }
         for json in [
             #"{"reply":"Pause","decision":"pause","unlock_minutes":null,"pause_seconds":10}"#,
-            #"{"reply":"Pause","decision":"pause","unlock_minutes":31,"pause_seconds":10}"#,
+            #"{"reply":"Pause","decision":"pause","unlock_minutes":61,"pause_seconds":10}"#,
             #"{"reply":"Yes","decision":"approve","unlock_minutes":5,"pause_seconds":10}"#,
             #"{"reply":"Pause","decision":"pause","unlock_minutes":5,"pause_seconds":10,"wait_minutes":1}"#
         ] { #expect(throws: (any Error).self) { try ConversationDecision.parse(Data(json.utf8)) } }
+    }
+
+    @Test func overrideRequiresReplacementDealTerms() throws {
+        let valid = Data(#"{"reply":"Five minutes then a longer break?","decision":"override","unlock_minutes":5,"block_minutes":60}"#.utf8)
+        #expect(try ConversationDecision.parse(valid).blockMinutes == 60)
+        #expect(throws: (any Error).self) {
+            try ConversationDecision.parse(Data(#"{"reply":"Exception","decision":"override","unlock_minutes":5}"#.utf8))
+        }
+    }
+
+    @Test func emotionCooldownHasExactGlobalBoundaryAndPersists() throws {
+        let now = Date(timeIntervalSince1970: 1000)
+        var history = ConversationHistory()
+        #expect(history.canAskEmotion(at: now))
+        history.lastEmotionQuestionAt = now
+        #expect(!history.canAskEmotion(at: now.addingTimeInterval(119.999)))
+        #expect(history.canAskEmotion(at: now.addingTimeInterval(120)))
+        let decoded = try JSONDecoder().decode(ConversationHistory.self, from: JSONEncoder().encode(history))
+        #expect(!decoded.canAskEmotion(at: now.addingTimeInterval(30)))
     }
 
     @Test func oldArchivesHaveNoProfilesOrReflections() throws {
@@ -31,7 +50,7 @@ struct ConversationReflectionTests {
         var pause = ConversationReflection(appID: UUID(), appName: "Game", reason: "Relax", reply: "A moment first?",
             unlockMinutes: 5, seconds: 10, fingerprint: "configuration", activityID: UUID(), now: now)
         #expect(pause.deadline == now.addingTimeInterval(10))
-        #expect(!pause.isReady(at: now.addingTimeInterval(10)))
+        #expect(pause.isReady(at: now.addingTimeInterval(10)))
         pause.emotion = .boredom
         #expect(pause.isReady(at: now.addingTimeInterval(10)))
         #expect(!pause.isReady(at: now.addingTimeInterval(9)))
@@ -52,6 +71,16 @@ struct ConversationReflectionTests {
         }
         #expect(throws: (any Error).self) {
             try ConversationDecision.parse(Data(#"{"reply":"Yes","decision":"approve","unlock_minutes":3,"block_minutes":10}"#.utf8))
+        }
+    }
+
+    @Test func interventionChoiceRequiresBothValidatedOptions() throws {
+        let choice = Data(#"{"reply":"A delay or a deal?","decision":"choice","unlock_minutes":3,"pause_seconds":20,"block_minutes":30,"wait_minutes":null}"#.utf8)
+        #expect(try ConversationDecision.parse(choice).decision == .choice)
+        for field in ["pause_seconds", "block_minutes", "unlock_minutes"] {
+            var object = try #require(JSONSerialization.jsonObject(with: choice) as? [String: Any])
+            object[field] = NSNull()
+            #expect(throws: (any Error).self) { try ConversationDecision.parse(JSONSerialization.data(withJSONObject: object)) }
         }
     }
 
@@ -88,6 +117,20 @@ struct ConversationReflectionTests {
         }
         #expect(history.recommendedPauseSeconds(for: UUID(), now: now) == 10)
         #expect(history.recommendedPauseSeconds(for: app, now: now.addingTimeInterval(86401)) == 10)
+    }
+
+    @Test func twoRecentStartedPausesCountEvenIfEndedEarlyOrKeptLocked() {
+        let app = UUID(), now = Date()
+        var history = ConversationHistory()
+        for skipped in [false, true] {
+            var pause = ConversationReflection(appID: app, appName: "App", reason: "Bored", reply: "Delay",
+                unlockMinutes: 3, seconds: 10, fingerprint: "same", activityID: UUID(), now: now)
+            pause.state = .cancelled; pause.skipped = skipped
+            history.reflections.append(pause)
+        }
+        #expect(history.recentPauseAttempts(for: app, now: now) == 2)
+        #expect(history.recentPauseAttempts(for: UUID(), now: now) == 0)
+        #expect(history.recentPauseAttempts(for: app, now: now.addingTimeInterval(86401)) == 0)
     }
 
 }

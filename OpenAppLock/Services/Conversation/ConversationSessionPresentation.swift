@@ -11,6 +11,8 @@ nonisolated struct ConversationPresentedUnlock: Equatable, Sendable {
 /// Presentation is advisory and starts only for a published, durable grant.
 /// Revalidate after notification awaits so ending cannot leave late-added alerts.
 /// Native date text advances while suspended; enforcement never depends on it.
+/// Only activity IDs cross to async SDK cleanup; non-Sendable Activity handles
+/// are looked up and consumed together on that executor.
 actor ConversationSessionPresentation {
     static let shared = ConversationSessionPresentation()
     private var revision = UUID()
@@ -19,8 +21,9 @@ actor ConversationSessionPresentation {
     func end(_ id: UUID) async {
         endedIDs.insert(id)
         ConversationUnlockNotifications.cancel(grantIDs: [id])
-        for activity in Activity<ConversationUnlockActivityAttributes>.activities where activity.attributes.grantID == id {
-            await activity.end(nil, dismissalPolicy: .immediate)
+        let activityIDs = Activity<ConversationUnlockActivityAttributes>.activities.filter { $0.attributes.grantID == id }.map(\.id)
+        for activityID in activityIDs {
+            await Self.endActivity(activityID)
         }
     }
 
@@ -52,8 +55,11 @@ actor ConversationSessionPresentation {
             }
         }
         guard revision == version else { return }
-        for activity in Activity<ConversationUnlockActivityAttributes>.activities where !desiredIDs.contains(activity.attributes.grantID) || !active(activity.attributes.grantID, in: store) {
-            await activity.end(nil, dismissalPolicy: .immediate)
+        let staleActivityIDs = Activity<ConversationUnlockActivityAttributes>.activities.filter {
+            !desiredIDs.contains($0.attributes.grantID) || !active($0.attributes.grantID, in: store)
+        }.map(\.id)
+        for activityID in staleActivityIDs {
+            await Self.endActivity(activityID)
         }
         guard revision == version, ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         for unlock in desired where active(unlock.plan.grantID, in: store) {
@@ -63,9 +69,13 @@ actor ConversationSessionPresentation {
             do {
                 let activity = try Activity.request(attributes: attributes,
                     content: ActivityContent(state: .init(start: unlock.plan.start, expiresAt: unlock.plan.expiresAt), staleDate: unlock.plan.expiresAt), pushType: nil)
-                if !active(unlock.plan.grantID, in: store) { await activity.end(nil, dismissalPolicy: .immediate) }
+                if !active(unlock.plan.grantID, in: store) { await Self.endActivity(activity.id) }
             } catch { ConversationDiagnostics.live.log("live_activity.unavailable") }
         }
+    }
+    nonisolated private static func endActivity(_ id: String) async {
+        guard let activity = Activity<ConversationUnlockActivityAttributes>.activities.first(where: { $0.id == id }) else { return }
+        await activity.end(nil, dismissalPolicy: .immediate)
     }
     func active(_ id: UUID, in store: ConversationGrantStore) -> Bool {
         guard !endedIDs.contains(id) else { return false }

@@ -77,6 +77,21 @@ struct DiagnosticLogTests {
             file: "Report.swift", line: 1, function: "f()")
         #expect(LogTimestamp.prefix(ofLine: entry.formatted) == "2026-06-22T14:03:11.482Z")
     }
+
+    @Test("Concurrent log writers retain the fixed-width UTC timestamp contract")
+    func concurrentTimestampFormatting() async {
+        let instant = fixedDate
+        let stamps = await withTaskGroup(of: String.self, returning: [String].self) { group in
+            for _ in 0..<100 {
+                group.addTask { LogTimestamp.string(from: instant) }
+            }
+            var result: [String] = []
+            for await stamp in group { result.append(stamp) }
+            return result
+        }
+        #expect(stamps.count == 100)
+        #expect(stamps.allSatisfy { $0 == "2026-06-22T14:03:11.482Z" && $0.count == LogTimestamp.prefixLength })
+    }
 }
 
 @MainActor

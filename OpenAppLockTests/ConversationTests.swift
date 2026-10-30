@@ -36,7 +36,7 @@ struct ConversationTests {
         let valid = Data(#"{"reply":"Take five minutes.","decision":"approve","unlock_minutes":5}"#.utf8)
         #expect(try ConversationDecision.parse(valid).unlockMinutes == 5)
         for text in [
-            #"{"reply":"Yes","decision":"approve","unlock_minutes":31}"#,
+            #"{"reply":"Yes","decision":"approve","unlock_minutes":61}"#,
             #"{"reply":"Yes","decision":"approve","unlock_minutes":0}"#,
             #"{"reply":"No","decision":"deny","unlock_minutes":5}"#,
             #"{"reply":"Yes","decision":"approve","unlock_minutes":null}"#,

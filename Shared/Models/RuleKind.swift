@@ -6,7 +6,7 @@
 import Foundation
 
 /// The four kinds of blocking rules offered on the "New Rule" sheet.
-enum RuleKind: String, Codable, CaseIterable, Sendable {
+nonisolated enum RuleKind: String, Codable, CaseIterable, Sendable {
     /// Block selected apps during a recurring time window.
     case schedule
     /// Block selected apps after a daily usage budget is spent.
@@ -55,7 +55,7 @@ enum RuleKind: String, Codable, CaseIterable, Sendable {
 }
 
 /// How the rule's app selection is interpreted.
-enum SelectionMode: String, Codable, CaseIterable, Sendable {
+nonisolated enum SelectionMode: String, Codable, CaseIterable, Sendable {
     /// Block the selected apps; everything else stays available.
     case block
     /// Block everything except the selected apps.

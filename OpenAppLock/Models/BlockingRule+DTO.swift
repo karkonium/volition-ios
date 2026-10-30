@@ -78,5 +78,5 @@ extension BlockingRule {
     /// The Codable projection of this rule. This is the single conversion point
     /// from the SwiftData `@Model` to the value type every consumer outside the
     /// store, the rule editors, and the mutation path speaks.
-    var dto: RuleSnapshotDTO { RuleSnapshotDTO(rule: self) }
+    @MainActor var dto: RuleSnapshotDTO { RuleSnapshotDTO(rule: self) }
 }

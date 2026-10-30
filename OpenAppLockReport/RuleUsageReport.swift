@@ -11,7 +11,9 @@ import SwiftUI
 /// via the report's filter, so this scene stays identity-agnostic and never reads
 /// the app group. Runs only while the host app foregrounds a
 /// `DeviceActivityReport(.ruleUsage, …)`.
-struct RuleUsageReport: DeviceActivityReportScene {
+/// Configuration consumes framework results on the caller's executor; only the
+/// rendered SwiftUI body uses the main actor. No framework iterator crosses actors.
+nonisolated struct RuleUsageReport: DeviceActivityReportScene {
     let context: DeviceActivityReport.Context = .ruleUsage
     let content: (RuleUsageReportData) -> RuleUsageReportView = { RuleUsageReportView(data: $0) }
 

@@ -13,7 +13,10 @@ nonisolated struct ConversationContext: Codable, Sendable {
     var waitUntil: Date? = nil
     var usageProfile: ConversationUsageProfile? = nil
     var recentReflections: [ConversationReflection.Context] = []
-    var pauseBeforeDealRequired: Bool = true
+    var pauseBeforeDealRequired: Bool = false
+    var recentPauseAttempts: Int = 0
+    var preferDeal: Bool = false
+    var emotionCheckInSuggested: Bool = false
     var deal: ConversationDealContext? = nil
     var waitUntilLocal: String? = nil
     var recommendedPauseSeconds: Int = 10
@@ -30,6 +33,7 @@ nonisolated struct ConversationDealContext: Codable, Sendable {
     let pushbackCount: Int
     let lastResolvedDealWasBroken: Bool
     let canOverride: Bool
+    var minimumReplacementBreakMinutes: Int = 30
 }
 
 nonisolated struct ConversationActiveUnlock: Codable, Sendable {
@@ -68,11 +72,11 @@ nonisolated struct OpenAIConversationClient: ConversationClient {
             "required": ["reply", "decision", "unlock_minutes", "wait_minutes", "pause_seconds", "block_minutes"],
             "properties": [
                 "reply": ["type": "string"],
-                "decision": ["type": "string", "enum": ["ask", "deny", "approve", "wait", "pause", "deal", "override"]],
-                "unlock_minutes": ["type": ["integer", "null"], "description": "REQUIRED integer 1–30 for approve, pause, deal AND override. A pause plans an unlock, so never null for pause. Null only for ask, deny, wait."],
+                "decision": ["type": "string", "enum": ["ask", "deny", "approve", "wait", "pause", "deal", "choice", "override"]],
+                "unlock_minutes": ["type": ["integer", "null"], "description": "REQUIRED integer 1–60 for approve, pause, deal, choice AND override. Null only for ask, deny, wait."],
                 "wait_minutes": ["type": ["integer", "null"]],
-                "pause_seconds": ["type": ["integer", "null"]],
-                "block_minutes": ["type": ["integer", "null"]]
+                "pause_seconds": ["type": ["integer", "null"], "description": "10–1800 for pause or choice; otherwise null."],
+                "block_minutes": ["type": ["integer", "null"], "description": "1–1440 for deal, choice or override; otherwise null. Override requires at least deal.minimumReplacementBreakMinutes."]
             ]
         ]
         let text = try await request(operation: "decision", key: apiKey, instructions: Self.instructions, input: content,
@@ -201,12 +205,14 @@ nonisolated struct MockConversationClient: ConversationClient {
         if fails { throw ConversationClientError.transport(code: URLError.notConnectedToInternet.rawValue) }
         let text = context.recentMessages.last(where: { $0.role == .user })?.text.lowercased() ?? ""
         if text.contains("test-loading") { try await Task.sleep(for: .seconds(10)) }
-        if text.contains("override") { return .init(reply: "One small exception, then stop.", decision: .override, unlockMinutes: 1) }
+        if text.contains("override") { return .init(reply: "One small exception, then stop.", decision: .override, unlockMinutes: 1, blockMinutes: context.deal?.minimumReplacementBreakMinutes ?? 30) }
+        if text.contains("choice") { return .init(reply: "Choose a short delay, three minutes then ten away, or open for three minutes now.", decision: .choice, unlockMinutes: 3, pauseSeconds: 10, blockMinutes: 10) }
         if text.contains("deal") { return .init(reply: "Three minutes, then ten minutes away?", decision: .deal, unlockMinutes: 3, blockMinutes: 10) }
         if text.contains("pause 30") { return .init(reply: "Thirty seconds before a thirty-minute intentional session.", decision: .pause, unlockMinutes: 30, pauseSeconds: 30) }
-        if text.contains("reflect") { return .init(reply: "Let’s take ten seconds. What’s pulling you here?", decision: .pause, unlockMinutes: 5, pauseSeconds: 10) }
+        if text.contains("reflect") { return .init(reply: "Let’s take ten seconds before a five-minute intentional session.", decision: .pause, unlockMinutes: 5, pauseSeconds: 10) }
         if text.contains("wait") { return .init(reply: "Let’s leave this app closed for now. What were you hoping to do?", decision: .wait, unlockMinutes: nil, waitMinutes: 1) }
         if text.contains("deny") { return .init(reply: "This does not support your goal.", decision: .deny, unlockMinutes: nil) }
+        if text.contains("approve 60") { return .init(reply: "An hour for your planned work session.", decision: .approve, unlockMinutes: 60) }
         if text.contains("approve 2") { return .init(reply: "Two minutes for that purpose.", decision: .approve, unlockMinutes: 2) }
         if text.contains("approve") { return .init(reply: "Take one minute for that purpose.", decision: .approve, unlockMinutes: 1) }
         return .init(reply: "What would you like to accomplish in this app?", decision: .ask, unlockMinutes: nil)

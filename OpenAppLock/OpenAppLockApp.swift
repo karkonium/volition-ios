@@ -155,14 +155,19 @@ struct OpenAppLockApp: App {
         else { historyStore = UnavailableHistoryStore() }
         let preferences = config.isUITesting ? CoachPreferences.testing() : CoachPreferences()
         if config.isUITesting, ProcessInfo.processInfo.arguments.contains("-ai-consent-required") { preferences.setConsent(false) }
+        let client: any ConversationClient = config.isUITesting ? MockConversationClient(
+            delay: ProcessInfo.processInfo.arguments.contains("-slow-coach") ? .seconds(15) : .zero,
+            fails: ProcessInfo.processInfo.arguments.contains("-failing-coach")) : OpenAIConversationClient()
+        let timer: any ConversationTimerScheduling = config.isUITesting ? MockConversationTimer() : DeviceConversationTimer()
+        let checkInRoll: @Sendable () -> Bool
+        if config.isUITesting { checkInRoll = { true } }
+        else { checkInRoll = { Bool.random() } }
         _conversation = State(initialValue: ConversationCoordinator(historyStore: historyStore,
             preferences: preferences, service: coachService,
-            client: config.isUITesting ? MockConversationClient(
-                delay: ProcessInfo.processInfo.arguments.contains("-slow-coach") ? .seconds(15) : .zero,
-                fails: ProcessInfo.processInfo.arguments.contains("-failing-coach")) : OpenAIConversationClient(),
+            client: client,
             keys: config.isUITesting ? MockConversationKeyStore() : ConversationEnvironmentKeyStore(),
             access: ConversationEnforcement(store: conversationStore, shields: shields),
-            timer: config.isUITesting ? MockConversationTimer() : DeviceConversationTimer()))
+            timer: timer, checkInRoll: checkInRoll))
     }
 
     var body: some Scene {

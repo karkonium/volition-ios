@@ -16,6 +16,8 @@ import SwiftUI
 struct RuleUsageReportView: View {
     let data: RuleUsageReportData
 
+    nonisolated init(data: RuleUsageReportData) { self.data = data }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {

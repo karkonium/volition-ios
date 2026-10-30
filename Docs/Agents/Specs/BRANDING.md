@@ -4,7 +4,11 @@
 
 The user-supplied white V on an opaque black field, with broad clean strokes and
 softened inner shoulders/bottom. Preserve the supplied artwork and proportions.
-Keep the native blue interface tint; this does not reskin the controls.
+Keep the native blue interface tint. Recommended actions use a blue fill with a
+bold white label; alternatives use a subtle surface and regular secondary label.
+Accept deal and Start pause are primary; Decline, Skip pause and Cancel pause
+are secondary. Emotion choices remain equally weighted. Every action retains at
+least a 44-point touch target; quieter alternatives remain enabled and readable.
 
 Production assets:
 
@@ -20,6 +24,8 @@ The user supplied the current square image on 2026-10-28. It was resized to
 locations above. No regeneration, recoloring or design changes. The legacy
 `volition-sunlit-v.png` filenames remain stable resource references; the icon's
 layer display name is now Volition V. No generation prompt applies to this asset.
+The image supplied again on 2026-10-29 produces the identical production bitmap
+after resizing; both existing asset locations already match it exactly.
 
 ## Conservative cleanup boundary
 

@@ -2,10 +2,12 @@
 
 Volition is a conversation-first iOS Screen Time app. The Xcode project and target
 are still named OpenAppLock. Users save individual apps with a name and intention;
-a respectful coach asks for intention, approves 1–30 minutes, offers reflections
+a respectful coach asks for intention, approves 1–60 minutes, offers reflections
 or explicit access/break deals, and progressively challenges rapid repeat use.
-Ten-second reflections are skippable; longer pauses require explicit agreement.
-Suggested short pauses progress per app from 10 to 60 seconds over 24 hours.
+Ten-second delays start immediately; longer delays require explicit agreement.
+Elapsed/ended delays require an explicit Unlock or Keep locked choice; emotions never gate access.
+Suggested pauses progress per app from 10 to 60 seconds over 24 hours; each recent
+broken deal adds 60 seconds, capped at 1,800. Longer delays require agreement.
 App removal asks why, offers a normal temporary-access request, and records private
 high-frustration feedback. Users always control removal.
 Legacy enforced waits remain readable and cannot be bypassed.
@@ -55,22 +57,31 @@ enforcement and notification acceptance remain pending.
   keyed by rule ID; optional notes retain old free text and get a neutral default
   when skipped. Do not modify frozen SwiftData schemas for profile fields. The
   picker closes on one valid app; cancelling preserves the previous selection.
+  Missing-name Save attempts focus/highlight the name using the shared attention effect.
 - The coach asks for a current intention (boredom is valid) and progressively
   follows intention → short pause/optional trigger check-in → negotiated deal →
   last-resort refusal. Counts alone never justify skipping earlier interventions;
   declining a voluntary pause/deal is not disobedience.
-  CoachingPolicy owns the progressive prompt. AI consent gates every transmission;
+  CoachingPolicy owns the progressive prompt. AI sharing defaults on only when
+  unset; saved opt-outs remain off and onboarding retains its disclosure/choice.
+  AI consent gates every transmission;
   withdrawing consent cancels pending responses/reflections. GPT-5.4 mini uses medium decision reasoning. Counts describe allocated unlock
-  sessions (short 1–5, longer 6–30 minutes), never measured foreground usage.
+  sessions (short 1–5, longer 6–60 minutes), never measured foreground usage.
 - Pauses/delays are BEFORE access; deals are access THEN a block. Ask users to
   reflect on a suggested short pause first; longer pause lengths (10–1,800
-  seconds) and deal terms are chosen willingly. A completed, unskipped
-  pause for that app within 24 hours is required before offering a deal.
-- Deal offers require Accept/Decline. Accepted 1–30-minute grants atomically store
+  seconds) and deal terms are chosen willingly. After two recent started pause
+  attempts prefer a deal or Delay, Deal or Open choice; a completed pause is not a hard
+  prerequisite. Choice offers exactly Delay/Deal/quieter Open actions, bound to
+  the same access duration. Open neither creates a deal nor counts as a pause.
+  Sample optional independent check-ins for half of intervention
+  requests, with a persisted global 120-second question cooldown. Custom emotions
+  are limited to 160 trimmed characters; the legacy Other value remains readable.
+  Check-ins are shared by delays/deals/choices. Practical work requests avoid rituals.
+- Deal offers require Accept/Decline. Accepted 1–60-minute grants atomically store
   a 1–1,440-minute break until original expiry plus break, retained after early end,
-  relaunch and Clear Chat. Rare overrides require two prior actual coach
-  pushbacks and cannot break two resolved deals consecutively across apps. A
-  fulfilled deal resets eligibility; rollback restores overridden terms. Keep the
+  relaunch and Clear Chat. Overrides require two prior actual coach pushbacks and explicit acceptance
+  of a replacement deal with a longer break (remaining minutes + 15, minimum 30,
+  maximum 1,440). Repeated overrides are possible; rollback restores old terms. Keep the
   shared commitment ledger after expiry; do not prune exception history.
 - Grant presentation follows per-app configuration validity, including after
   unrelated app edits. Focus revocations remove only affected reminders/cards.
@@ -83,15 +94,22 @@ enforcement and notification acceptance remain pending.
 - The coach receives cross-app access history, active grants and the selected
   app’s wait. A local wait prevents early approval but does not disable chat.
   Only unlocks show top timers; a declined request has no waiting countdown.
-  Soft reflection has its own inline seconds countdown, optional emotion choice,
-  skip and cancel. Keep unanswered choices visible after the pause; normal
-  completion needs a choice (including Not sure / Skip) and elapsed time.
+  Active unlocks use compact pinned banners outside the transcript. Soft delays
+  have an inline seconds countdown and small End delay action. Expiry/end never
+  opens automatically: show a quieter Unlock and bright Keep locked. Emotion
+  check-ins appear alone first; answering or Skip reveals the separate intervention
+  message and starts a ten-second delay only then. Neither accepts a deal or unlocks.
   It persists a deadline and planned unlock, claims activation
   durably once, and uses the same grant checks without another model request.
-  Service it from the foreground shell even outside Chat; never grant in background.
+  Foreground lifecycle expires offers but never automatically activates them;
+  only explicit Unlock/Accept actions may grant. Never grant in background.
   Recovered activating claims are interrupted, not replayed. Long offers require
   Start; new model wait responses are voluntary offers, not fresh hard cooldowns.
   Emotion context is limited to ten records in 24 hours, outside chat summaries.
+- Confirmed unlock/keep-locked outcomes offer private Helpful/Neutral/Annoying
+  feedback. Ratings never control access and export with the activity log.
+- Valid foreground shield requests leave saved-app setup for Chat even before
+  Start chatting; unfinished app editor drafts are not saved.
 - Saved app names can route messages before sending. Ambiguous/missing targets
   preserve the draft and highlight the picker; explicit selection resolves them.
 - The private activity log records content and actual local outcomes separately
@@ -115,11 +133,15 @@ enforcement and notification acceptance remain pending.
   requests with working Home navigation are verified on the connected iPhone;
   long-run repetition and background/terminated short expiry need observation.
 - Background grants use a max(16, requested minutes + 5)-minute DeviceActivity
-  interval and an end warning at the 1–30-minute deadline. OS callbacks may be late; do not promise exact expiry.
+  interval and an end warning at the 1–60-minute deadline. OS callbacks may be late; do not promise exact expiry.
 - Never remove compatibility schemas, enforcement or extension targets as a
   cosmetic cleanup. Shared files compile into the app and the original four extensions; ActivityShared compiles into the app, monitor and Live Activity widget.
 
 ## Build and test
+
+Shared.xcconfig enables complete concurrency checking and Sendable inference for
+closure/key-path literals in Swift 5 language mode. Validate changes with
+`SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`; keep persisted V1–V5 fields unchanged.
 
 Prefer connected Xcode MCP build/test tools. If unavailable, use `xcodebuild`.
 Scheme: `OpenAppLock`; project: `OpenAppLock.xcodeproj`.

@@ -7,7 +7,7 @@ import Testing
 @MainActor
 @Suite("Shared conversation lifecycle", .serialized)
 struct ConversationCoordinatorTests {
-    private func setup(priorPause: Bool = false, client: any ConversationClient = MockConversationClient(), shields: any ShieldApplying = MockShieldController(), selectTarget: Bool = true, hardWait: Bool = false, requests: ConversationRequestStore = .init()) throws -> (ConversationCoordinator, HistoryMemory, RuleSnapshotDTO, ApplicationToken) {
+    private func setup(priorPause: Bool = false, client: any ConversationClient = MockConversationClient(), shields: any ShieldApplying = MockShieldController(), selectTarget: Bool = true, hardWait: Bool = false, requests: ConversationRequestStore = .init(), checkIn: Bool = false, pauseAttempts: Int = 0) throws -> (ConversationCoordinator, HistoryMemory, RuleSnapshotDTO, ApplicationToken) {
         let token = try JSONDecoder().decode(ApplicationToken.self,
             from: JSONSerialization.data(withJSONObject: ["data": Data([1]).base64EncodedString()]))
         var selection = FamilyActivitySelection(); selection.applicationTokens = [token]
@@ -23,16 +23,16 @@ struct ConversationCoordinatorTests {
                 reason: "Previously agreed wait", decision: .wait, reply: "Agreed.", waitUntil: Date().addingTimeInterval(180))]
             history.value.cooldownUntil = history.value.accessEvents.first?.waitUntil
         }
-        if priorPause {
+        for _ in 0..<(priorPause ? max(1, pauseAttempts) : pauseAttempts) {
             var pause = ConversationReflection(appID: rule.id, appName: rule.name, reason: "Boredom", reply: "Pause", unlockMinutes: 3,
                 seconds: 10, fingerprint: ConversationGrantStore.fingerprint([rule]), activityID: UUID(), now: .now.addingTimeInterval(-60))
             pause.state = .completed; pause.finishedAt = .now.addingTimeInterval(-45)
-            history.value.reflections = [pause]
+            history.value.reflections.append(pause)
         }
         let coordinator = ConversationCoordinator(historyStore: history, preferences: .testing(), client: client,
             keys: MockConversationKeyStore(),
             access: .init(store: .init(fileURL: directory.appendingPathComponent("access.json")), shields: shields),
-            timer: MockConversationTimer(), requestStore: requests)
+            timer: MockConversationTimer(), requestStore: requests, checkInRoll: { checkIn })
         if selectTarget { coordinator.select(token) }
         return (coordinator, history, rule, token)
     }
@@ -592,6 +592,8 @@ struct ConversationCoordinatorTests {
         #expect(restored.grants.isEmpty)
         restored.isForeground = true
         await restored.resumeReflections(snapshots: { [rule] })
+        #expect(restored.grants.isEmpty)
+        await restored.completeReflection(pause.id, snapshots: { [rule] })
         #expect(restored.grants.count == 1)
         #expect(restored.grant?.plan.minutes == 3)
     }
@@ -691,6 +693,37 @@ struct ConversationCoordinatorTests {
         #expect(archive.value.usageProfiles[rule.id] == profile)
     }
 
+    @Test("Restored pending offers are cancelled when sharing is off")
+    func restoredOffersRespectWithdrawnConsent() async throws {
+        for message in ["reflect", "deal", "choice"] {
+            let (coach, archive, rule, token) = try setup()
+            await coach.send(message, snapshots: { [rule] })
+            let offer = try #require(coach.pendingReflections.first)
+            let preferences = CoachPreferences.testing()
+            preferences.setConsent(false)
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            let restored = ConversationCoordinator(historyStore: archive, preferences: preferences, keys: MockConversationKeyStore(),
+                access: .init(store: .init(fileURL: directory.appendingPathComponent("access.json")), shields: MockShieldController()), timer: MockConversationTimer())
+            restored.select(token)
+            #expect(restored.pendingReflections.isEmpty)
+            await restored.completeReflection(offer.id, skip: true, acceptDeal: true, snapshots: { [rule] })
+            #expect(restored.grants.isEmpty)
+            #expect(archive.value.reflections.last?.state == .cancelled)
+        }
+    }
+
+    @Test("Activation rechecks consent even if the preference changes independently")
+    func activationRechecksConsent() async throws {
+        let (coach, history, rule, _) = try setup()
+        await coach.send("reflect", snapshots: { [rule] })
+        let offer = try #require(coach.pendingReflections.first)
+        coach.preferences.setConsent(false)
+        await coach.completeReflection(offer.id, skip: true, snapshots: { [rule] })
+        #expect(coach.grants.isEmpty)
+        #expect(history.value.reflections.last?.state == .cancelled)
+        #expect(coach.errorMessage == CopyKey.aiConsentRequired.string)
+    }
+
     @Test("A consumed activation is interrupted on relaunch rather than replayed")
     func interruptedActivationDoesNotReplay() async throws {
         let (_, archive, rule, _) = try setup()
@@ -748,9 +781,225 @@ struct ConversationCoordinatorTests {
         coordinator.chooseEmotion(.skip, for: reflection.id)
         #expect(coordinator.reflectionScheduleID != schedule)
         await coordinator.resumeReflections(snapshots: { [rule] }, now: later)
+        #expect(coordinator.grants.isEmpty)
+        await coordinator.completeReflection(reflection.id, snapshots: { [rule] }, now: later)
         #expect(coordinator.grants.count == 1)
         #expect(archive.value.reflections.first?.emotion == .skip)
         #expect(await client.calls == 1)
+    }
+
+    @Test("Ending a delay reveals a choice without unlocking or requiring an emotion")
+    func endDelayNeedsExplicitUnlock() async throws {
+        let (coach, history, rule, _) = try setup(client: ReflectionClient())
+        await coach.send("Relax", snapshots: { [rule] })
+        let pause = try #require(coach.pendingReflections.first)
+        coach.endReflectionDelay(pause.id)
+        await coach.resumeReflections(snapshots: { [rule] })
+        #expect(coach.grants.isEmpty)
+        #expect(history.value.reflections.last?.skipped == true)
+        await coach.completeReflection(pause.id, snapshots: { [rule] })
+        #expect(coach.grants.count == 1)
+        #expect(history.value.activityLog.last?.reflectionSkipped == true)
+    }
+
+    @Test("Keeping an app locked after a pause records the choice without a grant")
+    func keepLockedAfterPause() async throws {
+        let (coach, history, rule, _) = try setup(client: ReflectionClient())
+        await coach.send("Relax", snapshots: { [rule] })
+        let pause = try #require(coach.pendingReflections.first)
+        coach.cancelReflection(pause.id)
+        await coach.resumeReflections(snapshots: { [rule] }, now: pause.createdAt.addingTimeInterval(11))
+        #expect(coach.grants.isEmpty)
+        #expect(coach.pendingReflections.isEmpty)
+        #expect(history.value.activityLog.last?.outcome == .cancelled)
+    }
+
+    @Test("A stale keep-locked tap cannot rewrite an already-published unlock outcome")
+    func completedReflectionIgnoresLateCancellation() async throws {
+        let (coach, history, rule, _) = try setup(client: ReflectionClient())
+        await coach.send("Relax", snapshots: { [rule] })
+        let id = try #require(coach.pendingReflections.first?.id)
+        await coach.completeReflection(id, skip: true, snapshots: { [rule] })
+        coach.cancelReflection(id)
+        #expect(coach.grants.count == 1)
+        #expect(history.value.reflections.last?.state == .completed)
+        #expect(history.value.activityLog.last?.outcome == .unlocked)
+    }
+
+    @Test("Context prefers deals after two same-app pause attempts without removing safeguards")
+    func contextMovesFromPausesTowardDeals() async throws {
+        let client = RecordingConversationClient()
+        let (coach, _, rule, _) = try setup(client: client, checkIn: true, pauseAttempts: 2)
+        await coach.send("More time for the same scroll", snapshots: { [rule] })
+        let context = try #require(await client.contexts().last)
+        #expect(context.recentPauseAttempts == 2)
+        #expect(context.preferDeal)
+        #expect(!context.pauseBeforeDealRequired)
+        #expect(context.emotionCheckInSuggested)
+    }
+
+    @Test("Check-in precedes the intervention and starts ten seconds only after answering")
+    func checkInIsASeparateStep() async throws {
+        let (coach, history, rule, _) = try setup(checkIn: true)
+        await coach.send("reflect", snapshots: { [rule] })
+        let offer = try #require(coach.pendingReflections.first)
+        #expect(offer.awaitingCheckIn)
+        #expect(offer.deadline == nil)
+        #expect(!history.value.messages.contains { $0.text == offer.reply })
+        coach.chooseEmotion(.skip, for: offer.id)
+        let revealed = try #require(coach.pendingReflections.first)
+        #expect(!revealed.awaitingCheckIn)
+        #expect(revealed.deadline != nil)
+        #expect(!history.value.messages.contains { $0.text == ConversationReflection.Emotion.skip.copy.string })
+        #expect(history.value.messages.filter { $0.text == offer.reply }.count == 1)
+        coach.chooseEmotion(.boredom, for: offer.id)
+        #expect(history.value.messages.filter { $0.text == offer.reply }.count == 1)
+        #expect(coach.grants.isEmpty)
+    }
+
+    @Test("Custom emotions are bounded, private and do not repeat the check-in within two minutes")
+    func customEmotionAndQuestionCooldown() async throws {
+        let (coach, memory, rule, _) = try setup(checkIn: true)
+        await coach.send("reflect", snapshots: { [rule] })
+        let first = try #require(coach.pendingReflections.first)
+        coach.chooseCustomEmotion("  Restless  ", for: first.id)
+        #expect(coach.history.reflections.last?.customEmotion == "Restless")
+        #expect(memory.value.activityLog.last?.customEmotion == "Restless")
+        #expect(!coach.history.messages.contains { $0.text.contains("Restless") })
+        coach.clearHistory()
+        await coach.send("deal", snapshots: { [rule] })
+        #expect(coach.pendingReflections.first?.checkInRequested == false)
+        #expect(coach.history.canAskEmotion(at: Date().addingTimeInterval(121)))
+    }
+
+    @Test("Feedback belongs to a completed outcome and preserves enforcement")
+    func experienceFeedbackPersists() async throws {
+        let (coach, memory, rule, _) = try setup()
+        await coach.send("approve", snapshots: { [rule] })
+        let entry = try #require(coach.feedbackEntry)
+        let deadline = try #require(coach.grant?.plan.expiresAt)
+        coach.rateExperience(.helpful, activityID: entry.id)
+        #expect(memory.value.activityLog.last?.experienceRating == .helpful)
+        #expect(coach.grant?.plan.expiresAt == deadline)
+        coach.clearHistory()
+        #expect(coach.history.activityLog.last?.experienceRating == .helpful)
+        #expect(ConversationActivityExport.text(coach.history.activityLog).contains("Experience: helpful"))
+    }
+
+    @Test("Three-way choice Open grants without accepting a deal")
+    func choiceOpenUsesNormalActivation() async throws {
+        let (coach, memory, rule, _) = try setup()
+        await coach.send("choice", snapshots: { [rule] })
+        let offer = try #require(coach.pendingReflections.first)
+        coach.chooseIntervention(offer.id, option: .open)
+        await coach.completeReflection(offer.id, snapshots: { [rule] })
+        #expect(coach.grants.count == 1)
+        #expect(coach.history.recentPauseAttempts(for: rule.id, now: .now) == 0)
+        #expect(memory.value.activityLog.last?.blockMinutes == nil)
+        await coach.endUnlock()
+        #expect(coach.cooldownUntil == nil)
+    }
+
+    @Test("Invalid custom emotions do not answer the check-in and storage failure rolls back")
+    func customEmotionValidationAndRollback() async throws {
+        let (coach, memory, rule, _) = try setup(checkIn: true)
+        await coach.send("reflect", snapshots: { [rule] })
+        let id = try #require(coach.pendingReflections.first).id
+        for text in ["   ", String(repeating: "x", count: 161)] {
+            coach.chooseCustomEmotion(text, for: id)
+            #expect(coach.pendingReflections.first?.awaitingCheckIn == true)
+        }
+        memory.failNextSave = true
+        coach.chooseCustomEmotion("Excited", for: id)
+        #expect(coach.pendingReflections.first?.awaitingCheckIn == true)
+        #expect(memory.value.activityLog.last?.customEmotion == nil)
+        coach.chooseCustomEmotion("Excited", for: id)
+        #expect(coach.pendingReflections.first?.context.customEmotion == "Excited")
+        let decoded = try JSONDecoder().decode(ConversationHistory.self, from: JSONEncoder().encode(coach.history))
+        #expect(decoded.reflections.last?.customEmotion == "Excited")
+        #expect(!decoded.canAskEmotion(at: .now))
+    }
+
+    @Test("Feedback is available for denial but not an unfinished offer and fails atomically")
+    func feedbackMatchesTheActualOutcome() async throws {
+        let (coach, memory, rule, _) = try setup()
+        await coach.send("deny", snapshots: { [rule] })
+        let entry = try #require(coach.feedbackEntry)
+        memory.failNextSave = true
+        coach.rateExperience(.annoying, activityID: entry.id)
+        #expect(memory.value.activityLog.last?.experienceRating == nil)
+        coach.rateExperience(.neutral, activityID: entry.id)
+        #expect(memory.value.activityLog.last?.experienceRating == .neutral)
+        #expect(coach.grants.isEmpty)
+        await coach.send("deal", snapshots: { [rule] })
+        #expect(coach.feedbackEntry == nil)
+        let unfinished = try #require(memory.value.activityLog.last).id
+        coach.rateExperience(.helpful, activityID: unfinished)
+        #expect(memory.value.activityLog.last?.experienceRating == nil)
+    }
+
+    @Test("Saved-app setup only yields to a valid foreground shield request")
+    func setupResumesChatForShieldRequest() async throws {
+        let defaults = try #require(UserDefaults(suiteName: "SetupRouting-\(UUID().uuidString)"))
+        let requests = ConversationRequestStore(defaults: defaults)
+        let (coach, _, rule, token) = try setup(requests: requests)
+        let lifecycle = AppLifecycleController()
+        lifecycle.needsSetup = true
+        await coach.refresh(snapshots: [rule], consumeRequests: false)
+        lifecycle.resumeSetupForShieldRequest(coach, snapshots: [rule])
+        #expect(lifecycle.needsSetup)
+        _ = requests.begin(token: token, appID: rule.id)
+        await coach.refresh(snapshots: [rule], consumeRequests: false)
+        lifecycle.resumeSetupForShieldRequest(coach, snapshots: [rule])
+        #expect(lifecycle.needsSetup)
+        await coach.refresh(snapshots: [rule])
+        lifecycle.resumeSetupForShieldRequest(coach, snapshots: [rule])
+        #expect(!lifecycle.needsSetup)
+        #expect(coach.selectedAppID == rule.id)
+        #expect(coach.grants.isEmpty)
+        lifecycle.needsSetup = true
+        coach.openRequestURL(try #require(requests.begin(token: token, appID: rule.id).url), snapshots: [rule])
+        lifecycle.resumeSetupForShieldRequest(coach, snapshots: [rule])
+        #expect(!lifecycle.needsSetup)
+    }
+
+    @Test("Emotion check-ins are sampled independently for delays and deals")
+    func optionalCheckInDoesNotAcceptAnOffer() async throws {
+        for message in ["reflect", "deal", "choice"] {
+            for show in [false, true] {
+                let (coach, history, rule, _) = try setup(checkIn: show)
+                await coach.send(message, snapshots: { [rule] })
+                let offer = try #require(coach.pendingReflections.first)
+                #expect(offer.checkInRequested == show)
+                coach.chooseEmotion(.boredom, for: offer.id)
+                await coach.resumeReflections(snapshots: { [rule] }, now: offer.createdAt.addingTimeInterval(11))
+                #expect(coach.grants.isEmpty)
+                #expect(history.value.activityLog.last?.emotion == .boredom)
+            }
+        }
+    }
+
+    @Test("A choice cannot grant until selected, then binds only its selected terms")
+    func interventionChoiceBindsSelectedTerms() async throws {
+        for deal in [false, true] {
+            let (coach, history, rule, _) = try setup()
+            await coach.send("choice", snapshots: { [rule] })
+            let offer = try #require(coach.pendingReflections.first)
+            #expect(offer.isChoice)
+            await coach.completeReflection(offer.id, skip: true, acceptDeal: true, snapshots: { [rule] })
+            #expect(coach.grants.isEmpty)
+            coach.chooseIntervention(offer.id, deal: deal)
+            if !deal {
+                #expect(coach.pendingReflections.first?.deadline != nil)
+                #expect(coach.pendingReflections.first?.blockMinutes == nil)
+                coach.endReflectionDelay(offer.id)
+            }
+            await coach.completeReflection(offer.id, acceptDeal: deal, snapshots: { [rule] })
+            #expect(coach.grants.count == 1)
+            #expect(history.value.activityLog.last?.blockMinutes == (deal ? 10 : nil))
+            await coach.endUnlock()
+            #expect((coach.cooldownUntil != nil) == deal)
+        }
     }
 
     @Test("A deal stays blocked until explicit acceptance and cannot be skipped")
@@ -805,32 +1054,71 @@ struct ConversationCoordinatorTests {
         #expect(history.value.activityLog.last?.outcome != .unlocked)
     }
 
-    @Test("A premature deal asks for a pause, and the model cannot skip exception guards")
+    @Test("A deal can be offered without a completed pause, while exception guards remain")
     func pauseFirstAndExceptionGuards() async throws {
         let (fresh, freshHistory, freshRule, _) = try setup()
         await fresh.send("deal", snapshots: { [freshRule] })
-        #expect(fresh.pendingReflections.isEmpty)
-        #expect(freshHistory.value.messages.last?.text == CopyKey.pauseProposal.string)
+        #expect(fresh.pendingReflections.first?.isDeal == true)
+        #expect(fresh.grants.isEmpty)
+        #expect(freshHistory.value.activityLog.last?.outcome == .dealOffered)
         let (coach, _, rule, _) = try setup(priorPause: true)
         await coach.send("deal", snapshots: { [rule] })
         await coach.completeReflection(try #require(coach.pendingReflections.first).id, acceptDeal: true, snapshots: { [rule] })
         await coach.endUnlock()
         await coach.send("override", snapshots: { [rule] })
+        #expect(coach.pendingReflections.isEmpty)
         #expect(coach.grants.isEmpty)
         await coach.send("deny", snapshots: { [rule] })
         await coach.send("deny", snapshots: { [rule] })
         await coach.send("override", snapshots: { [rule] })
+        let replacement = try #require(coach.pendingReflections.first)
+        #expect(replacement.overridingDealID != nil)
+        #expect(coach.grants.isEmpty)
+        coach.declineDeal(replacement.id)
+        #expect(coach.cooldownUntil != nil)
+        await coach.send("override", snapshots: { [rule] })
+        await coach.completeReflection(try #require(coach.pendingReflections.first).id, acceptDeal: true, snapshots: { [rule] })
         #expect(coach.grants.count == 1)
-        #expect(coach.cooldownUntil == nil)
         await coach.endUnlock()
         coach.clearHistory()
-        await coach.send("deal", snapshots: { [rule] })
-        await coach.completeReflection(try #require(coach.pendingReflections.first).id, acceptDeal: true, snapshots: { [rule] })
-        await coach.endUnlock()
         await coach.send("deny", snapshots: { [rule] }); await coach.send("deny", snapshots: { [rule] })
         await coach.send("override", snapshots: { [rule] })
         #expect(coach.grants.isEmpty)
-        #expect(coach.cooldownUntil != nil)
+        let second = try #require(coach.pendingReflections.first)
+        #expect(second.blockMinutes ?? 0 >= 45)
+        await coach.completeReflection(second.id, acceptDeal: true, snapshots: { [rule] })
+        #expect(coach.grants.count == 1)
+        await coach.endUnlock()
+
+    }
+
+    @Test("Broken deals increase future pauses and failed replacement activation preserves old terms")
+    func brokenDealsAndReplacementFailure() async throws {
+        let client = NegotiationRecordingClient()
+        let (coach, memory, rule, _) = try setup(client: client)
+        await coach.send("deal", snapshots: { [rule] })
+        await coach.completeReflection(try #require(coach.pendingReflections.first).id, acceptDeal: true, snapshots: { [rule] })
+        await coach.endUnlock()
+        await coach.send("deny", snapshots: { [rule] })
+        await coach.send("deny", snapshots: { [rule] })
+        let originalDeadline = try #require(coach.cooldownUntil)
+        await coach.send("override", snapshots: { [rule] })
+        memory.failReplacementPublication = true
+        await coach.completeReflection(try #require(coach.pendingReflections.first).id, acceptDeal: true, snapshots: { [rule] })
+        #expect(coach.grants.isEmpty)
+        await coach.refresh(snapshots: [rule])
+        #expect(coach.cooldownUntil == originalDeadline)
+        #expect(memory.value.activityLog.last?.outcome != .unlocked)
+        memory.failReplacementPublication = false
+        await coach.send("override", snapshots: { [rule] })
+        await coach.completeReflection(try #require(coach.pendingReflections.first).id, acceptDeal: true, snapshots: { [rule] })
+        #expect(coach.grants.count == 1)
+        await coach.endUnlock()
+        coach.clearHistory()
+        await coach.send("ask", snapshots: { [rule] })
+        let context = try #require(await client.contexts().last)
+        #expect(context.recommendedPauseSeconds == 70)
+        #expect(context.deal?.lastResolvedDealWasBroken == true)
     }
 
     @Test("Content erasure retains only the evidence needed for active unlock presentation")
@@ -910,12 +1198,14 @@ struct ConversationCoordinatorTests {
 private final class HistoryMemory: ConversationHistoryStoring {
     var value = ConversationHistory()
     var failApprovalSave = false
+    var failReplacementPublication = false
     var failNextSave = false
     enum Failure: Error { case save }
     func load() -> ConversationHistory { value }
     func save(_ history: ConversationHistory) throws {
         if failNextSave { failNextSave = false; throw Failure.save }
         if failApprovalSave && history.lastGrantID != nil { throw Failure.save }
+        if failReplacementPublication && history.activityLog.filter({ $0.outcome == .unlocked }).count >= 2 { throw Failure.save }
         value = history
     }
 }
@@ -1017,4 +1307,14 @@ private actor SequencedConversationClient: ConversationClient {
         continuations[index].resume(returning: .init(reply: "Approved", decision: .approve, unlockMinutes: 1))
     }
     func summarize(memory: String, messages: [ConversationMessage], apiKey: String) async throws -> String { memory }
+}
+
+private actor NegotiationRecordingClient: ConversationClient {
+    private var received: [ConversationContext] = []
+    func respond(to context: ConversationContext, apiKey: String) async throws -> ConversationDecision {
+        received.append(context)
+        return try await MockConversationClient().respond(to: context, apiKey: apiKey)
+    }
+    func summarize(memory: String, messages: [ConversationMessage], apiKey: String) async throws -> String { memory }
+    func contexts() -> [ConversationContext] { received }
 }

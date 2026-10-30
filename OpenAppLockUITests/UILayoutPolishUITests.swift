@@ -1,6 +1,7 @@
 import XCTest
 
 /// Layout evidence uses synthetic apps and mock decisions, never actual usage.
+@MainActor
 final class UILayoutPolishUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
     private func capture(_ name: String, _ app: XCUIApplication) {

@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import Synchronization
 
 /// Short, human-scannable UUID form used to tag log lines (e.g. "rule-a1b2c3d4").
 /// Not for identity — only for grepping/correlating a rule's log lines together.
@@ -52,17 +53,19 @@ nonisolated enum LogSource: String, Sendable {
 /// plain lexical sort of whole lines is chronological. The file's *day bucket*
 /// uses the local calendar (`UsageLedger.dayKey`); the per-line stamp is UTC and
 /// unambiguous, which is what the merge relies on.
+/// The formatter stays inside a mutex so concurrent writers preserve the exact
+/// millisecond rounding used by existing log files without sharing mutable access.
 nonisolated enum LogTimestamp {
     static let prefixLength = 24
 
-    private static let formatter: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        return formatter
-    }()
+    private static let formatter = Mutex<ISO8601DateFormatter>({
+        let value = ISO8601DateFormatter()
+        value.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        value.timeZone = .gmt
+        return value
+    }())
 
-    static func string(from date: Date) -> String { formatter.string(from: date) }
+    static func string(from date: Date) -> String { formatter.withLock { $0.string(from: date) } }
 
     /// The 24-char timestamp prefix used as the merge sort key.
     static func prefix(ofLine line: String) -> String { String(line.prefix(prefixLength)) }

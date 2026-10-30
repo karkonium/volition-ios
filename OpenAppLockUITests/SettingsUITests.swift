@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class SettingsUITests: XCTestCase {
     func testChatNotificationSettingsMatchOS() {
         let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")

@@ -8,7 +8,7 @@ import FamilyControls
 /// Decides whether an open app-list editor has unsaved work. The editor uses
 /// this to gate the "Discard Changes?" confirmation: closing with outstanding
 /// edits prompts before throwing them away, the standard iOS pattern.
-enum AppListEditState {
+nonisolated enum AppListEditState {
     /// Outstanding edits exist when the name changed or the chosen apps changed
     /// from what the editor opened with.
     static func hasOutstandingEdits(

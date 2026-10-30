@@ -15,6 +15,13 @@ nonisolated struct ConversationHistory: Codable, Equatable, Sendable {
     var memory: String = ""
     var summarizedCount: Int = 0
     var cooldownUntil: Date?
+    var lastEmotionQuestionAt: Date? = nil
+    /// Global across saved apps; a question, not an answer, starts the cooldown.
+    func canAskEmotion(at now: Date) -> Bool {
+        let latest = lastEmotionQuestionAt ?? reflections.filter { $0.checkInRequested == true }.map(\.createdAt).max()
+        guard let latest else { return true }
+        return now.timeIntervalSince(latest) >= 120
+    }
     private var recordedAccess: [ConversationAccessEvent]?
     var accessEvents: [ConversationAccessEvent] {
         get { recordedAccess ?? [] }
@@ -49,9 +56,15 @@ nonisolated struct ConversationHistory: Codable, Equatable, Sendable {
     }
     func recommendedPauseSeconds(for appID: UUID, now: Date) -> Int {
         let started = reflections.filter {
-            $0.appID == appID && !$0.isDeal && $0.deadline != nil && $0.createdAt <= now && now.timeIntervalSince($0.createdAt) < 86400
+            $0.appID == appID && $0.openedWithoutIntervention != true && !$0.isDeal && $0.deadline != nil && $0.createdAt <= now && now.timeIntervalSince($0.createdAt) < 86400
         }.count
         return 10 + min(5, started) * 10
+    }
+    func recentPauseAttempts(for appID: UUID, now: Date) -> Int {
+        reflections.filter {
+            $0.appID == appID && $0.openedWithoutIntervention != true && !$0.isDeal && !$0.isChoice &&
+            ($0.deadline != nil || $0.skipped) && $0.createdAt <= now && now.timeIntervalSince($0.createdAt) < 86400
+        }.count
     }
     var lastGrantID: UUID?
     var lastGrantExpiry: Date?

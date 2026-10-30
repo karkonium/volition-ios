@@ -50,6 +50,7 @@ struct ConversationActivityLogView: View {
         .volitionForm()
         .navigationTitle(CopyKey.activityLogTitle.resource)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {

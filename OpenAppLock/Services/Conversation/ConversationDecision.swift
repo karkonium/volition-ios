@@ -2,7 +2,7 @@ import Foundation
 
 /// Model output is advice until validated and bound to a live local request.
 nonisolated struct ConversationDecision: Codable, Equatable, Sendable {
-    enum Decision: String, Codable, Sendable { case ask, deny, approve, wait, pause, deal, override }
+    enum Decision: String, Codable, Sendable { case ask, deny, approve, wait, pause, deal, choice, override }
     let reply: String
     let decision: Decision
     let unlockMinutes: Int?
@@ -16,16 +16,16 @@ nonisolated struct ConversationDecision: Codable, Equatable, Sendable {
         let result = try JSONDecoder().decode(Self.self, from: data)
         guard !result.reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               result.reply.count <= 8000 else { throw InvalidResponse.invalid }
-        if result.decision == .approve || result.decision == .pause || result.decision == .deal || result.decision == .override {
-            guard let minutes = result.unlockMinutes, (1...30).contains(minutes) else { throw InvalidResponse.invalid }
+        if [.approve, .pause, .deal, .choice, .override].contains(result.decision) {
+            guard let minutes = result.unlockMinutes, (1...60).contains(minutes) else { throw InvalidResponse.invalid }
         } else if result.unlockMinutes != nil { throw InvalidResponse.invalid }
         if result.decision == .wait {
             guard let minutes = result.waitMinutes, (1...5).contains(minutes) else { throw InvalidResponse.invalid }
         } else if result.waitMinutes != nil { throw InvalidResponse.invalid }
-        if result.decision == .pause {
+        if result.decision == .pause || result.decision == .choice {
             guard let seconds = result.pauseSeconds, (10...1800).contains(seconds) else { throw InvalidResponse.invalid }
         } else if result.pauseSeconds != nil { throw InvalidResponse.invalid }
-        if result.decision == .deal {
+        if [.deal, .choice, .override].contains(result.decision) {
             guard let minutes = result.blockMinutes, (1...1440).contains(minutes) else { throw InvalidResponse.invalid }
         } else if result.blockMinutes != nil { throw InvalidResponse.invalid }
         return result

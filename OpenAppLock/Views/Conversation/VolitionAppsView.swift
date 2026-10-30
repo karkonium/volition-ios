@@ -60,7 +60,7 @@ struct VolitionAppsView: View {
                         .disabled(apps.isEmpty).accessibilityIdentifier("finishVolitionSetupButton")
                 }
             }
-            .volitionRoot((onComplete == nil ? CopyKey.volitionApps : .volitionSetupTitle).string)
+            .volitionTabRoot(setupTitle: onComplete == nil ? nil : CopyKey.volitionSetupTitle.string)
             .sheet(isPresented: $adding) { VolitionAppEditor() }
             .sheet(item: $editing, onDismiss: {
                 removing = queuedRemoval; queuedRemoval = nil
@@ -84,6 +84,8 @@ struct VolitionAppsView: View {
 /// websites are rejected. The picker starts empty and closes on one valid app;
 /// cancellation preserves the original selection. Bulk/category/website choices
 /// stay in the picker with guidance. Name help asks users to match the selected app.
+/// Every picker opening gets a fresh native view. Token-backed labels rebuild on
+/// replacement, and returning from a sheet never reloads the original saved draft.
 /// Saving immediately reconciles shields and chat context.
 struct VolitionAppEditor: View {
     var rule: BlockingRule? = nil
@@ -97,6 +99,10 @@ struct VolitionAppEditor: View {
     @State private var intention = ""
     @State private var profile = ConversationUsageProfile()
     @State private var picking = false
+    @State private var pickerSessionID = UUID()
+    @State private var loadedDraft = false
+    @State private var nameAttention = 0
+    @State private var nameMissing = false
     @State private var pickerSelection = FamilyActivitySelection()
     @State private var pickerError: String?
     @State private var saving = false
@@ -107,23 +113,28 @@ struct VolitionAppEditor: View {
     var body: some View {
         NavigationStack {
             VolitionScroll {
-                VStack(alignment: .leading, spacing: 10) {
+                VolitionCard {
                     VolitionSectionHeading(title: CopyKey.uiSelectStep.string)
                         .accessibilityIdentifier("appSelectionStep")
                     Button {
                         focused = nil
                         pickerSelection = FamilyActivitySelection()
                         pickerError = nil
+                        pickerSessionID = UUID()
                         picking = true
                     } label: {
-                        VolitionCard(accented: selection.applicationTokens.count == 1) {
+                        Group {
                             HStack(spacing: 12) {
                                 if let token = selection.applicationTokens.first, selection.applicationTokens.count == 1 {
                                     VolitionAppIcon(token: token)
                                     VStack(alignment: .leading, spacing: 4) {
                                         if LaunchConfiguration.current.isUITesting {
-                                            Text(CopyKey.uiSelectedApp.resource).font(.subheadline.weight(.semibold))
-                                        } else { Label(token).labelStyle(.titleOnly).font(.subheadline.weight(.semibold)) }
+                                            Text(selection.applicationTokens == testSelection([97]).applicationTokens ? "Replacement app" : CopyKey.uiSelectedApp.string)
+                                                .font(.subheadline.weight(.semibold))
+                                        } else {
+                                            Label(token).labelStyle(.titleOnly).font(.subheadline.weight(.semibold))
+                                                .id(token)
+                                        }
                                         Text(CopyKey.uiChangeApp.resource).font(.caption).foregroundStyle(VolitionStyle.accent)
                                     }
                                     Spacer(minLength: 4)
@@ -134,7 +145,9 @@ struct VolitionAppEditor: View {
                                     Spacer(minLength: 4)
                                     Image(systemName: "chevron.right").font(.caption.weight(.semibold))
                                 }
-                            }.foregroundStyle(Color.primary)
+                            }
+                            .foregroundStyle(Color.primary)
+                            .frame(minHeight: 44).contentShape(Rectangle())
                         }
                     }
                     .buttonStyle(.plain).accessibilityIdentifier("pickVolitionAppButton")
@@ -145,9 +158,15 @@ struct VolitionAppEditor: View {
                         .textFieldStyle(.roundedBorder).submitLabel(.next)
                         .onSubmit { focused = .intention }
                         .focused($focused, equals: .name).accessibilityIdentifier("volitionAppName")
+                        .accessibilityValue(nameMissing ? CopyKey.appNameRequired.string : name)
+                        .onChange(of: name) { if !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { nameMissing = false } }
                     Text(CopyKey.volitionAppNameHelp.resource).font(.caption).foregroundStyle(.secondary)
                         .accessibilityIdentifier("volitionAppNameHelp")
-                }
+                    if nameMissing {
+                        Text(CopyKey.appNameRequired.resource).font(.caption).foregroundStyle(VolitionStyle.accent)
+                            .accessibilityIdentifier("volitionAppNameRequired")
+                    }
+                }.volitionAttention(trigger: nameAttention)
                 VolitionCard { VolitionUsageProfileFields(profile: $profile) { focused = nil } }
                 VolitionCard {
                     VolitionSectionHeading(title: CopyKey.uiIntentionStep.string)
@@ -180,11 +199,13 @@ struct VolitionAppEditor: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(CopyKey.volitionSaveApp.resource) { save() }
-                        .disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || name.count > 300 || intention.count > 2000 || selection.applicationTokens.count != 1)
+                        .disabled(saving || name.count > 300 || intention.count > 2000 || selection.applicationTokens.count != 1)
                         .accessibilityIdentifier("saveVolitionAppButton")
                 }
             }
             .onAppear {
+                guard !loadedDraft else { return }
+                loadedDraft = true
                 if let rule {
                     name = rule.name
                     intention = rule.conversationGoal == CopyKey.profileDefaultGoal.string ? "" : rule.conversationGoal
@@ -210,11 +231,14 @@ struct VolitionAppEditor: View {
                             List {
                                 Button("Test app") { pickTestApps([99]) }
                                     .accessibilityIdentifier("mockVolitionAppOption")
+                                Button("Replacement app") { pickTestApps([97]) }
+                                    .accessibilityIdentifier("mockVolitionReplacementAppOption")
                                 Button("Test multiple apps") { pickTestApps([98, 99]) }
                                     .accessibilityIdentifier("mockVolitionMultipleAppsOption")
                             }
                         } else {
                             FamilyActivityPicker(selection: $pickerSelection)
+                                .id(pickerSessionID)
                         }
                     }
                     .volitionRoot(CopyKey.conversationChooseApp.string)
@@ -241,15 +265,23 @@ struct VolitionAppEditor: View {
     }
 
     private func pickTestApps(_ bytes: [UInt8]) {
+        pickerSelection = testSelection(bytes)
+    }
+
+    private func testSelection(_ bytes: [UInt8]) -> FamilyActivitySelection {
         var proposed = FamilyActivitySelection()
         proposed.applicationTokens = Set(bytes.compactMap { byte in
             guard let data = try? JSONSerialization.data(withJSONObject: ["data": Data([byte]).base64EncodedString()]) else { return nil }
             return try? JSONDecoder().decode(ApplicationToken.self, from: data)
         })
-        pickerSelection = proposed
+        return proposed
     }
 
     private func save() {
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            nameMissing = true; nameAttention += 1; focused = .name
+            return
+        }
         focused = nil
         do {
             _ = try VolitionApps.save(name: name, intention: intention, selection: selection, editing: rule, profile: profile, in: context)

@@ -1,15 +1,19 @@
 import XCTest
 
+@MainActor
 final class ConversationUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
     private func chooseApp(_ app: XCUIApplication) {
         app.buttons["conversationChooseAppButton"].waitToAppear().tap()
         app.buttons["conversationAppOption"].firstMatch.waitToAppear().tap()
     }
-    private func send(_ text: String, _ app: XCUIApplication) {
+    private func send(_ text: String, _ app: XCUIApplication, answerCheckIn: Bool = true) {
         let field = app.element("conversationMessageField").waitToAppear()
         field.tap(); field.typeText(text)
         app.buttons["conversationSendButton"].tap()
+        if answerCheckIn, app.buttons["reflectionEmotion-skip"].waitForExistence(timeout: 2) {
+            app.buttons["reflectionEmotion-skip"].tap()
+        }
     }
     private func capture(_ name: String, _ app: XCUIApplication) {
         let image = XCTAttachment(screenshot: app.screenshot())
@@ -20,7 +24,7 @@ final class ConversationUITests: XCTestCase {
         chooseApp(app)
         send("reflect", app)
         app.staticTexts["Ready when you are"].waitToAppear(timeout: 20)
-        app.buttons["reflectionEmotion-skip"].tap()
+        app.buttons["unlockAfterReflectionButton"].waitToAppear().tap()
         app.buttons["endConversationUnlockButton"].waitToAppear().tap()
         send("deal please", app)
         app.element("conversationDealTerms").waitToAppear()
@@ -43,9 +47,12 @@ final class ConversationUITests: XCTestCase {
         chooseApp(app)
         send("pause 30", app)
         app.buttons["startReflectionButton"].waitToAppear()
-        XCTAssertTrue(app.staticTexts["Pause for 30 seconds before opening. You can skip or cancel."].exists)
+        XCTAssertFalse(app.buttons["skipReflectionButton"].exists)
         capture("User-chosen pause before a thirty-minute session", app)
-        app.buttons["skipReflectionButton"].tap()
+        app.buttons["startReflectionButton"].tap()
+        app.buttons["skipReflectionButton"].waitToAppear().tap()
+        XCTAssertFalse(app.buttons["endConversationUnlockButton"].exists)
+        app.buttons["unlockAfterReflectionButton"].waitToAppear().tap()
         app.buttons["endConversationUnlockButton"].waitToAppear()
         capture("Thirty-minute unlock", app)
         app.buttons["endConversationUnlockButton"].tap()
@@ -142,6 +149,8 @@ final class ConversationUITests: XCTestCase {
         XCTAssertFalse(app.buttons["endConversationUnlockButton"].exists)
         capture("Inline optional reflection", app)
         app.buttons["skipReflectionButton"].waitToAppear().tap()
+        XCTAssertFalse(app.buttons["endConversationUnlockButton"].exists)
+        app.buttons["unlockAfterReflectionButton"].waitToAppear().tap()
         app.buttons["endConversationUnlockButton"].waitToAppear()
         XCTAssertFalse(app.buttons["skipReflectionButton"].exists)
         XCTAssertTrue(app.element("conversationMessageField").isEnabled)
@@ -151,28 +160,177 @@ final class ConversationUITests: XCTestCase {
     func testElapsedReflectionKeepsChoicesUntilAnswered() {
         let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
         chooseApp(app)
-        send("reflect", app)
-        app.staticTexts["Ready when you are"].waitToAppear(timeout: 20)
+        send("reflect", app, answerCheckIn: false)
+        XCTAssertFalse(app.element("reflectionCountdown").exists)
+        XCTAssertFalse(app.buttons["unlockAfterReflectionButton"].exists)
         XCTAssertFalse(app.buttons["endConversationUnlockButton"].exists)
         let choice = app.buttons["reflectionEmotion-skip"].waitToAppear()
         XCTAssertTrue(choice.isHittable)
         capture("Elapsed pause waits for a check-in", app)
         choice.tap()
+        XCTAssertFalse(app.buttons["endConversationUnlockButton"].exists)
+        app.buttons["unlockAfterReflectionButton"].waitToAppear(timeout: 20).tap()
         app.buttons["endConversationUnlockButton"].waitToAppear()
-        capture("Answer after pause opens the app", app)
+        capture("Explicit unlock after optional check-in", app)
     }
 
-    func testOptionalEmotionAndAutomaticReflectionUnlock() {
+    func testOptionalEmotionAndExplicitReflectionUnlock() {
+        let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
+        chooseApp(app)
+        send("reflect", app, answerCheckIn: false)
+        app.buttons["reflectionEmotion-boredom"].waitToAppear().tap()
+        XCTAssertFalse(app.buttons["endConversationUnlockButton"].exists)
+        app.buttons["unlockAfterReflectionButton"].waitToAppear(timeout: 20).tap()
+        app.buttons["endConversationUnlockButton"].waitToAppear()
+        capture("Reflection explicitly completed", app)
+    }
+
+    func testKeepingLockedAndDelayOrDealChoice() {
         let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
         chooseApp(app)
         send("reflect", app)
-        app.buttons["reflectionEmotion-boredom"].waitToAppear().tap()
+        app.buttons["skipReflectionButton"].waitToAppear().tap()
+        app.buttons["unlockAfterReflectionButton"].waitToAppear()
+        capture("Delay ended without unlocking", app)
+        app.buttons["cancelReflectionButton"].tap()
+        XCTAssertFalse(app.buttons["endConversationUnlockButton"].exists)
+        send("choice", app)
+        app.buttons["conversationChooseDelayButton"].waitToAppear()
+        capture("Optional check-in with delay or deal", app)
+        app.buttons["conversationChooseDelayButton"].tap()
+        app.buttons["skipReflectionButton"].waitToAppear().tap()
+        app.buttons["cancelReflectionButton"].tap()
+        send("choice", app)
+        app.buttons["conversationChooseDealButton"].waitToAppear().tap()
         app.buttons["endConversationUnlockButton"].waitToAppear()
-        capture("Reflection automatically completed", app)
+        capture("Pinned compact unlock banner", app)
+        let before = app.buttons["endConversationUnlockButton"].frame
+        app.element("conversationTranscript").swipeDown()
+        XCTAssertEqual(app.buttons["endConversationUnlockButton"].frame, before)
+        app.buttons["endConversationUnlockButton"].tap()
+        XCTAssertTrue(app.buttons["endConversationUnlockButton"].waitForNonExistence(timeout: 5))
+    }
+
+    func testCustomEmotionFeedbackAndThreeWayOpen() {
+        let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
+        chooseApp(app)
+        send("reflect", app, answerCheckIn: false)
+        app.buttons["reflectionEmotion-other"].waitToAppear().tap()
+        let field = app.textFields["customEmotionField"].waitToAppear()
+        field.tap(); field.typeText("Restless")
+        capture("Custom emotion entry", app)
+        app.buttons["customEmotionSubmitButton"].waitToAppear().tap()
+        app.buttons["skipReflectionButton"].waitToAppear().tap()
+        app.buttons["cancelReflectionButton"].waitToAppear().tap()
+        app.buttons["experienceRating-annoying"].waitToAppear().tap()
+        capture("Optional experience feedback", app)
+        send("choice", app, answerCheckIn: false)
+        XCTAssertFalse(app.buttons["reflectionEmotion-skip"].exists)
+        app.buttons["conversationChooseDelayButton"].waitToAppear()
+        app.buttons["conversationChooseDealButton"].waitToAppear()
+        let open = app.buttons["conversationChooseOpenButton"].waitToAppear()
+        if !open.isHittable { app.element("conversationTranscript").swipeUp() }
+        capture("Three intervention choices", app)
+        open.tap()
+        app.buttons["endConversationUnlockButton"].waitToAppear().tap()
+    }
+
+    func testFeedbackRatingsStayInOneRow() {
+        verifyFeedbackRow(largeText: false)
+    }
+
+    func testFeedbackRatingsScrollAtAccessibilityTextSize() {
+        verifyFeedbackRow(largeText: true)
+    }
+
+    private func verifyFeedbackRow(largeText: Bool) {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing", "-onboarding-completed", "-seed-scenario=conversation"]
+        if largeText { app.launchArguments += ["-large-text", "-dark-mode"] }
+        app.launch()
+        chooseApp(app)
+        send("deny", app)
+        let helpful = app.buttons["experienceRating-helpful"].waitToAppear()
+        let neutral = app.buttons["experienceRating-neutral"].waitToAppear()
+        let annoying = app.buttons["experienceRating-annoying"].waitToAppear()
+        XCTAssertEqual(helpful.frame.minY, neutral.frame.minY, accuracy: 1)
+        XCTAssertEqual(neutral.frame.minY, annoying.frame.minY, accuracy: 1)
+        for button in [helpful, neutral, annoying] { XCTAssertGreaterThanOrEqual(button.frame.height, 43.5) }
+        let row = app.scrollViews["conversationFeedbackOptions"].waitToAppear()
+        capture(largeText ? "Feedback row at accessibility text size" : "Helpful neutral annoying in one row", app)
+        if !annoying.isHittable { row.swipeLeft() }
+        if !annoying.isHittable { row.swipeLeft() }
+        annoying.tap()
+        XCTAssertTrue(app.buttons["experienceRating-annoying"].waitToAppear().isSelected)
+        capture("Feedback selection remains visible", app)
+        XCTAssertFalse(app.buttons["endConversationUnlockButton"].exists)
+    }
+
+    func testMinimalRepliesAndNoRedundantStatusMessages() {
+        let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
+        chooseApp(app)
+        send("approve", app)
+        app.buttons["endConversationUnlockButton"].waitToAppear()
+        app.buttons["experienceRating-helpful"].waitToAppear().tap()
+        let transcript = app.element("conversationTranscript")
+        XCTAssertFalse(transcript.staticTexts["Volition"].exists)
+        XCTAssertFalse(transcript.staticTexts["Access approved"].exists)
+        XCTAssertFalse(transcript.staticTexts["Thanks for the feedback."].exists)
+        XCTAssertFalse(app.element("conversationMessage-event").exists)
+        XCTAssertTrue(app.staticTexts["Take one minute for that purpose."].exists)
+        capture("Minimal reply with unlock banner and feedback", app)
+        app.buttons["endConversationUnlockButton"].tap()
+        send("deal", app)
+        app.buttons["conversationDealAccept"].waitToAppear().tap()
+        app.buttons["endConversationUnlockButton"].waitToAppear()
+        XCTAssertFalse(app.element("conversationMessage-event").exists)
+        capture("Accepted deal without duplicate notices", app)
+        app.buttons["endConversationUnlockButton"].tap()
+    }
+
+    func testOneHourAccessForPlannedWork() {
+        let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
+        chooseApp(app)
+        send("approve 60 for a planned work session", app)
+        app.buttons["endConversationUnlockButton"].waitToAppear()
+        capture("One-hour access with optional feedback", app)
+        app.buttons["experienceRating-helpful"].waitToAppear().tap()
+        app.buttons["endConversationUnlockButton"].tap()
+    }
+
+    func testEmotionPrecedesDealOffer() {
+        let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
+        chooseApp(app)
+        send("deal", app, answerCheckIn: false)
+        app.buttons["reflectionEmotion-boredom"].waitToAppear()
+        XCTAssertFalse(app.element("conversationDealTerms").exists)
+        XCTAssertFalse(app.buttons["conversationDealAccept"].exists)
+        capture("Emotion message before any deal terms", app)
+        app.buttons["reflectionEmotion-boredom"].tap()
+        app.buttons["conversationDealAccept"].waitToAppear()
+        XCTAssertFalse(app.buttons["reflectionEmotion-boredom"].exists)
+        capture("Separate deal message after emotion answer", app)
+        app.buttons["conversationDealAccept"].tap()
+        app.buttons["endConversationUnlockButton"].waitToAppear()
+    }
+
+    func testDealChoiceCanBeAcceptedDirectly() {
+        let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
+        chooseApp(app)
+        send("choice", app)
+        app.buttons["conversationChooseDealButton"].waitToAppear()
+        capture("Direct deal choice with optional emotion check-in", app)
+        app.buttons["conversationChooseDealButton"].tap()
+        app.buttons["endConversationUnlockButton"].waitToAppear()
+        capture("Direct deal accepted with pinned banner", app)
+        app.buttons["endConversationUnlockButton"].tap()
+        XCTAssertTrue(app.buttons["endConversationUnlockButton"].waitForNonExistence(timeout: 5))
     }
 
     func testMissingAppGuidanceAndReadableActivityLog() {
         let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
+        XCTAssertEqual(app.buttons["conversationSendButton"].waitToAppear().value as? String,
+            "Choose an app above, or type its saved name in your message.")
         send("Hello", app)
         let attention = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "App selection needed"),
             object: app.buttons["conversationChooseAppButton"])
@@ -182,6 +340,7 @@ final class ConversationUITests: XCTestCase {
         XCTAssertEqual(app.element("conversationMessageField").value as? String, "Hello")
         capture("Choose an app guidance", app)
         chooseApp(app)
+        XCTAssertEqual(app.buttons["conversationSendButton"].value as? String, "")
         app.buttons["conversationSendButton"].tap()
         app.staticTexts["What would you like to accomplish in this app?"].waitToAppear()
         app.goToSettingsTab()
@@ -197,6 +356,29 @@ final class ConversationUITests: XCTestCase {
             .matching(NSPredicate(format: "label BEGINSWITH %@", "Volition-activity"))
             .firstMatch.waitToAppear()
         capture("Activity log export share sheet", app)
+    }
+
+    func testPinnedUnlockBannersAtLargeText() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing", "-onboarding-completed", "-seed-scenario=conversation-multiple", "-dark-mode", "-large-text"]
+        app.launch()
+        chooseApp(app)
+        send("approve 2", app)
+        app.buttons["endConversationUnlockButton"].waitToAppear()
+        app.buttons["conversationChooseAppButton"].tap()
+        app.buttons.matching(identifier: "conversationAppOption").element(boundBy: 1).waitToAppear().tap()
+        send("approve 2", app)
+        let ends = app.buttons.matching(identifier: "endConversationUnlockButton")
+        let both = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in ends.count == 2 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [both], timeout: 10), .completed)
+        XCTAssertTrue(ends.element(boundBy: 0).isHittable)
+        XCTAssertTrue(ends.element(boundBy: 1).isHittable)
+        capture("Independent pinned banners dark large text", app)
+        ends.element(boundBy: 0).tap()
+        let one = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in ends.count == 1 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [one], timeout: 10), .completed)
+        XCTAssertTrue(ends.firstMatch.isHittable)
+        capture("Ending one banner retains the other", app)
     }
     func testNamedAppRoutesWithoutOpeningThePicker() {
         let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation-multiple")

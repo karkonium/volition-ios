@@ -182,7 +182,7 @@ struct OnboardingView: View {
         switch step {
         case .welcome:
             pillButton(CopyKey.onboardingContinueButton.string, identifier: "onboardingContinueButton") {
-                step = conversation.preferences.hasConsent ? .permission : .privacy
+                step = .privacy
             }
         case .privacy:
             VStack(spacing: 16) {

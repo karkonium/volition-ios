@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class ExpansionUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
     private func capture(_ name: String, _ app: XCUIApplication) {

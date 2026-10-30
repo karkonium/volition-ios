@@ -2,6 +2,7 @@ import XCTest
 
 /// Captures the compact presentation using mock apps, authorization and coach.
 /// Screenshots are real renders; no Screen Time or live-model claim is implied.
+@MainActor
 final class CompactInterfaceUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
     private func capture(_ name: String, _ app: XCUIApplication) {

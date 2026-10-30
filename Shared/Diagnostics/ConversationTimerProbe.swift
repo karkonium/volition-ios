@@ -15,7 +15,7 @@ nonisolated enum ConversationTimerProbe {
         var callbackKind: String?
     }
     enum ProbeError: Error { case missingContainer, selectOneApp, noSelection, grantActive }
-    private static let store = ManagedSettingsStore.Name("conversation-timer-probe")
+    private static var store: ManagedSettingsStore.Name { .init("conversation-timer-probe") }
 
     private static func withRecord<T>(_ body: (inout Record?) throws -> T) throws -> T {
         guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppGroup.identifier)

@@ -4,7 +4,7 @@ import SwiftData
 /// V5 adds independent records while retaining the V4 model identities. Legacy
 /// archive conversion is atomic and restartable in ConversationHistoryStore.
 struct OpenAppLockSchemaV5: VersionedSchema {
-    static var versionIdentifier = Schema.Version(5, 0, 0)
+    static let versionIdentifier = Schema.Version(5, 0, 0)
     static var models: [any PersistentModel.Type] {
         OpenAppLockSchemaV4.models + [ConversationRecord.self]
     }

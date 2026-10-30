@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class ChatPolishUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
     private func launch(_ mode: String) -> XCUIApplication {

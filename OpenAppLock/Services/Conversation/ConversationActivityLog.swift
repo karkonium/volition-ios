@@ -4,6 +4,18 @@ import Foundation
 /// diagnostics never receive these messages/replies. Outcome describes the local
 /// result, independently of the model decision; exports are explicit user actions.
 nonisolated struct ConversationActivityEntry: Codable, Equatable, Identifiable, Sendable {
+    enum ExperienceRating: String, Codable, CaseIterable, Sendable {
+        case helpful, neutral, annoying
+        var copy: CopyKey {
+            switch self { case .helpful: .feedbackHelpful; case .neutral: .feedbackNeutral; case .annoying: .feedbackAnnoying }
+        }
+        var symbol: String {
+            switch self { case .helpful: "hand.thumbsup"; case .neutral: "minus.circle"; case .annoying: "hand.thumbsdown" }
+        }
+    }
+    var canRateExperience: Bool {
+        [.unlocked, .denied, .dealDeclined].contains(outcome) || (outcome == .cancelled && reflectionID != nil)
+    }
     enum FeedbackSignal: String, Codable, Sendable { case highFrustration = "high_frustration" }
     enum Outcome: String, Codable, Sendable {
         case pending, unlocked, asked, denied, wait, failed, cancelled, unconfirmed, interrupted
@@ -49,6 +61,9 @@ nonisolated struct ConversationActivityEntry: Codable, Equatable, Identifiable, 
     var waitUntil: Date?
     var reflectionID: UUID?
     var emotion: ConversationReflection.Emotion?
+    var customEmotion: String? = nil
+    var experienceRating: ExperienceRating? = nil
+    var ratedAt: Date? = nil
     var pauseSeconds: Int?
     var reflectionSkipped: Bool?
     var blockMinutes: Int?
@@ -60,6 +75,7 @@ nonisolated struct ConversationActivityEntry: Codable, Equatable, Identifiable, 
         case feedbackSignal = "feedback_signal", removalID = "removal_id"
         case blockMinutes = "block_minutes"
         case id, message, outcome, emotion
+        case customEmotion = "custom_emotion", experienceRating = "experience_rating", ratedAt = "rated_at"
         case reflectionID = "reflection_id", pauseSeconds = "pause_seconds", reflectionSkipped = "reflection_skipped"
         case date = "timestamp", appID = "app_id", appName = "app_name"
         case modelDecision = "model_decision", coachResponse = "coach_response", systemResponse = "system_response"
@@ -73,7 +89,7 @@ nonisolated struct ConversationActivityEntry: Codable, Equatable, Identifiable, 
         grantID = event.grantID; unlockUntil = event.expiresAt; endedAt = event.endedAt; waitUntil = event.waitUntil
         switch event.decision {
         case .deal: outcome = .dealOffered
-        case .pause: outcome = .reflection
+        case .pause, .choice: outcome = .reflection
         case .ask: outcome = .asked
         case .deny: outcome = .denied
         case .wait: outcome = .wait
@@ -121,6 +137,8 @@ nonisolated enum ConversationActivityExport {
             if let ended = entry.endedAt { lines.append("Access ended: \(iso.string(from: ended))") }
             if let minutes = entry.blockMinutes { lines.append("Deal break minutes: \(minutes)") }
             if let seconds = entry.pauseSeconds { lines.append("Pause seconds: \(seconds)") }
+            if let custom = entry.customEmotion { lines.append("Custom check-in: \(custom)") }
+            if let rating = entry.experienceRating { lines.append("Experience: \(rating.rawValue)") }
             if let emotion = entry.emotion { lines.append("Check-in: \(emotion.rawValue)") }
             if let skipped = entry.reflectionSkipped { lines.append("Pause skipped: \(skipped)") }
             if let signal = entry.feedbackSignal { lines.append("Feedback signal: \(signal.rawValue)") }

@@ -13,7 +13,7 @@ enum OpenAppLockSchemaMigrationPlan: SchemaMigrationPlan {
         [migrateV1toV2, migrateV2toV3, migrateV3toV4, migrateV4toV5]
     }
 
-    static var schemas: [any VersionedSchema.Type] = [
+    static let schemas: [any VersionedSchema.Type] = [
         OpenAppLockSchemaV1.self,
         OpenAppLockSchemaV2.self,
         OpenAppLockSchemaV3.self,
@@ -54,7 +54,9 @@ enum OpenAppLockSchemaMigrationPlan: SchemaMigrationPlan {
     )
 }
 
-enum MigrationHelpers {
+/// SwiftData owns the callback's context/executor. Keep migrations synchronous
+/// there rather than sending a non-Sendable ModelContext to the main actor.
+nonisolated enum MigrationHelpers {
     /// Perform the schema migration and get the IDs of rules that changed.
     static func prepareV1DataForMigration(_ context: ModelContext) throws -> Set<UUID> {
         let latestAllowedStartMinutes = 23 * 60 + 45

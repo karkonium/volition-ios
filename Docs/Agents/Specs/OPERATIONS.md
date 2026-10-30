@@ -104,6 +104,23 @@ removes stale presentation; monitor callbacks attempt activity cleanup at expiry
 The opt-in `-ui-testing-live-activity` test schedules real native presentation on
 the owned simulator with mocked enforcement; ordinary UI tests remain hermetic.
 
+## Compiler diagnostics
+
+Shared.xcconfig enables complete concurrency checking while retaining Swift 5
+language mode. InferSendableFromCaptures is enabled so immutable closure/key-path
+literals satisfy the newer SDK's Sendable requirements. UI automation runs on
+MainActor; migration helpers run synchronously on SwiftData's callback executor.
+Schema version metadata is immutable; V1–V5 persisted fields are unchanged.
+Diagnostic timestamps keep their existing millisecond rounding under a mutex.
+SDK tokens cross detached-task boundaries as encoded Data, and async Live Activity
+cleanup passes activity IDs rather than non-Sendable handles across executors.
+
+Validate with SWIFT_TREAT_WARNINGS_AS_ERRORS=YES for the app, extensions and tests.
+The Xcode 27 App Intents metadata tool still reports that extraction is skipped
+when a target does not link AppIntents. No source/compiler fix is required for
+that diagnostic; do not add unused frameworks or hide compiler warnings to remove
+it. Investigate new Swift errors/warnings independently of these SDK messages.
+
 ## Keyboard diagnostics
 
 On the iOS 27 simulator, `cannot add handler to 0 from 0 - dropping` is logged by

@@ -30,6 +30,14 @@ final class AppLifecycleController {
         } catch { preparationError = true; health = .failed }
     }
 
+    func resumeSetupForShieldRequest(_ conversation: ConversationCoordinator, snapshots: [RuleSnapshotDTO]) {
+        guard needsSetup, conversation.isForeground, conversation.routedRequestID != nil,
+              let id = conversation.selectedAppID,
+              snapshots.contains(where: { $0.id == id && $0.isEnabled && $0.kind == .conversation }) else { return }
+        needsSetup = false
+        conversation.selectedSection = .chat
+    }
+
     func reconcile(load: () throws -> [BlockingRule], enforcer: RuleEnforcer,
                    conversation: ConversationCoordinator?, consumeRequests: Bool = true) async {
         do {
@@ -39,6 +47,7 @@ final class AppLifecycleController {
             lastValidSnapshots = snapshots
             health = enforcer.health
             await conversation?.refresh(snapshots: snapshots, consumeRequests: consumeRequests)
+            if consumeRequests, let conversation { resumeSetupForShieldRequest(conversation, snapshots: snapshots) }
         } catch {
             health = .failed
             Diag.error(.enforcer, "refresh fetch failed; preserving configured restrictions")

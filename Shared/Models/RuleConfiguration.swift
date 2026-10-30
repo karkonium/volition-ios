@@ -16,7 +16,7 @@ import Foundation
 ///
 /// Kind-common attributes (name, days, hardMode, isEnabled, appList,
 /// pausedUntil) live on the owning `BlockingRule` / `RuleDraft`, not here.
-enum RuleConfiguration: Hashable, Sendable {
+nonisolated enum RuleConfiguration: Hashable, Sendable {
     case schedule(ScheduleConfig)
     case timeLimit(TimeLimitConfig)
     case openLimit(OpenLimitConfig)
@@ -58,7 +58,7 @@ enum RuleConfiguration: Hashable, Sendable {
 
 /// Schedule-rule options: a recurring time window and how the app list is
 /// interpreted. A window whose end is at or before its start crosses midnight.
-struct ScheduleConfig: Hashable, Sendable {
+nonisolated struct ScheduleConfig: Hashable, Sendable {
     let fifteenMinutesBeforeMidnight: Int = 23 * 60 + 45
     let minimumRuleDurationMinutes: Int = 15
     
@@ -87,7 +87,7 @@ struct ScheduleConfig: Hashable, Sendable {
 }
 
 /// Time Limit option: a daily cumulative-usage budget in minutes.
-struct TimeLimitConfig: Hashable, Sendable {
+nonisolated struct TimeLimitConfig: Hashable, Sendable {
     var dailyLimitMinutes: Int
 
     init(dailyLimitMinutes: Int = 45) {
@@ -96,7 +96,7 @@ struct TimeLimitConfig: Hashable, Sendable {
 }
 
 /// Open Limit option: a daily budget of app opens.
-struct OpenLimitConfig: Hashable, Sendable {
+nonisolated struct OpenLimitConfig: Hashable, Sendable {
     var maxOpens: Int
 
     init(maxOpens: Int = 5) {
@@ -105,6 +105,6 @@ struct OpenLimitConfig: Hashable, Sendable {
 }
 
 /// The user's durable goal for conversation-based access decisions.
-struct ConversationConfig: Hashable, Sendable {
+nonisolated struct ConversationConfig: Hashable, Sendable {
     var goal: String = ""
 }

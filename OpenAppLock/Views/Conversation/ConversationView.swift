@@ -3,16 +3,17 @@ import ManagedSettings
 import SwiftData
 import SwiftUI
 
-/// Shared chat and independent grants. Notices/grants scroll with messages, while
-/// the selected-app control and keyboard-safe composer remain easy to reach.
+/// Shared chat and independent grants. Compact unlock banners stay above the
+/// transcript; the selected-app control and keyboard-safe composer remain reachable.
 /// Cancelling restores the session draft; late completions cannot alter a new one.
 /// Waits are labeled within coach replies, never shown as unlock countdowns.
+/// Send looks inactive without a selected app but accepts draft submissions to
+/// resolve saved names or draw attention to the chooser without losing the draft.
 struct ConversationView: View {
     @Environment(ConversationCoordinator.self) private var conversation
     @Environment(FocusController.self) private var focus
     @Environment(RuleEnforcer.self) private var enforcer
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
     @Query(sort: BlockingRule.displayOrder) private var rules: [BlockingRule]
     @FocusState private var messageFocused: Bool
@@ -21,10 +22,20 @@ struct ConversationView: View {
     @State private var followsLatest = true
     @State private var visibleMessages = 60
 
+    /// Presentation omits redundant system notices while the full event history
+    /// remains available to coaching, enforcement and the private activity log.
+    private var transcriptMessages: [ConversationMessage] {
+        conversation.history.messages.filter { $0.role != .event }
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 appSelector.padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 6)
+                if !conversation.displayedGrants.isEmpty {
+                    grantCards.padding(.horizontal, 16).padding(.bottom, 8)
+                        .accessibilityIdentifier("conversationUnlockBanners")
+                }
                 ScrollViewReader { proxy in
                     List {
                         if !conversation.preferences.hasConsent { consentPrompt.chatRow() }
@@ -49,13 +60,12 @@ struct ConversationView: View {
                             Text(CopyKey.dealBlockedUntil.string(until.formatted(date: .omitted, time: .shortened)))
                                 .font(.footnote).foregroundStyle(.secondary).chatRow()
                         }
-                        if !conversation.displayedGrants.isEmpty { grantCards.id("conversationActiveGrants").chatRow() }
-                        if conversation.history.messages.isEmpty { emptyConversation.chatRow() }
-                        if conversation.history.messages.count > visibleMessages {
+                        if transcriptMessages.isEmpty { emptyConversation.chatRow() }
+                        if transcriptMessages.count > visibleMessages {
                             Button(CopyKey.chatLoadEarlier.resource) { visibleMessages += 60 }
                                 .buttonStyle(VolitionButtonStyle(primary: false)).chatRow()
                         }
-                        ForEach(Array(conversation.history.messages.suffix(visibleMessages))) { item in
+                        ForEach(Array(transcriptMessages.suffix(visibleMessages))) { item in
                             message(item).id(item.id)
                                 .accessibilityIdentifier("conversationMessage-\(item.role.rawValue)").chatRow()
                         }
@@ -64,12 +74,19 @@ struct ConversationView: View {
                         }
                         ForEach(conversation.pendingReflections) { reflection in
                             Group {
-                                if reflection.isDeal {
+                                if reflection.awaitingCheckIn {
+                                    ConversationEmotionCheckIn(reflection: reflection)
+                                } else if reflection.isChoice {
+                                    ConversationInterventionChoiceCard(reflection: reflection, snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) })
+                                } else if reflection.isDeal {
                                     ConversationDealCard(reflection: reflection, snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) })
                                 } else {
                                     ConversationReflectionCard(reflection: reflection, snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) })
                                 }
                             }.chatRow()
+                        }
+                        if let entry = conversation.feedbackEntry {
+                            ConversationExperienceFeedback(entry: entry).id(entry.id).chatRow()
                         }
                         Color.clear.frame(height: 1).id("latest")
                             .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Color.clear)
@@ -82,17 +99,9 @@ struct ConversationView: View {
                         geometry.contentSize.height - geometry.contentOffset.y - geometry.containerSize.height < 120
                     } action: { _, nearBottom in followsLatest = nearBottom }
                     .onAppear {
-                        if !conversation.history.messages.isEmpty { proxy.scrollTo("latest", anchor: .bottom) }
+                        if !transcriptMessages.isEmpty { proxy.scrollTo("latest", anchor: .bottom) }
                     }
-                    .onChange(of: conversation.displayedGrants.map(\.plan.grantID)) { old, current in
-                        guard current.contains(where: { !old.contains($0) }) else { return }
-                        followsLatest = false
-                        Task { @MainActor in
-                            await Task.yield()
-                            proxy.scrollTo("conversationActiveGrants", anchor: .top)
-                        }
-                    }
-                    .onChange(of: conversation.history.messages.count) {
+                    .onChange(of: transcriptMessages.count) {
                         if followsLatest { proxy.scrollTo("latest", anchor: .bottom) }
                     }
                     .onChange(of: conversation.isSending) { _, sending in
@@ -106,7 +115,7 @@ struct ConversationView: View {
                         if followsLatest && !conversation.appSelectionNeeded { proxy.scrollTo("latest", anchor: .bottom) }
                     }
                     .overlay(alignment: .bottomTrailing) {
-                        if !followsLatest && !conversation.history.messages.isEmpty {
+                        if !followsLatest && !transcriptMessages.isEmpty {
                             Button {
                                 followsLatest = true; proxy.scrollTo("latest", anchor: .bottom)
                             } label: {
@@ -122,7 +131,7 @@ struct ConversationView: View {
             }
             .frame(maxWidth: 720).frame(maxWidth: .infinity)
             .background(VolitionStyle.background)
-            .volitionRoot(CopyKey.conversationChatTitle.string)
+            .volitionTabRoot()
             .onChange(of: conversation.selectedSection) { _, section in
                 if section != .chat { messageFocused = false }
             }
@@ -142,7 +151,6 @@ struct ConversationView: View {
     }
 
     private var appSelector: some View {
-        let motionReduced = reduceMotion
         return Button { messageFocused = false; choosingApp = true } label: {
             VolitionCard(accented: conversation.appSelectionNeeded) {
                 HStack(spacing: 12) {
@@ -164,16 +172,7 @@ struct ConversationView: View {
         .buttonStyle(.plain).accessibilityIdentifier("conversationChooseAppButton")
         .accessibilityValue(conversation.appSelectionNeeded ? CopyKey.activitySelectionRequired.string : "")
         .disabled(conversation.isSending)
-        .keyframeAnimator(initialValue: CGFloat.zero, trigger: conversation.selectionAttention) { content, offset in
-            content.offset(x: motionReduced ? 0 : offset)
-        } keyframes: { _ in
-            LinearKeyframe(CGFloat(-7), duration: 0.06)
-            LinearKeyframe(CGFloat(7), duration: 0.08)
-            LinearKeyframe(CGFloat(-4), duration: 0.08)
-            LinearKeyframe(CGFloat(4), duration: 0.08)
-            LinearKeyframe(CGFloat.zero, duration: 0.08)
-        }
-        .sensoryFeedback(.warning, trigger: conversation.selectionAttention)
+        .volitionAttention(trigger: conversation.selectionAttention)
     }
 
     private var consentPrompt: some View {
@@ -195,29 +194,36 @@ struct ConversationView: View {
     }
 
     @ViewBuilder private var grantCards: some View {
-        if typeSize.isAccessibilitySize {
-            VStack(spacing: 10) { ForEach(conversation.displayedGrants, id: \.plan.grantID) { grant in grantCard(grant) } }
-        } else {
-            ScrollView(.horizontal) {
-                HStack(spacing: 10) {
-                    ForEach(conversation.displayedGrants, id: \.plan.grantID) { grant in grantCard(grant).frame(width: 260) }
-                }
-            }.scrollIndicators(.visible)
+        ScrollView {
+            VStack(spacing: 6) {
+                ForEach(conversation.displayedGrants, id: \.plan.grantID) { grant in grantCard(grant) }
+            }
         }
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(height: min(CGFloat(conversation.displayedGrants.count), 2) * (typeSize.isAccessibilitySize ? 116 : 52))
     }
     private func grantCard(_ grant: ConversationGrantStore.Grant) -> some View {
         TimelineView(.periodic(from: .now, by: 1)) { timeline in
-            VolitionCard(accented: true) {
-                Label(conversation.appName(for: grant), systemImage: "lock.open").font(.subheadline.weight(.semibold))
-                    .fixedSize(horizontal: false, vertical: true)
-                if timeline.date < grant.plan.expiresAt {
-                    Text(grant.plan.expiresAt, style: .timer).monospacedDigit().font(.title2.weight(.medium))
-                        .accessibilityLabel(CopyKey.appTemporarilyOpen.string)
-                } else { Text(CopyKey.conversationGrantExpired.resource).font(.footnote) }
+            let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 0)) : AnyLayout(HStackLayout(spacing: 8))
+            layout {
+                HStack(spacing: 6) {
+                    Image(systemName: "lock.open").accessibilityHidden(true)
+                    Text(conversation.appName(for: grant)).fontWeight(.semibold).lineLimit(1)
+                    Spacer(minLength: 4)
+                    if timeline.date < grant.plan.expiresAt {
+                        Text(grant.plan.expiresAt, style: .timer).monospacedDigit().fixedSize()
+                            .accessibilityLabel(CopyKey.appTemporarilyOpen.string)
+                    } else { Text(CopyKey.conversationGrantExpired.resource) }
+                }
                 Button(CopyKey.conversationEndUnlock.resource) {
                     Task { await conversation.endUnlock(grantID: grant.plan.grantID); await enforcer.refresh(rules: rules) }
-                }.buttonStyle(VolitionButtonStyle(primary: false)).accessibilityIdentifier("endConversationUnlockButton")
+                }
+                .fontWeight(.semibold).frame(minWidth: 44, minHeight: 44)
+                .buttonStyle(.plain).foregroundStyle(VolitionStyle.accent)
+                .accessibilityIdentifier("endConversationUnlockButton")
             }
+            .font(.subheadline).padding(.horizontal, 12)
+            .background(VolitionStyle.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
             .task(id: timeline.date >= grant.plan.expiresAt) {
                 if timeline.date >= grant.plan.expiresAt {
                     await enforcer.refresh(rules: rules)
@@ -230,35 +236,15 @@ struct ConversationView: View {
     private func message(_ item: ConversationMessage) -> some View {
         HStack(alignment: .top, spacing: 0) {
             if item.role == .user { Spacer(minLength: typeSize.isAccessibilitySize ? 8 : 32) }
-            VStack(alignment: .leading, spacing: 5) {
-                if item.role == .assistant { replyHeader(item) }
-                Text(item.text).font(item.role == .event ? .caption : .body)
-                    .lineSpacing(item.role == .event ? 0 : 2).padding(item.role == .event ? 4 : 12)
-                    .background(item.role == .user ? VolitionStyle.accent.opacity(0.08) :
-                        item.role == .assistant ? VolitionStyle.surface : Color.clear, in: RoundedRectangle(cornerRadius: 14))
-                    .overlay {
-                        if item.role == .assistant { RoundedRectangle(cornerRadius: 14).strokeBorder(VolitionStyle.border) }
-                    }
-                    .textSelection(.enabled).foregroundStyle(item.role == .event ? Color.secondary : Color.primary)
-            }
+            Text(item.text).font(.body).lineSpacing(2).padding(12)
+                .background(item.role == .user ? VolitionStyle.accent.opacity(0.08) : VolitionStyle.surface,
+                    in: RoundedRectangle(cornerRadius: 14))
+                .overlay {
+                    if item.role == .assistant { RoundedRectangle(cornerRadius: 14).strokeBorder(VolitionStyle.border) }
+                }
+                .textSelection(.enabled).foregroundStyle(Color.primary)
             if item.role != .user { Spacer(minLength: typeSize.isAccessibilitySize ? 0 : 24) }
         }
-    }
-    @ViewBuilder private func replyHeader(_ message: ConversationMessage) -> some View {
-        if let entry = conversation.history.activityLog.last,
-           entry.date <= message.date, entry.coachResponse == message.text,
-           conversation.history.messages.last(where: { $0.role == .assistant })?.id == message.id {
-            switch entry.outcome {
-            case .unlocked: replyLabel(.uiApproved, "checkmark.circle")
-            case .denied: replyLabel(.uiDenied, "lock")
-            case .wait: replyLabel(.uiWaiting, "hourglass")
-            case .asked: replyLabel(.uiAsked, "bubble.left")
-            default: replyLabel(.uiCoachName, "bubble.left")
-            }
-        } else { replyLabel(.uiCoachName, "bubble.left") }
-    }
-    private func replyLabel(_ title: CopyKey, _ symbol: String) -> some View {
-        Label(title.resource, systemImage: symbol).font(.caption.weight(.medium)).foregroundStyle(.secondary)
     }
 
     private var composer: some View {
@@ -287,10 +273,13 @@ struct ConversationView: View {
                     .background(VolitionStyle.subtle, in: RoundedRectangle(cornerRadius: 12))
                     .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(VolitionStyle.border) }
                 Button(action: submitDraft) {
-                    Image(systemName: "arrow.up").font(.body.weight(.semibold))
-                        .frame(width: 44, height: 44).foregroundStyle(VolitionStyle.background)
-                        .background(Color.primary, in: RoundedRectangle(cornerRadius: 12)).opacity(canSend ? 1 : 0.3)
+                    Image(systemName: "arrow.up").font(.body.weight(.bold))
+                        .frame(width: 44, height: 44).foregroundStyle(Color.white)
+                        .background(conversation.target == nil ? Color.gray : VolitionStyle.accent,
+                            in: RoundedRectangle(cornerRadius: 12))
+                        .opacity(canSend && conversation.target != nil ? 1 : 0.3)
                 }.buttonStyle(.plain).accessibilityLabel(CopyKey.conversationSend.string)
+                    .accessibilityValue(conversation.target == nil ? CopyKey.conversationSelectAppHelp.string : "")
                     .disabled(!canSend).accessibilityIdentifier("conversationSendButton")
             }
         }.padding(.horizontal, 16).padding(.vertical, 10).background(VolitionStyle.background)

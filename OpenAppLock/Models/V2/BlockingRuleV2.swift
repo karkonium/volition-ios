@@ -126,7 +126,7 @@ extension OpenAppLockSchemaV2 {
             }
         }
         
-        var kind: RuleKind {
+        nonisolated var kind: RuleKind {
             get { RuleKind(rawValue: kindRaw) ?? .schedule }
             set { kindRaw = newValue.rawValue }
         }

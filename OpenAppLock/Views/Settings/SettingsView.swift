@@ -51,7 +51,7 @@ struct SettingsView: View {
                 Label(CopyKey.volitionPrivacy.resource, systemImage: "lock")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            .volitionRoot(CopyKey.settingsNavigationTitle.string)
+            .volitionTabRoot()
         }
     }
 }

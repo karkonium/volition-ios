@@ -60,7 +60,7 @@ nonisolated enum UsageReportFormatter {
 
 /// Today's combined usage total plus a per-app breakdown, rendered by the report
 /// extension's `RuleUsageReportView`.
-nonisolated struct RuleUsageReportData: Equatable {
+nonisolated struct RuleUsageReportData: Equatable, Sendable {
     let total: String
     let apps: [AppUsageRow]
 }
@@ -68,7 +68,7 @@ nonisolated struct RuleUsageReportData: Equatable {
 /// One app's contribution to a rule's usage today. Carries raw `seconds` — the
 /// source for both its label and the heaviest-first sort. The display name is the
 /// row identity, so `report` sums entries that share a name into one row.
-nonisolated struct AppUsageRow: Identifiable, Equatable {
+nonisolated struct AppUsageRow: Identifiable, Equatable, Sendable {
     var id: String { name }
     let name: String
     let seconds: Double

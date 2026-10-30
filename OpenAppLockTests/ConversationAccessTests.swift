@@ -306,7 +306,7 @@ struct ConversationAccessTests {
         #expect(!shields.shieldedRuleIDs.contains(two.id))
     }
 
-    @Test("Exceptions need pushback, cannot happen consecutively, and rollback restores terms")
+    @Test("Exceptions need pushback and replacement terms; consecutive renegotiation and rollback work")
     func dealExceptionLedger() throws {
         let app = try token(85)
         let (access, _) = try makeAccess()
@@ -320,46 +320,38 @@ struct ConversationAccessTests {
         }
         try access.recordDealPushback(token: app)
         try access.recordDealPushback(token: app)
-        let exception = try access.approve(token: app, minutes: 3, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: original.plan.grantID)
+        #expect(throws: ConversationAccessError.waiting) {
+            try access.approve(token: app, minutes: 3, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: original.plan.grantID)
+        }
+        let exception = try access.approve(token: app, minutes: 3, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 1440, overridingDealID: original.plan.grantID)
         try access.end(grantID: exception.plan.grantID, cancelDeal: true)
         #expect(try access.store.transaction { $0.dealCommitments.first?.overriddenAt } == nil)
-        let retry = try access.approve(token: app, minutes: 3, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: original.plan.grantID)
+        #expect(try access.store.transaction { $0.dealCommitments.count } == 1)
+        let retry = try access.approve(token: app, minutes: 3, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 1440, overridingDealID: original.plan.grantID)
         try access.end(grantID: retry.plan.grantID)
-        let next = try access.approve(token: app, minutes: 2, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 30)
-        try access.end(grantID: next.plan.grantID)
         try access.recordDealPushback(token: app); try access.recordDealPushback(token: app)
-        #expect(throws: ConversationAccessError.waiting) {
-            try access.approve(token: app, minutes: 3, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: next.plan.grantID)
-        }
+        let repeated = try access.approve(token: app, minutes: 3, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 1440, overridingDealID: retry.plan.grantID)
+        #expect(try access.store.transaction { $0.dealCommitments.last?.grantID } == repeated.plan.grantID)
     }
 
-    @Test("One honored deal resets exception eligibility across apps")
-    func honoredDealResetsGlobalException() throws {
-        let app = try token(86), other = try token(87)
+    @Test("Replacement deal break must be longer than remaining time and survive early end")
+    func replacementTermsAreEnforced() throws {
+        let app = try token(86)
         let (access, _) = try makeAccess()
-        let rules = [snapshot([app]), snapshot([other])]
+        let rules = [snapshot([app])]
         _ = try access.sync(rules)
         let fp = ConversationGrantStore.fingerprint(rules)
         let first = try access.approve(token: app, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 10)
         try access.end(grantID: first.plan.grantID)
         try access.recordDealPushback(token: app); try access.recordDealPushback(token: app)
-        let exception = try access.approve(token: app, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: first.plan.grantID)
-        try access.end(grantID: exception.plan.grantID)
-        let second = try access.approve(token: other, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 10)
-        try access.end(grantID: second.plan.grantID)
-        try access.recordDealPushback(token: other); try access.recordDealPushback(token: other)
         #expect(throws: ConversationAccessError.waiting) {
-            try access.approve(token: other, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: second.plan.grantID)
+            try access.approve(token: app, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 10, overridingDealID: first.plan.grantID)
         }
-        try access.store.transaction { state in
-            let i = state.dealCommitments.firstIndex { $0.grantID == second.plan.grantID }!
-            state.dealCommitments[i] = .init(grantID: second.plan.grantID, token: other, blockedUntil: .now)
-        }
-        let third = try access.approve(token: other, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 10)
-        try access.end(grantID: third.plan.grantID)
-        try access.recordDealPushback(token: other); try access.recordDealPushback(token: other)
-        let permitted = try access.approve(token: other, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: third.plan.grantID)
-        #expect(permitted.token == other)
+        let replacement = try access.approve(token: app, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 30, overridingDealID: first.plan.grantID)
+        try access.end(grantID: replacement.plan.grantID)
+        let state = try access.store.transaction { $0 }
+        #expect(state.dealCommitments.first?.overriddenAt != nil)
+        #expect(state.dealCommitments.last?.isBlocking(at: .now) == true)
     }
 
     @Test("A failed exception release restores its original break")
@@ -374,7 +366,7 @@ struct ConversationAccessTests {
         try normal.recordDealPushback(token: app); try normal.recordDealPushback(token: app)
         let failing = ConversationEnforcement(store: normal.store, shields: RefusingReleaseShields())
         #expect(throws: ConversationAccessError.shieldReleaseFailed) {
-            try failing.approve(token: app, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), overridingDealID: original.plan.grantID)
+            try failing.approve(token: app, minutes: 1, fingerprint: fp, timer: MockConversationTimer(), blockMinutes: 90, overridingDealID: original.plan.grantID)
         }
         #expect(try normal.store.transaction { $0.dealCommitments.first?.overriddenAt } == nil)
         #expect(try normal.store.transaction { $0.activeGrants.isEmpty })

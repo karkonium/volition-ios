@@ -78,6 +78,7 @@ struct DiagnosticLogsView: View {
         }
         .navigationTitle(CopyKey.diagnosticsNavigationTitle.resource)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .onAppear { days = logStore.availableDays() }
     }
 }
@@ -100,6 +101,7 @@ struct LogDayDetailView: View {
         }
         .navigationTitle(dayKey)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if let url = try? logStore.exportFile(for: dayKey) {

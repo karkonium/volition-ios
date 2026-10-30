@@ -70,6 +70,9 @@ struct MainView: View {
                 }
                 await enforcementLoop()
             }
+            .onChange(of: conversation.routedRequestID) {
+                lifecycle.resumeSetupForShieldRequest(conversation, snapshots: rules.filter { !$0.isDeleted }.map(\.dto))
+            }
             .onChange(of: focus.state) { refreshEnforcement() }
             .onChange(of: ruleChangeToken) {
                 // Logs the rule/app-list-driven refresh trigger so the timeline

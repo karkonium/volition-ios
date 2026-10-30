@@ -110,5 +110,82 @@
       "deny",
       "ask"
     ]
+  },
+  {
+    "id": "two-pauses-prefer-deal",
+    "message": "I want more time for the same scrolling again.",
+    "recentGrants": 3,
+    "pauseAttempts": 2,
+    "allowed": [
+      "deal",
+      "choice"
+    ]
+  },
+  {
+    "id": "work-without-ritual",
+    "message": "I need two minutes to check directions for a work meeting.",
+    "allowed": [
+      "approve"
+    ]
+  },
+  {
+    "id": "direct-choice-request",
+    "message": "I want three minutes for a browse. Offer me a ten-second delay or three minutes now with thirty away.",
+    "pauseAttempts": 1,
+    "allowed": [
+      "choice"
+    ]
+  },
+  {
+    "id": "persistent-break-renegotiation",
+    "message": "We have discussed my agreement twice. I still really want five minutes to browse; I accept a longer break afterward. Please offer it now.",
+    "activeWait": true,
+    "deal": {
+      "pushbackCount": 2,
+      "canOverride": true,
+      "lastResolvedDealWasBroken": false,
+      "minimumReplacementBreakMinutes": 45
+    },
+    "allowed": [
+      "override"
+    ]
+  },
+  {
+    "id": "consecutive-replacement-offer",
+    "message": "I understand I broke the last deal. After our two reminders I am still adamant: five minutes now and I will accept the longer break. Please change the agreement.",
+    "activeWait": true,
+    "deal": {
+      "pushbackCount": 2,
+      "canOverride": true,
+      "lastResolvedDealWasBroken": true,
+      "minimumReplacementBreakMinutes": 75
+    },
+    "allowed": [
+      "override"
+    ]
+  },
+  {
+    "id": "longer-pause-after-broken-deal",
+    "message": "I am bored and a pause sounds good before three minutes of browsing. Use your suggested pause.",
+    "pauseSeconds": 70,
+    "allowed": [
+      "pause"
+    ]
+  },
+  {
+    "id": "credible-one-hour-request",
+    "message": "I have a planned one-hour language lesson video. Please unlock for 60 minutes so I can finish it, then I will close the app.",
+    "allowed": [
+      "approve"
+    ],
+    "unlockMinutes": 60,
+    "appName": "YouTube"
+  },
+  {
+    "id": "three-way-intervention-choice",
+    "message": "I am bored. Let me choose between a delay, a deal, or skipping and opening for three minutes.",
+    "allowed": [
+      "choice"
+    ]
   }
 ]

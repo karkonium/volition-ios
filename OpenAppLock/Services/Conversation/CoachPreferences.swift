@@ -12,7 +12,8 @@ nonisolated enum CoachTone: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// Versioned explicit consent is independent of Screen Time permission.
+/// AI sharing defaults on when no choice exists. An explicit opt-out survives
+/// relaunch and upgrades, independently of Screen Time permission.
 @Observable
 final class CoachPreferences {
     private let defaults: UserDefaults
@@ -20,7 +21,7 @@ final class CoachPreferences {
     var tone: CoachTone { didSet { defaults.set(tone.rawValue, forKey: "coachTone") } }
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        hasConsent = defaults.integer(forKey: "aiConsentVersion") == 1
+        hasConsent = defaults.object(forKey: "aiConsentVersion") == nil || defaults.integer(forKey: "aiConsentVersion") == 1
         tone = CoachTone(rawValue: defaults.string(forKey: "coachTone") ?? "") ?? .balanced
     }
     func setConsent(_ granted: Bool) {

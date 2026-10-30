@@ -109,7 +109,7 @@ struct FocusView: View {
                 }
             }
             .disabled(focus.isSaving)
-            .volitionRoot(CopyKey.focusTitle.string)
+            .volitionTabRoot()
             .sheet(item: $editingPeriod) { period in FocusPeriodEditor(original: period) }
             .confirmationDialog(CopyKey.focusEndCurrent.string, isPresented: $confirmingEnd, titleVisibility: .visible) {
                 Button(CopyKey.focusEndCurrent.resource, role: .destructive) {

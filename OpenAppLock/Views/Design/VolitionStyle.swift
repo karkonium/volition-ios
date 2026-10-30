@@ -65,15 +65,18 @@ struct VolitionIcon: View {
     }
 }
 
+/// Recommended actions use a bright fill and bold label; alternatives remain
+/// readable with a lighter surface and label. Both retain a 44-point touch target.
 struct VolitionButtonStyle: ButtonStyle {
     var primary = true
     @Environment(\.isEnabled) private var enabled
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.subheadline.weight(.semibold))
+        configuration.label.font(.subheadline.weight(primary ? .bold : .regular))
             .frame(maxWidth: .infinity, minHeight: 44)
             .padding(.horizontal, 12)
-            .foregroundStyle(configuration.role == .destructive ? Color.red : primary ? VolitionStyle.background : Color.primary)
-            .background(primary ? Color.primary : VolitionStyle.surface, in: RoundedRectangle(cornerRadius: 12))
+            .foregroundStyle(primary ? Color.white : configuration.role == .destructive ? Color.red : Color.secondary)
+            .background(primary ? (configuration.role == .destructive ? Color.red : VolitionStyle.accent) : VolitionStyle.subtle,
+                in: RoundedRectangle(cornerRadius: 12))
             .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(primary ? Color.clear : VolitionStyle.border, lineWidth: 1) }
             .opacity(enabled ? (configuration.isPressed ? 0.72 : 1) : 0.35)
             .contentShape(RoundedRectangle(cornerRadius: 12))
@@ -98,8 +101,16 @@ struct VolitionSettingsLabel: View {
 }
 
 extension View {
+    /// Tab labels identify the root screen; its navigation bar need not take space.
+    /// Setup and pushed detail screens retain their titles and navigation controls.
+    func volitionTabRoot(setupTitle: String? = nil) -> some View {
+        navigationTitle(setupTitle ?? "").navigationBarTitleDisplayMode(.inline)
+            .toolbar(setupTitle == nil ? .hidden : .visible, for: .navigationBar)
+            .toolbarBackground(VolitionStyle.background, for: .navigationBar)
+    }
     func volitionRoot(_ title: String) -> some View {
         navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+            .toolbar(.visible, for: .navigationBar)
             .toolbarBackground(VolitionStyle.background, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
     }

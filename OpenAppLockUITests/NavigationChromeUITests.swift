@@ -10,6 +10,7 @@ import XCTest
 /// (regular). These flows run on whatever destination the suite is launched
 /// against and branch on the device idiom, so the same test validates both legs
 /// of the CI matrix.
+@MainActor
 final class NavigationChromeUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -34,6 +35,27 @@ final class NavigationChromeUITests: XCTestCase {
                 "iPhone should use a bottom tab bar, not a sidebar"
             )
         }
+    }
+
+    func testTabRootsHaveNoTopTitleAndSettingsDetailsCanGoBack() {
+        let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
+        let sections = [("Chat", "conversationChooseAppButton"), ("Apps", "addVolitionAppButton"),
+            ("Insights", "insightsRangePicker"), ("Focus", "startFocusSessionButton"), ("Settings", "conversationSettingsButton")]
+        for (title, marker) in sections {
+            if app.tabBars.buttons[title].exists { app.tabBars.buttons[title].tap() }
+            else { app.element("sidebarItem-\(title.lowercased())").waitToAppear().tap() }
+            app.element(marker).waitToAppear()
+            XCTAssertFalse(app.navigationBars[title].exists)
+            let shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = "Title-free \(title)"; shot.lifetime = .keepAlways; add(shot)
+        }
+        app.buttons["privacyDataButton"].tap()
+        app.switches["aiConsentToggle"].waitToAppear()
+        let bar = app.navigationBars["Privacy & Data"]
+        XCTAssertTrue(bar.waitForExistence(timeout: 5))
+        bar.buttons.firstMatch.tap()
+        app.buttons["conversationSettingsButton"].waitToAppear()
+        XCTAssertFalse(app.navigationBars["Settings"].exists)
     }
 
     /// Every section is reachable through whichever chrome is presented, proving

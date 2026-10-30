@@ -83,6 +83,7 @@ struct ConversationAppPicker: View {
 }
 
 /// Apple's token label renders the app icon without extracting its private identity.
+/// A new token creates a new native label so replacement never retains the old icon.
 struct VolitionAppIcon: View {
     let token: ApplicationToken
     var body: some View {
@@ -90,7 +91,7 @@ struct VolitionAppIcon: View {
             if LaunchConfiguration.current.isUITesting {
                 VolitionIcon(symbol: "app.fill")
             } else {
-                Label(token).labelStyle(.iconOnly).frame(width: 36, height: 36)
+                Label(token).labelStyle(.iconOnly).frame(width: 36, height: 36).id(token)
             }
         }.accessibilityHidden(true)
     }

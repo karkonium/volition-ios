@@ -69,9 +69,7 @@ extension XCUIApplication {
     /// the left sidebar in regular width (full-screen iPad). Keeps the rest of the
     /// UI suite agnostic to which device it runs on.
     ///
-    /// Each section's detail names its navigation bar after the same label as the
-    /// tab/row (`navigationTitle("Rules")` → `navigationBars["Rules"]`), giving a
-    /// device-agnostic "we actually landed" post-condition.
+    /// Root screens omit navigation titles; stable content identifies the section.
     private func goToSection(
         tabLabel: String, sidebarIdentifier: String,
         file: StaticString = #filePath, line: UInt = #line
@@ -89,7 +87,8 @@ extension XCUIApplication {
         // target section's detail actually appeared and re-tap if it didn't,
         // rather than assuming the first tap took.
         let item = element(sidebarIdentifier).waitToAppear(file: file, line: line)
-        let sectionBar = navigationBars[tabLabel]
+        let contentIDs = ["Chat": "conversationChooseAppButton", "Apps": "addVolitionAppButton", "Settings": "conversationSettingsButton"]
+        let sectionBar = contentIDs[tabLabel].map { element($0) } ?? navigationBars[tabLabel]
         for _ in 0..<5 {
             item.tap()
             if sectionBar.waitForExistence(timeout: 2) { return }

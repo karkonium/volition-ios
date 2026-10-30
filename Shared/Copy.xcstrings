@@ -1,6 +1,138 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "reflection.choiceHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only Deal creates a break afterward. Ending access early doesn’t shorten that break."
+          }
+        }
+      }
+    },
+    "reflection.customEmotionAction" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add my own emotion"
+          }
+        }
+      }
+    },
+    "reflection.customEmotionPlaceholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How are you feeling?"
+          }
+        }
+      }
+    },
+    "reflection.customEmotionSubmit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue"
+          }
+        }
+      }
+    },
+    "reflection.customEmotionHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A few words, up to 160 characters."
+          }
+        }
+      }
+    },
+    "conversation.feedbackQuestion" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How did you find this experience?"
+          }
+        }
+      }
+    },
+    "conversation.feedbackHelpful" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Helpful"
+          }
+        }
+      }
+    },
+    "conversation.feedbackNeutral" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neutral"
+          }
+        }
+      }
+    },
+    "conversation.feedbackAnnoying" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annoying"
+          }
+        }
+      }
+    },
+    "conversation.feedbackThanks" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thanks for the feedback."
+          }
+        }
+      }
+    },
+    "reflection.openChoice" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip / Open for %d min"
+          }
+        }
+      }
+    },
+    "interface.appNameRequired" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter the name of the app you selected."
+          }
+        }
+      }
+    },
     "activity.activityAlreadyUnlocked" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -953,7 +1085,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "For this app. Short: 1–5 minutes; longer: 6–30. Counts unlocks granted, not time spent."
+            "value" : "For this app. Short: 1–5 minutes; longer: 6–60. Counts unlocks granted, not time spent."
           }
         }
       }
@@ -3043,7 +3175,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Optional. Describe your goals in your own words."
+            "value" : "For example: mostly afternoons, work use, fewer long scrolling sessions. Add any goals or boundaries."
           }
         }
       }
@@ -3081,6 +3213,72 @@
         }
       }
     },
+    "reflection.endDelay" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End delay"
+          }
+        }
+      }
+    },
+    "reflection.unlock" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock for %lld minutes"
+          }
+        }
+      }
+    },
+    "reflection.delayHelp" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The app stays locked until you choose to unlock it. Checking in is optional."
+          }
+        }
+      }
+    },
+    "reflection.choiceTitle" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What would help this time?"
+          }
+        }
+      }
+    },
+    "reflection.delayChoice" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delay %lld seconds, then %lld minutes"
+          }
+        }
+      }
+    },
+    "reflection.dealChoice" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accept %lld minutes now, then %lld minutes blocked"
+          }
+        }
+      }
+    },
     "reflection.profilePurpose" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3099,6 +3297,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entertainment or relaxation"
+          }
+        }
+      }
+    },
+    "reflection.profileSelectMultiple" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select multiple"
           }
         }
       }
@@ -3263,7 +3472,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pause for %@ before opening. You can skip or cancel."
+            "value" : "Pause for %@ before opening. Start when you’re ready, or keep it locked."
           }
         }
       }

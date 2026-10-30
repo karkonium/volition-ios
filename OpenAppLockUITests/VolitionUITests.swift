@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class VolitionUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
     private func section(_ name: String, _ app: XCUIApplication) {
@@ -45,10 +46,21 @@ final class VolitionUITests: XCTestCase {
         let name = app.textFields["volitionAppName"].waitToAppear()
         name.tap(); name.typeText("Browser")
         app.element("profilePurposes").waitToAppear().tap()
+        XCTAssertTrue(app.staticTexts["profilePurposesSelectMultiple"].waitToAppear().exists)
         app.buttons["profilePurpose-learning"].waitToAppear().tap()
         app.buttons["profilePurpose-relaxation"].tap()
         capture("Multiple app purposes", app)
         app.element("profilePurposes").tap()
+        XCTAssertFalse(app.element("profilePurposes").label.contains("Learning"))
+        XCTAssertFalse(app.element("profilePurposes").label.contains("Relaxation"))
+        let styleQuestion = app.staticTexts["profileSessionStyleQuestion"]
+        let stylePicker = app.element("profileSessionStyle")
+        XCTAssertTrue(styleQuestion.exists)
+        XCTAssertLessThan(styleQuestion.frame.maxY, stylePicker.frame.minY)
+        capture("Questions above their choices", app)
+        app.swipeUp()
+        XCTAssertTrue(app.staticTexts["For example: mostly afternoons, work use, fewer long scrolling sessions. Add any goals or boundaries."].waitToAppear().exists)
+        capture("Flexible intention guidance", app)
         app.buttons["saveVolitionAppButton"].tap()
         let editorClosed = app.buttons["saveVolitionAppButton"].waitForNonExistence(timeout: 5)
         capture("Saved optional profile", app)
@@ -96,6 +108,7 @@ final class VolitionUITests: XCTestCase {
         XCTAssertEqual(app.textViews["volitionAppIntention"].value as? String, "Message close friends, without scrolling the feed.")
         capture("Volition saved intention", app)
         app.buttons["pickVolitionAppButton"].tap()
+        capture("Reopening saved app picker", app)
         app.buttons["cancelVolitionAppPickerButton"].waitToAppear().tap()
         XCTAssertEqual(app.textFields["volitionAppName"].value as? String, "Instagram")
         XCTAssertTrue(app.buttons["pickVolitionAppButton"].label.contains("Selected app"))

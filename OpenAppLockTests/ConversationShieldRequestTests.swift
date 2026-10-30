@@ -51,7 +51,7 @@ import Testing
         guard #available(iOS 26.5, *) else { return }
         let store = ConversationRequestStore(defaults: defaults())
         let notifications = Mutex(0)
-        let responses = Mutex<[ShieldActionResponse]>([])
+        let responses = Mutex<[Bool]>([])
         let handler = ConversationShieldRequestHandler(store: store, route: .direct) { _ in
             notifications.withLock { $0 += 1 }
         }
@@ -59,13 +59,17 @@ import Testing
         handler.request(token: app, appID: id) { response in
             #expect(store.pending()?.appID == id)
             #expect(store.pending()?.token == app)
-            responses.withLock { $0.append(response) }
+            let opensApp = response == .openParentalControlsApp
+            responses.withLock { $0.append(opensApp) }
         }
-        #expect(responses.withLock { $0 } == [.openParentalControlsApp])
+        #expect(responses.withLock { $0 } == [true])
         #expect(notifications.withLock { $0 } == 0)
         let first = try #require(store.pending())
         store.acknowledge(first)
-        handler.request(token: app, appID: id) { response in responses.withLock { $0.append(response) } }
+        handler.request(token: app, appID: id) { response in
+            let opensApp = response == .openParentalControlsApp
+            responses.withLock { $0.append(opensApp) }
+        }
         #expect(store.pending()?.id != first.id)
         #expect(responses.withLock { $0.count } == 2)
     }
@@ -77,10 +81,10 @@ import Testing
             notified.withLock { $0.append(request.id) }
         }
         let app = try token(), id = UUID()
-        let response = await withCheckedContinuation { continuation in
-            handler.request(token: app, appID: id) { continuation.resume(returning: $0) }
+        let deferred = await withCheckedContinuation { continuation in
+            handler.request(token: app, appID: id) { response in continuation.resume(returning: response == .defer) }
         }
-        #expect(response == .defer)
+        #expect(deferred)
         #expect(notified.withLock { $0 } == [try #require(store.pending()).id])
     }
     @Test func directShieldGuidanceDoesNotTellUsersToWaitForNotifications() {

@@ -11,6 +11,7 @@ import XCTest
 /// export control, and Clear empties the list. The system share sheet is
 /// out-of-process, so the export control is asserted as present/tappable but its
 /// sheet contents are not.
+@MainActor
 final class DiagnosticLogsUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 

@@ -12,8 +12,13 @@ import UserNotifications
 /// Clear Chat retains the log; clearing the log never clears enforcement history.
 /// Soft reflections persist independently per app, never override hard waits,
 /// and activate at most once in foreground through the existing grant transaction.
-/// Longer pause offers require consent; soft pauses can be skipped or cancelled.
-/// Deals require explicit acceptance and preserve shared cooldowns after early end.
+/// Longer pauses require consent. Expiry, check-ins and End delay never grant;
+/// only explicit Unlock/Accept activates. A delay can always be ended or cancelled.
+/// Restored offers are cancelled when sharing is off. Activation rechecks consent
+/// around asynchronous enforcement, including preferences changed outside this UI.
+/// Deals require acceptance and preserve shared cooldowns after early end. A
+/// persistent request may offer replacement terms after two real pushbacks;
+/// explicit Accept atomically replaces the old break with a longer new one.
 /// End unlock hides its banner while reblocking; failures restore actionable UI.
 /// Independent app grants preserve each expiry. Per-app waits persist while chat
 /// remains available; local validation prevents approval before that app’s deadline. Clearing messages retains access outcomes and an active wait.
@@ -52,6 +57,7 @@ final class ConversationCoordinator {
     }
     var errorMessage: String?
     private let service: any CoachService
+    private let checkInRoll: @Sendable () -> Bool
     let preferences: CoachPreferences
     private let clock: ConversationClock
     private let requests = ConversationRequestExecutor()
@@ -61,6 +67,7 @@ final class ConversationCoordinator {
     private let timer: any ConversationTimerScheduling
     private let requestStore: ConversationRequestStore
     private var selectionVersion = UUID()
+    private(set) var routedRequestID: UUID?
     private var requestID: UUID?
     private var generation = UUID()
     private var loadFailed = false
@@ -71,12 +78,12 @@ final class ConversationCoordinator {
         guard let target, let id = ConversationGrantStore.applicable(to: target, in: knownSnapshots).first?.id else { return nil }
         return waitUntil(for: id)
     }
-    private func waitUntil(for appID: UUID, excludingDealGrantID: UUID? = nil) -> Date? {
+    private func waitUntil(for appID: UUID, excludingDealGrantID: UUID? = nil, replacingDealID: UUID? = nil) -> Date? {
         let waits = history.accessEvents.filter { $0.decision == .wait && $0.waitUntil != nil }
         let until = waits.isEmpty ? history.cooldownUntil : waits.filter { $0.appID == appID }.compactMap(\.waitUntil).max()
         let token = knownSnapshots.first { $0.id == appID }.flatMap { try? VolitionApps.selectedApp(in: AppSelectionCodec.decode($0.selectionData)) }
         let deal = dealCommitments.filter { commitment in
-            commitment.token == token && commitment.isBlocking(at: clock.now()) && commitment.grantID != excludingDealGrantID &&
+            commitment.token == token && commitment.isBlocking(at: clock.now()) && commitment.grantID != excludingDealGrantID && commitment.grantID != replacingDealID &&
             !grants.contains { grant in
                 grant.plan.grantID == commitment.grantID && !grant.plan.hasExpired(at: clock.now())
             }
@@ -115,8 +122,9 @@ final class ConversationCoordinator {
          keys: any ConversationKeyStoring = ConversationEnvironmentKeyStore(),
          access: ConversationEnforcement = ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController()),
          timer: any ConversationTimerScheduling = DeviceConversationTimer(),
-         requestStore: ConversationRequestStore = .init()) {
+         requestStore: ConversationRequestStore = .init(), checkInRoll: @escaping @Sendable () -> Bool = { Bool.random() }) {
         self.service = service ?? DevelopmentCoachService(client: client, keys: keys)
+        self.checkInRoll = checkInRoll
         self.preferences = preferences
         self.clock = clock
         self.keys = keys
@@ -136,6 +144,11 @@ final class ConversationCoordinator {
                 if let entry = history.activityLog.firstIndex(where: { $0.id == activityID }) {
                     history.activityLog[entry].outcome = .interrupted
                     history.activityLog[entry].systemResponse = CopyKey.activityInterruptedHelp.string
+                }
+            }
+            if !preferences.hasConsent {
+                for offer in history.reflections where offer.isPending {
+                    finishReflection(offer.id, state: .cancelled, message: CopyKey.aiConsentRequired.string)
                 }
             }
             try historyStore.save(history)
@@ -172,12 +185,18 @@ final class ConversationCoordinator {
                 let pending = consumeRequests ? try access.store.consumePending() : nil
                 let request = consumeRequests ? requests.pending() : nil
                 if let request { requests.acknowledge(request) }
-                return (stored.0, request?.token ?? pending, stored.1)
+                // Transfer bytes across the task boundary; the SDK's token type
+                // does not declare Sendable. Decode it on the receiving actor.
+                let pendingData = try (request?.token ?? pending).map { try JSONEncoder().encode($0) }
+                return (stored.0, pendingData, stored.1)
             }.value
             if observedGrantVersion == grantVersion { grants = state.0.filter { !$0.plan.hasExpired(at: clock.now()) }; dealCommitments = state.2 }
             if target == nil, let first = grants.first { target = first.token }
-            if observedSelectionVersion == selectionVersion, let pending = state.1,
-               !ConversationGrantStore.applicable(to: pending, in: snapshots).isEmpty { select(pending) }
+            let pendingToken = try state.1.map { try JSONDecoder().decode(ApplicationToken.self, from: $0) }
+            if observedSelectionVersion == selectionVersion, let pending = pendingToken,
+               !ConversationGrantStore.applicable(to: pending, in: snapshots).isEmpty {
+                select(pending); routedRequestID = UUID()
+            }
             if let target { nickname = ConversationGrantStore.applicable(to: target, in: snapshots).first?.name ?? "" }
             if let target, ConversationGrantStore.applicable(to: target, in: snapshots).isEmpty {
                 self.target = nil
@@ -218,7 +237,7 @@ final class ConversationCoordinator {
               selection.webDomainTokens.isEmpty, let token = selection.applicationTokens.first else { return }
         knownSnapshots = snapshots
         if let pending = requestStore.pending() { requestStore.acknowledge(pending) }
-        select(token)
+        select(token); routedRequestID = UUID()
     }
 
     /// An explicit app-bound action must not be rerouted by another app name in
@@ -339,10 +358,6 @@ final class ConversationCoordinator {
             let contextInstant = clock.now()
             let activeDeal = dealState.dealCommitments.first { $0.token == target && $0.isBlocking(at: contextInstant) }
             let lastBroken = ConversationEnforcement.lastResolvedDealWasBroken(dealState, at: contextInstant)
-            let requiresPause = !history.reflections.contains {
-                $0.appID == requestedApp.id && !$0.isDeal && $0.state == .completed && !$0.skipped &&
-                contextInstant.timeIntervalSince($0.finishedAt ?? $0.createdAt) < 86400
-            }
             let context = ConversationContext(goals: applicable.map(\.conversationGoal),
                 appNickname: String(requestedApp.name.prefix(100)), memory: history.memory,
                 recentMessages: Array(history.recentMessages.suffix(60)), currentTime: contextInstant, currentAppID: requestedApp.id,
@@ -358,21 +373,25 @@ final class ConversationCoordinator {
             var coachingContext = context
             coachingContext.tone = preferences.tone
             coachingContext.focusProtected = protection.protects(appID: requestedApp.id, at: contextInstant)
-            coachingContext.recommendedPauseSeconds = history.recommendedPauseSeconds(for: requestedApp.id, now: contextInstant)
+            let recentBrokenDeals = dealState.dealCommitments.filter {
+                $0.token == target && $0.overriddenAt.map { $0 <= contextInstant && contextInstant.timeIntervalSince($0) < 86400 } == true
+            }.count
+            coachingContext.recommendedPauseSeconds = min(1800,
+                history.recommendedPauseSeconds(for: requestedApp.id, now: contextInstant) + min(29, recentBrokenDeals) * 60)
             coachingContext.recentRemovalAttempts = Array(history.removalAttempts.filter {
                 $0.date <= contextInstant && contextInstant.timeIntervalSince($0.date) < 86400
             }.suffix(10))
-            coachingContext.pauseBeforeDealRequired = requiresPause
+            coachingContext.recentPauseAttempts = history.recentPauseAttempts(for: requestedApp.id, now: contextInstant)
+            coachingContext.preferDeal = coachingContext.recentPauseAttempts >= 2
+            coachingContext.emotionCheckInSuggested = history.canAskEmotion(at: contextInstant) && checkInRoll()
             coachingContext.waitUntilLocal = context.waitUntil.map { $0.formatted(date: .abbreviated, time: .shortened) }
             coachingContext.deal = activeDeal.map { .init(grantID: $0.grantID, blockedUntil: $0.blockedUntil,
                 pushbackCount: $0.pushbackCount ?? 0, lastResolvedDealWasBroken: lastBroken,
-                canOverride: ($0.pushbackCount ?? 0) >= 2 && !lastBroken) }
+                canOverride: ($0.pushbackCount ?? 0) >= 2,
+                minimumReplacementBreakMinutes: ConversationEnforcement.minimumReplacementBreakMinutes(for: $0, at: contextInstant)) }
             stage = "decision_request"
             let response = try await service.respond(to: coachingContext, requestID: id)
-            var decision = try ConversationDecision.parse(JSONEncoder().encode(response))
-            if decision.decision == .deal && requiresPause {
-                decision = .init(reply: CopyKey.pauseProposal.string, decision: .ask, unlockMinutes: nil)
-            }
+            let decision = try ConversationDecision.parse(JSONEncoder().encode(response))
             receivedDecision = response
             guard generation == currentGeneration, !Task.isCancelled else { return }
             guard self.target == target,
@@ -383,11 +402,19 @@ final class ConversationCoordinator {
             ConversationDiagnostics.live.log("decision.received decision=\(decision.decision.rawValue) minutes=\(decision.unlockMinutes ?? 0) wait_minutes=\(decision.waitMinutes ?? 0)")
             var event = ConversationAccessEvent(date: clock.now(), appID: requestedApp.id,
                 appName: requestedApp.name, reason: trimmed, decision: decision.decision, reply: decision.reply)
-            if decision.decision == .pause || decision.decision == .wait || decision.decision == .deal {
+            if [.pause, .wait, .deal, .choice, .override].contains(decision.decision) {
                 let protected = try await Task.detached { try access.focusStore.load() }.value
                 guard !protected.protects(appID: requestedApp.id, at: clock.now()) else { throw ConversationAccessError.focusProtected }
                 guard generation == currentGeneration, !Task.isCancelled else { return }
-                if waitUntil(for: requestedApp.id) != nil { throw ConversationAccessError.waiting }
+                let overridingID = decision.decision == .override ? activeDeal?.grantID : nil
+                if decision.decision == .override {
+                    guard let activeDeal, (activeDeal.pushbackCount ?? 0) >= 2,
+                          let blockMinutes = decision.blockMinutes,
+                          blockMinutes >= ConversationEnforcement.minimumReplacementBreakMinutes(for: activeDeal, at: clock.now()) else {
+                        throw ConversationAccessError.waiting
+                    }
+                }
+                if waitUntil(for: requestedApp.id, excludingDealGrantID: overridingID) != nil { throw ConversationAccessError.waiting }
                 if grants.contains(where: { $0.token == target && !$0.plan.hasExpired(at: .now) }) { throw ConversationAccessError.alreadyUnlocked }
                 let previous = history
                 do {
@@ -396,12 +423,18 @@ final class ConversationCoordinator {
                         seconds: decision.pauseSeconds ?? (decision.waitMinutes ?? 1) * 60,
                         fingerprint: fingerprint, activityID: entry.id)
                     reflection.usageProfile = history.usageProfiles[requestedApp.id]
-                    if decision.decision == .deal {
+                    reflection.checkInRequested = coachingContext.emotionCheckInSuggested && history.canAskEmotion(at: clock.now())
+                    if reflection.checkInRequested == true { history.lastEmotionQuestionAt = clock.now() }
+                    reflection.overridingDealID = overridingID
+                    if reflection.awaitingCheckIn { reflection.state = .offered; reflection.deadline = nil }
+                    if [.deal, .choice, .override].contains(decision.decision) {
                         reflection.blockMinutes = decision.blockMinutes; reflection.state = .offered; reflection.deadline = nil
+                        reflection.offersChoice = decision.decision == .choice
                     }
                     history.reflections.append(reflection)
                     history.accessEvents.append(event)
-                    history.messages.append(.init(role: .assistant, text: decision.reply, requestID: id))
+                    history.messages.append(.init(role: .assistant,
+                        text: reflection.awaitingCheckIn ? CopyKey.reflectionQuestion.string : decision.reply, requestID: id))
                     updateActivity(entry.id) {
                         $0.outcome = reflection.isDeal ? .dealOffered : .reflection; $0.modelDecision = decision.decision
                         $0.coachResponse = decision.reply; $0.systemResponse = reflection.isDeal ? CopyKey.dealOffered.string : CopyKey.reflectionRecorded.string
@@ -409,16 +442,16 @@ final class ConversationCoordinator {
                     }
                     try persist(); requestID = nil
                 } catch { history = previous; throw error }
-            } else if (decision.decision == .approve || decision.decision == .override), let minutes = decision.unlockMinutes {
+            } else if decision.decision == .approve, let minutes = decision.unlockMinutes {
                 attemptedApproval = true
-                let overridingID = decision.decision == .override ? activeDeal?.grantID : nil
-                if decision.decision == .override && overridingID == nil { throw ConversationAccessError.staleRequest }
-                if waitUntil(for: requestedApp.id, excludingDealGrantID: overridingID) != nil { throw ConversationAccessError.waiting }
+                if waitUntil(for: requestedApp.id) != nil { throw ConversationAccessError.waiting }
                 let access = access; let timer = timer; let approvalInstant = clock.now()
                 stage = "grant_registration"
                 ConversationDiagnostics.live.log("grant.begin rule=\(requestedApp.id.logTag) minutes=\(minutes)")
+                let targetData = try JSONEncoder().encode(target)
                 let activated = try await Task.detached {
-                    try access.approve(token: target, minutes: minutes, fingerprint: fingerprint, now: approvalInstant, timer: timer, overridingDealID: overridingID)
+                    let isolatedTarget = try JSONDecoder().decode(ApplicationToken.self, from: targetData)
+                    return try access.approve(token: isolatedTarget, minutes: minutes, fingerprint: fingerprint, now: approvalInstant, timer: timer)
                 }.value
                 activatedForRequest = activated
                 guard generation == currentGeneration,
@@ -463,7 +496,11 @@ final class ConversationCoordinator {
                     try persist()
                 } catch { history = beforePublishing; throw error }
                 if activeDeal != nil {
-                    try await Task.detached { try access.recordDealPushback(token: target) }.value
+                    let targetData = try JSONEncoder().encode(target)
+                    try await Task.detached {
+                        let isolatedTarget = try JSONDecoder().decode(ApplicationToken.self, from: targetData)
+                        try access.recordDealPushback(token: isolatedTarget)
+                    }.value
                 }
                 if decision.decision != .ask { requestID = nil }
             }
@@ -540,6 +577,7 @@ final class ConversationCoordinator {
         let reflections = history.reflections
         let activityLog = history.activityLog
         history = ConversationHistory()
+        history.lastEmotionQuestionAt = previous.lastEmotionQuestionAt
         history.usageProfiles = previous.usageProfiles
         history.reflections = reflections
         history.removalAttempts = previous.removalAttempts
@@ -580,6 +618,7 @@ final class ConversationCoordinator {
         cancelRequest()
         let previous = history
         var clean = ConversationHistory()
+        clean.lastEmotionQuestionAt = history.lastEmotionQuestionAt
         clean.cooldownUntil = history.cooldownUntil.flatMap { $0 > clock.now() ? $0 : nil }
         let activeGrantIDs = Set(grants.map(\.plan.grantID))
         clean.accessEvents = history.accessEvents.filter {
@@ -665,8 +704,7 @@ extension ConversationCoordinator {
     func nextReflectionDeadline(at now: Date) -> Date? {
         guard !loadFailed else { return nil }
         return pendingReflections.filter(\.isPending).map { reflection in
-            // An unanswered, elapsed check-in waits for input, not a busy loop.
-            if reflection.isReady(at: now) { return now }
+            // Elapsed delays wait for an explicit Unlock/Keep locked action.
             if let deadline = reflection.deadline, deadline > now { return min(deadline, reflection.validUntil) }
             return reflection.validUntil
         }.min()
@@ -675,21 +713,75 @@ extension ConversationCoordinator {
         history.usageProfiles = try historyStore.load().usageProfiles
     }
 
-    func chooseEmotion(_ emotion: ConversationReflection.Emotion, for id: UUID) {
+    func chooseCustomEmotion(_ text: String, for id: UUID) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.count <= 160 else { return }
+        chooseEmotion(.other, for: id, custom: trimmed)
+    }
+
+    func chooseEmotion(_ emotion: ConversationReflection.Emotion, for id: UUID, custom: String? = nil) {
         guard let index = history.reflections.firstIndex(where: { $0.id == id && $0.isPending }) else { return }
         let previous = history
+        guard history.reflections[index].emotion == nil, clock.now() < history.reflections[index].validUntil else { return }
+        let wasAwaiting = history.reflections[index].awaitingCheckIn
         history.reflections[index].emotion = emotion
+        history.reflections[index].customEmotion = emotion == .other ? custom : nil
+        if wasAwaiting {
+            history.messages.append(.init(role: .assistant, text: history.reflections[index].reply))
+            if !history.reflections[index].isDeal && !history.reflections[index].isChoice && history.reflections[index].seconds == 10 {
+                history.reflections[index].state = .counting
+                history.reflections[index].deadline = clock.now().addingTimeInterval(10)
+            }
+        }
         let activityID = history.reflections[index].activityID
-        if let entry = history.activityLog.firstIndex(where: { $0.id == activityID }) { history.activityLog[entry].emotion = emotion }
+        if let entry = history.activityLog.firstIndex(where: { $0.id == activityID }) {
+            history.activityLog[entry].emotion = emotion
+            history.activityLog[entry].customEmotion = history.reflections[index].customEmotion
+        }
         do { try persist() } catch { history = previous; errorMessage = CopyKey.conversationStorageError.string }
     }
 
     func startReflection(_ id: UUID, now: Date = .now) {
-        guard let index = history.reflections.firstIndex(where: { $0.id == id && $0.state == .offered && !$0.isDeal }),
-              now < history.reflections[index].validUntil else { return }
+        guard let index = history.reflections.firstIndex(where: { $0.id == id && $0.state == .offered && !$0.isDeal && !$0.isChoice }),
+              now < history.reflections[index].validUntil, !history.reflections[index].awaitingCheckIn else { return }
         let previous = history
         history.reflections[index].state = .counting
         history.reflections[index].deadline = now.addingTimeInterval(Double(history.reflections[index].seconds))
+        do { try persist() } catch { history = previous; errorMessage = CopyKey.conversationStorageError.string }
+    }
+
+    /// Ending a delay never opens an app. The subsequent Unlock action still
+    /// validates current configuration, Focus, waits and durable activation.
+    func endReflectionDelay(_ id: UUID, now: Date = .now) {
+        guard let index = history.reflections.firstIndex(where: { $0.id == id && $0.state == .counting && !$0.isDeal && !$0.isChoice }),
+              now < history.reflections[index].validUntil, !history.reflections[index].awaitingCheckIn else { return }
+        let previous = history
+        history.reflections[index].deadline = min(history.reflections[index].deadline ?? now, now)
+        history.reflections[index].skipped = true
+        do { try persist() } catch { history = previous; errorMessage = CopyKey.conversationStorageError.string }
+    }
+
+    /// A choice binds exactly the model's validated terms. Selecting the delay
+    /// is consent to start it; selecting the deal still requires activation.
+    func chooseIntervention(_ id: UUID, deal: Bool, now: Date = .now) {
+        chooseIntervention(id, option: deal ? .deal : .delay, now: now)
+    }
+
+    func chooseIntervention(_ id: UUID, option: ConversationReflection.InterventionOption, now: Date = .now) {
+        guard let index = history.reflections.firstIndex(where: { $0.id == id && $0.isChoice && $0.state == .offered }),
+              now < history.reflections[index].validUntil, !history.reflections[index].awaitingCheckIn else { return }
+        let previous = history
+        history.reflections[index].offersChoice = false
+        if option != .deal {
+            history.reflections[index].blockMinutes = nil
+            history.reflections[index].state = .counting
+            history.reflections[index].deadline = option == .open ? now : now.addingTimeInterval(Double(history.reflections[index].seconds))
+            history.reflections[index].skipped = option == .open
+            history.reflections[index].openedWithoutIntervention = option == .open
+        }
+        if let entry = history.activityLog.firstIndex(where: { $0.id == history.reflections[index].activityID }) {
+            history.activityLog[entry].blockMinutes = history.reflections[index].blockMinutes
+        }
         do { try persist() } catch { history = previous; errorMessage = CopyKey.conversationStorageError.string }
     }
 
@@ -701,6 +793,7 @@ extension ConversationCoordinator {
     }
 
     func cancelReflection(_ id: UUID) {
+        guard history.reflections.contains(where: { $0.id == id && ($0.isPending || $0.state == .activating) }) else { return }
         finishReflection(id, state: .cancelled, message: CopyKey.reflectionCancelled.string)
         // A failed write must not re-arm the cancelled unlock in this process.
         do { try persist() } catch { errorMessage = CopyKey.conversationStorageError.string }
@@ -729,8 +822,6 @@ extension ConversationCoordinator {
             if now >= reflection.validUntil {
                 finishReflection(reflection.id, state: .cancelled, message: CopyKey.reflectionExpired.string)
                 do { try persist() } catch { errorMessage = CopyKey.conversationStorageError.string }
-            } else if reflection.isReady(at: now) {
-                await completeReflection(reflection.id, snapshots: snapshots, now: now)
             }
         }
     }
@@ -740,8 +831,13 @@ extension ConversationCoordinator {
     func completeReflection(_ id: UUID, skip: Bool = false, acceptDeal: Bool = false, snapshots: () -> [RuleSnapshotDTO], now: Date = .now) async {
         guard isForeground, !loadFailed, !completingReflections.contains(id),
               let index = history.reflections.firstIndex(where: { $0.id == id && $0.isPending }) else { return }
+        guard preferences.hasConsent else {
+            cancelReflection(id)
+            errorMessage = CopyKey.aiConsentRequired.string
+            return
+        }
         let reflection = history.reflections[index]
-        guard now < reflection.validUntil, reflection.isDeal ? acceptDeal : (skip || reflection.isReady(at: now)) else { return }
+        guard !reflection.awaitingCheckIn, !reflection.isChoice, now < reflection.validUntil, reflection.isDeal ? acceptDeal : (skip || reflection.isReady(at: now)) else { return }
         let current = snapshots()
         knownSnapshots = current
         guard reflection.fingerprint == ConversationGrantStore.fingerprint(current),
@@ -751,7 +847,7 @@ extension ConversationCoordinator {
             finishReflection(id, state: .cancelled, message: CopyKey.conversationStaleRequest.string)
             try? persist(); return
         }
-        guard waitUntil(for: reflection.appID) == nil else {
+        guard waitUntil(for: reflection.appID, excludingDealGrantID: reflection.overridingDealID) == nil else {
             finishReflection(id, state: .failed, message: CopyKey.volitionWaitError.string)
             errorMessage = CopyKey.volitionWaitError.string; try? persist(); return
         }
@@ -759,7 +855,7 @@ extension ConversationCoordinator {
         defer { completingReflections.remove(id) }
         let beforeClaim = history
         history.reflections[index].state = .activating
-        history.reflections[index].skipped = skip && !reflection.isDeal
+        history.reflections[index].skipped = (skip || reflection.skipped) && !reflection.isDeal
         do { try persist() }
         catch {
             history = beforeClaim
@@ -771,16 +867,19 @@ extension ConversationCoordinator {
         let access = access; let timer = timer
         var activated: ConversationGrantStore.Grant?
         do {
+            let tokenData = try JSONEncoder().encode(token)
             _ = try await Task.detached { try access.sync(current, now: now) }.value
-            guard isForeground, history.reflections.first(where: { $0.id == id })?.state == .activating else { throw ConversationAccessError.staleRequest }
+            guard isForeground, preferences.hasConsent,
+                  history.reflections.first(where: { $0.id == id })?.state == .activating else { throw ConversationAccessError.staleRequest }
             activated = try await Task.detached {
-                try access.approve(token: token, minutes: reflection.unlockMinutes, fingerprint: reflection.fingerprint, timer: timer, blockMinutes: reflection.blockMinutes)
+                let isolatedToken = try JSONDecoder().decode(ApplicationToken.self, from: tokenData)
+                return try access.approve(token: isolatedToken, minutes: reflection.unlockMinutes, fingerprint: reflection.fingerprint, timer: timer, blockMinutes: reflection.blockMinutes, overridingDealID: reflection.overridingDealID)
             }.value
             guard let grant = activated else { return }
-            guard isForeground, history.reflections.first(where: { $0.id == id })?.state == .activating,
+            guard isForeground, preferences.hasConsent, history.reflections.first(where: { $0.id == id })?.state == .activating,
                   reflection.fingerprint == ConversationGrantStore.fingerprint(snapshots()),
                   reflection.usageProfile == history.usageProfiles[reflection.appID],
-                  waitUntil(for: reflection.appID, excludingDealGrantID: grant.plan.grantID) == nil else { throw ConversationAccessError.staleRequest }
+                  waitUntil(for: reflection.appID, excludingDealGrantID: grant.plan.grantID, replacingDealID: reflection.overridingDealID) == nil else { throw ConversationAccessError.staleRequest }
             let beforePublishing = history
             do {
                 if let i = history.reflections.firstIndex(where: { $0.id == id }) {
@@ -797,7 +896,7 @@ extension ConversationCoordinator {
                     history.activityLog[entry].unlockMinutes = reflection.unlockMinutes
                     history.activityLog[entry].unlockUntil = grant.plan.expiresAt
                     history.activityLog[entry].grantID = grant.plan.grantID
-                    history.activityLog[entry].reflectionSkipped = skip && !reflection.isDeal
+                    history.activityLog[entry].reflectionSkipped = (skip || reflection.skipped) && !reflection.isDeal
                     history.activityLog[entry].blockMinutes = reflection.blockMinutes
                     history.activityLog[entry].waitUntil = reflection.blockMinutes.map { grant.plan.expiresAt.addingTimeInterval(Double($0 * 60)) }
                 }
@@ -806,7 +905,16 @@ extension ConversationCoordinator {
                 try persist()
             } catch { history = beforePublishing; throw error }
             grants.append(grant)
-            if let minutes = reflection.blockMinutes { dealCommitments.append(.init(grantID: grant.plan.grantID, token: token, blockedUntil: grant.plan.expiresAt.addingTimeInterval(Double(minutes * 60)))) }
+            if let replaced = reflection.overridingDealID,
+               let index = dealCommitments.firstIndex(where: { $0.grantID == replaced }) {
+                dealCommitments[index].overriddenAt = grant.plan.start
+                dealCommitments[index].overrideGrantID = grant.plan.grantID
+            }
+            if let minutes = reflection.blockMinutes {
+                dealCommitments.append(.init(grantID: grant.plan.grantID, token: token,
+                    blockedUntil: grant.plan.expiresAt.addingTimeInterval(Double(minutes * 60))))
+            }
+            dealCommitments = (try? await Task.detached { try access.store.transaction { $0.dealCommitments } }.value) ?? dealCommitments
             grantVersion = UUID(); errorMessage = nil
             ConversationDiagnostics.live.log("reflection.activated id=\(id.logTag)")
         } catch {
@@ -851,7 +959,7 @@ extension ConversationCoordinator {
     func finishRemoval(_ id: UUID, outcome: ConversationRemovalAttempt.Outcome, minutes: Int? = nil) throws {
         guard let index = history.removalAttempts.firstIndex(where: { $0.id == id && $0.outcome == .considering }) else { return }
         if outcome == .temporaryUnlockRequested {
-            guard let minutes, (1...30).contains(minutes), history.removalAttempts[index].reason != nil else { throw PersistenceFailure() }
+            guard let minutes, (1...60).contains(minutes), history.removalAttempts[index].reason != nil else { throw PersistenceFailure() }
         }
         let previous = history
         history.removalAttempts[index].outcome = outcome
@@ -867,5 +975,17 @@ extension ConversationCoordinator {
             history.activityLog[entry].completedAt = .now
         }
         do { try persist() } catch { history = previous; throw error }
+    }
+}
+
+extension ConversationCoordinator {
+    var feedbackEntry: ConversationActivityEntry? { history.activityLog.last.flatMap { $0.canRateExperience ? $0 : nil } }
+
+    func rateExperience(_ rating: ConversationActivityEntry.ExperienceRating, activityID: UUID) {
+        guard let index = history.activityLog.firstIndex(where: { $0.id == activityID && $0.canRateExperience }) else { return }
+        let previous = history
+        history.activityLog[index].experienceRating = rating
+        history.activityLog[index].ratedAt = clock.now()
+        do { try persist() } catch { history = previous; errorMessage = CopyKey.conversationStorageError.string }
     }
 }

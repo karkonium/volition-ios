@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class WelcomeAndSelectionUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
@@ -59,7 +60,10 @@ final class WelcomeAndSelectionUITests: XCTestCase {
         app.buttons["pickVolitionAppButton"].tap()
         app.buttons["cancelVolitionAppPickerButton"].waitToAppear().tap()
         XCTAssertTrue(app.buttons["pickVolitionAppButton"].label.contains("Selected app"))
-        XCTAssertFalse(app.buttons["saveVolitionAppButton"].isEnabled)
+        XCTAssertTrue(app.buttons["saveVolitionAppButton"].isEnabled)
+        app.buttons["saveVolitionAppButton"].tap()
+        app.staticTexts["volitionAppNameRequired"].waitToAppear()
+        capture("Required app name attention", app)
     }
     func testChooserAtLargeTextInDarkMode() {
         let app = XCUIApplication()
@@ -69,6 +73,32 @@ final class WelcomeAndSelectionUITests: XCTestCase {
         app.searchFields.firstMatch.waitToAppear()
         XCTAssertEqual(app.buttons.matching(identifier: "conversationAppOption").count, 2)
         capture("21 App chooser dark large text", app)
+    }
+
+    func testReplacingAppSelectionInNewAndSavedProfiles() {
+        let app = XCUIApplication.launchOpenAppLock()
+        app.buttons["addVolitionAppButton"].waitToAppear().tap()
+        app.buttons["pickVolitionAppButton"].waitToAppear().tap()
+        app.buttons["mockVolitionAppOption"].waitToAppear().tap()
+        app.buttons["pickVolitionAppButton"].waitForLabel(containing: "Selected app").tap()
+        app.buttons["mockVolitionReplacementAppOption"].waitToAppear().tap()
+        app.buttons["pickVolitionAppButton"].waitForLabel(containing: "Replacement app")
+        app.buttons["pickVolitionAppButton"].tap()
+        app.buttons["cancelVolitionAppPickerButton"].waitToAppear().tap()
+        app.buttons["pickVolitionAppButton"].waitForLabel(containing: "Replacement app")
+        let name = app.textFields["volitionAppName"].waitToAppear()
+        name.tap(); name.typeText("Messenger")
+        app.buttons["saveVolitionAppButton"].tap()
+        app.buttons["finishVolitionSetupButton"].waitToAppear().tap()
+        app.goToAppsTab()
+        app.buttons["volitionApp-Messenger"].waitToAppear().tap()
+        app.buttons["pickVolitionAppButton"].waitForLabel(containing: "Replacement app").tap()
+        app.buttons["mockVolitionAppOption"].waitToAppear().tap()
+        app.buttons["pickVolitionAppButton"].waitForLabel(containing: "Selected app")
+        capture("Replaced saved app selection", app)
+        app.buttons["saveVolitionAppButton"].tap()
+        app.buttons["volitionApp-Messenger"].waitToAppear().tap()
+        app.buttons["pickVolitionAppButton"].waitForLabel(containing: "Selected app")
     }
 
     func testDeferringAfterReturningWithdrawsConsent() {

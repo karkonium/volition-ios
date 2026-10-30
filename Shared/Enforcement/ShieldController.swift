@@ -133,8 +133,9 @@ nonisolated final class ManagedSettingsShieldController: ShieldApplying, @unchec
         })
     }
 
-    private static let uninstallProtectionStoreName =
-        ManagedSettingsStore.Name("uninstall-protection")
+    private static var uninstallProtectionStoreName: ManagedSettingsStore.Name {
+        .init("uninstall-protection")
+    }
 
     private func store(for ruleID: UUID) -> ManagedSettingsStore {
         ManagedSettingsStore(named: ManagedSettingsStore.Name("rule-\(ruleID.uuidString)"))
