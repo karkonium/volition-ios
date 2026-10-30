@@ -46,17 +46,20 @@ outline feedback. Empty/oversized drafts and in-flight sends remain disabled.
 
 Grants accept 1–60 minutes; deal breaks accept 1–1,440 minutes (24 hours).
 A pause/delay means waiting BEFORE opening. A deal means access now followed by
-an agreed block. Use the sequence intention → suggested short pause with an optional trigger/emotion
-check-in → negotiated deal → last-resort refusal. Suggest ten seconds first rather
-than requiring another duration negotiation. Longer pauses and deal terms are
+an agreed block. After intention, the rolling one-hour progression is awareness
+or intervention choice on first use, delay on second use, deal on third use.
+Urgency or substantial frustration takes priority and gets bounded immediate
+access. Suggest ten seconds for an initial delay rather than requiring another
+duration negotiation. Longer pauses and deal terms are
 chosen willingly by the user; favor a deal or choice after two recent started pause
 attempts, including early-ended pauses. No completed-pause prerequisite applies. Urgent practical tasks remain
 proportionate. A concrete deal offer can be accepted directly without a separate negotiation turn;
 its displayed Accept action supplies consent. Pause seconds accept 10–1,800; choices
 remain available after the deadline; an emotion answer is never needed for access.
 
-A persistent user may renegotiate an accepted break after two actual coach
-pushbacks. Override responses are replacement deal offers, requiring Accept before
+Urgency or substantial frustration can release an accepted break immediately
+without a replacement deal. For ordinary willing renegotiation, the user may
+receive a replacement offer after two actual coach pushbacks. Override responses are replacement deal offers, requiring Accept before
 any access; Decline leaves the old agreement intact. The replacement break is at
 least the remaining old break rounded up plus 15 minutes, minimum 30, maximum
 1,440. Repeated broken deals may be renegotiated; they are no longer an absolute
@@ -64,7 +67,7 @@ veto. Atomic activation and rollback preserve old terms on failure. Each same-ap
 broken deal in the last 24 hours adds 60 seconds to suggested pauses, capped at
 1,800; longer pauses still require Start. Focus and legacy waits stay authoritative.
 
-Sampled emotion check-ins appear first as a separate message with emotion and
+Due emotion check-ins appear first as a separate message with emotion and
 Not sure / Skip buttons. The model's intervention reply and card are withheld until
 the user chooses; then a ten-second delay begins automatically or a longer delay/
 deal is offered for agreement. This is a presentation step, never emotional
@@ -85,8 +88,8 @@ is a valid answer. Saved profile text alone does not establish today's intention
 Use recent conversation instead of asking the same question again. Repeated
 requests bring increasing reflection, stopping-point questions and shorter grants,
 then explicit offers: unlock X minutes, followed by Y minutes closed. Avoid
-arbitrary punishment or claims about actual usage. Clear practical tasks remain
-proportionate, subject to any already accepted cooldown.
+arbitrary punishment or claims about actual usage. Nonurgent practical tasks get
+a light intervention; urgency or substantial frustration can release a deal.
 
 Deal offers are app-bound, expire after 30 minutes, and show Accept/Decline.
 Nothing unlocks or starts a cooldown before acceptance. Accept validates the
@@ -116,7 +119,10 @@ ConversationArchive JSON; no frozen SwiftData schema or extension DTO changes.
 
 CoachingPolicy owns the prompt. The GPT-5.4 mini coach uses medium reasoning for decisions and low reasoning for
 summaries. Each request needs a current stated intention; boredom is a valid one.
-Fresh practical tasks can receive short approvals. Rapid repeat unlocks progressively
+Ordinary nonurgent requests receive awareness or a choice after a gap, a delay
+on the second confirmed session in a rolling hour, and a deal on the third.
+Urgency or substantial frustration gets immediate bounded access, including
+release of an accepted deal without pushbacks or replacement terms. Rapid repeat unlocks progressively
 start with a short pause and optional trigger awareness, then a willingly negotiated
 deal. Refusal remains available only after earlier interventions have meaningfully
 been tried or discussed in the current pattern. Counts alone, boredom, or declining
@@ -124,8 +130,8 @@ a voluntary pause/deal do not justify an early refusal. Existing accepted breaks
 still apply, but a gentle reminder or question is the first response to a return.
 There is no rigid three-strikes rule, and feelings are never grounds for refusing access.
 
-Strict output includes decision ask/deny/approve/pause/deal/choice/override/wait plus nullable
-unlock_minutes, wait_minutes, pause_seconds and block_minutes. Approve/pause/deal/choice/override
+Strict output includes decision ask/deny/approve/urgent/frustration/pause/deal/choice/override/wait plus nullable
+unlock_minutes, wait_minutes, pause_seconds and block_minutes. Approve/urgent/frustration/pause/deal/choice/override
 require unlock_minutes 1–60. Deal, choice and override require block_minutes 1–1,440. Override requires an eligible shared deal, minimum replacement break and 1–60 unlock minutes. Pause and choice
 require 10–1,800 seconds; longer pauses require consent. Legacy
 wait output (1–5 minutes) remains a voluntary offer; persisted hard waits and
@@ -145,10 +151,10 @@ Loading with AI sharing off cancels restored pending offers. Explicit activation
 rechecks sharing before and after asynchronous enforcement; a stale saved offer
 cannot activate after withdrawal, including preferences changed outside Chat.
 
-Each request samples an independent 50% check-in flag. If the resulting decision
+Each request marks a check-in due if no question was offered in the last two minutes. If the resulting decision
 is pause/deal/choice/override, an optional emotion message precedes the terms. It records
 context only, never accepting/activating an offer; no extra check-in accompanies
-straightforward approvals. Sampling is injectable for deterministic tests. The
+straightforward approvals. Eligibility is injectable for deterministic tests. The
 bounded recent reflection context carries recorded answers to later requests.
 
 Choice is a validated response with BOTH delay seconds and post-access break
@@ -184,7 +190,7 @@ More than 60 unsummarized messages triggers summarization, retaining the newest
 
 Chat and the app selector remain available during waits and unlocks. Waits persist
 per app across navigation/relaunch/history clearing. Local validation rejects early
-approval except a validated deal override; another app can be considered for a real purpose.
+approval except a validated deal override or explicit urgency/frustration relief; another app can be considered for a real purpose.
 Waiting is expressed in the coach reply, without a separate banner or countdown.
 Only actual unlocks display top timers; soft reflection is inline. Wait expiry permits reconsideration, never
 automatic access. Additional wait replies do not restart an already-active wait.
@@ -358,7 +364,7 @@ Reply and displayed timer must agree; no silent duration changes after generatio
 
 538 domain tests pass, covering compatibility/migrations, independent grants,
 manual delay completion without an emotion, ending/keeping locked without access,
-validated Delay vs Deal terms, sampled check-ins, persisted offers, Focus/waits,
+validated Delay vs Deal terms, due check-ins, persisted offers, Focus/waits,
 replacement-deal acceptance, repeated renegotiation, longer future pauses and
 failed-activation rollback. Late cancelled
 UI actions cannot rewrite a published unlock as cancelled.
@@ -394,8 +400,8 @@ also reproduce in a temporary plain TextField control; see OPERATIONS.md.
 
 ## Custom check-ins, feedback and flexible choices
 
-Custom emotion replaces the generic Other action with a trimmed 1–160-character
-entry. Keep legacy `other` values readable. Custom text lives in bounded recent
+Custom emotion is an always-visible text field below the preset buttons,
+accepting a trimmed 1–160-character entry. Keep legacy `other` values readable. Custom text lives in bounded recent
 reflection context (ten records/24h) and the private activity log, never technical
 logs or long-term summaries. A persisted global question timestamp prevents a
 second check-in within 120 seconds, including after Clear Chat and across apps.
@@ -423,3 +429,21 @@ Domain tests cover exact two-minute boundary/persistence, malformed custom text,
 feedback rollback/eligibility, setup routing and 60-minute monitoring math. Signed
 builds pass with Swift warnings treated as errors. Physical-device acceptance of
 these new flows and 60-minute background expiry remains pending.
+
+## Progressive coaching and immediate relief
+
+The coach receives `recommendedIntervention` from confirmed grants in the rolling
+last hour (not message count): zero → awareness/choice, one → delay, two or more
+→ deal. User-proposed terms and explicit choice requests remain supported.
+Check-ins are regularly due with the persisted global 120-second cooldown.
+`urgent` and `frustration` decisions use the normal transactional activation path
+without a check-in or additional acceptance. They can waive the exact current
+deal ID without two pushbacks or a replacement break. The ledger records the
+broken commitment; failed publication restores it. They do not bypass Focus,
+legacy hard waits, consent, stale configuration or actual shield verification.
+Feedback appearance scrolls into view after a completed deal/decision, even
+when activation adds no visible transcript message.
+
+Validation for this revision: 25 synthetic live GPT-5.4 mini cases passed,
+covering routine/urgent distinction, sequential interventions, explicit choices,
+user-proposed terms, and immediate urgency/frustration relief during a deal.

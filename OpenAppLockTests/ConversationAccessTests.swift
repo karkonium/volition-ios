@@ -26,6 +26,30 @@ struct ConversationAccessTests {
             conversationGoal: "Use intentionally.")
     }
 
+    @Test("Urgency relief releases the exact deal without pushbacks or replacement, and rollback restores it")
+    func immediateDealRelief() throws {
+        let app = try token(1)
+        let (access, _) = try makeAccess()
+        let rule = snapshot([app]); _ = try access.sync([rule])
+        let fingerprint = ConversationGrantStore.fingerprint([rule])
+        let original = try access.approve(token: app, minutes: 1, fingerprint: fingerprint,
+            timer: MockConversationTimer(), blockMinutes: 30)
+        try access.end(grantID: original.plan.grantID)
+        #expect(throws: ConversationAccessError.waiting) {
+            try access.approve(token: app, minutes: 5, fingerprint: fingerprint,
+                timer: MockConversationTimer(), overridingDealID: UUID(), immediateRelief: true)
+        }
+        let relief = try access.approve(token: app, minutes: 5, fingerprint: fingerprint,
+            timer: MockConversationTimer(), overridingDealID: original.plan.grantID, immediateRelief: true)
+        let state = try access.store.transaction { $0 }
+        #expect(state.dealCommitments.count == 1)
+        #expect(state.dealCommitments.first?.overrideGrantID == relief.plan.grantID)
+        #expect(state.dealCommitments.first?.pushbackCount ?? 0 == 0)
+        #expect(state.activeGrants.contains { $0.plan.grantID == relief.plan.grantID })
+        try access.end(grantID: relief.plan.grantID, cancelDeal: true)
+        #expect(try access.store.transaction { $0.dealCommitments.first?.overriddenAt } == nil)
+    }
+
     @Test("Approval fails if the shield backend still reports a blocker")
     func failedReleaseDoesNotGrant() throws {
         let app = try token(1)
@@ -214,6 +238,10 @@ struct ConversationAccessTests {
         #expect(try access.store.transaction { $0.activeGrants } == [retained])
         #expect(throws: ConversationAccessError.focusProtected) {
             try access.approve(token: app, minutes: 1, fingerprint: fingerprint, timer: MockConversationTimer())
+        }
+        #expect(throws: ConversationAccessError.focusProtected) {
+            try access.approve(token: app, minutes: 1, fingerprint: fingerprint,
+                timer: MockConversationTimer(), immediateRelief: true)
         }
         try access.updateFocus(FocusProtectionState(), monitor: MockFocusMonitor())
         #expect(try access.store.transaction { $0.activeGrants } == [retained])

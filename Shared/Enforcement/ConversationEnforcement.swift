@@ -87,9 +87,12 @@ nonisolated struct ConversationEnforcement {
     /// All covering stores are reconciled and checked before approval returns.
     /// A remaining configured blocker revokes the grant and stops its timer.
     /// Readback is configuration evidence, not proof of the OS-visible screen.
+    /// Explicit coach urgency/frustration relief may waive the exact current deal
+    /// without replacement terms; consent/configuration/Focus and release checks remain.
     func approve(token: ApplicationToken, minutes: Int, fingerprint: String,
                  now: Date = .now, timer: any ConversationTimerScheduling = DeviceConversationTimer(),
-                 blockMinutes: Int? = nil, overridingDealID: UUID? = nil) throws -> ConversationGrantStore.Grant {
+                 blockMinutes: Int? = nil, overridingDealID: UUID? = nil, immediateRelief: Bool = false) throws -> ConversationGrantStore.Grant {
+        if immediateRelief && blockMinutes != nil { throw ConversationAccessError.staleRequest }
         if let blockMinutes, !(1...1440).contains(blockMinutes) { throw ConversationUnlockPlan.ValidationError.invalidDuration }
         let plan = try ConversationUnlockPlan(grantID: UUID(), minutes: minutes,
             start: Date(timeIntervalSince1970: floor(now.timeIntervalSince1970)))
@@ -103,8 +106,11 @@ nonisolated struct ConversationEnforcement {
                 let commitment = state.dealCommitments.firstIndex { $0.token == token && $0.isBlocking(at: now) }
                 if let commitment {
                     let deal = state.dealCommitments[commitment]
-                    guard overridingDealID == deal.grantID, (deal.pushbackCount ?? 0) >= 2,
-                          let blockMinutes, blockMinutes >= Self.minimumReplacementBreakMinutes(for: deal, at: now) else { throw ConversationAccessError.waiting }
+                    guard overridingDealID == deal.grantID else { throw ConversationAccessError.waiting }
+                    if !immediateRelief {
+                        guard (deal.pushbackCount ?? 0) >= 2, let blockMinutes,
+                              blockMinutes >= Self.minimumReplacementBreakMinutes(for: deal, at: now) else { throw ConversationAccessError.waiting }
+                    }
                 } else if overridingDealID != nil { throw ConversationAccessError.staleRequest }
                 guard fingerprint == ConversationGrantStore.fingerprint(state.snapshots) else { throw ConversationAccessError.staleRequest }
                 guard !ConversationGrantStore.applicable(to: token, in: state.snapshots).isEmpty else { throw ConversationAccessError.noApplicableRule }

@@ -17,6 +17,10 @@ nonisolated struct ConversationContext: Codable, Sendable {
     var recentPauseAttempts: Int = 0
     var preferDeal: Bool = false
     var emotionCheckInSuggested: Bool = false
+    var recommendedIntervention: String = "awareness_or_choice"
+    static func intervention(after confirmedGrantsLastHour: Int) -> String {
+        confirmedGrantsLastHour == 0 ? "awareness_or_choice" : (confirmedGrantsLastHour == 1 ? "delay" : "deal")
+    }
     var deal: ConversationDealContext? = nil
     var waitUntilLocal: String? = nil
     var recommendedPauseSeconds: Int = 10
@@ -72,8 +76,8 @@ nonisolated struct OpenAIConversationClient: ConversationClient {
             "required": ["reply", "decision", "unlock_minutes", "wait_minutes", "pause_seconds", "block_minutes"],
             "properties": [
                 "reply": ["type": "string"],
-                "decision": ["type": "string", "enum": ["ask", "deny", "approve", "wait", "pause", "deal", "choice", "override"]],
-                "unlock_minutes": ["type": ["integer", "null"], "description": "REQUIRED integer 1–60 for approve, pause, deal, choice AND override. Null only for ask, deny, wait."],
+                "decision": ["type": "string", "enum": ["ask", "deny", "approve", "wait", "pause", "deal", "choice", "override", "urgent", "frustration"]],
+                "unlock_minutes": ["type": ["integer", "null"], "description": "REQUIRED integer 1–60 for approve, pause, deal, choice, override, urgent and frustration. Null only for ask, deny, wait."],
                 "wait_minutes": ["type": ["integer", "null"]],
                 "pause_seconds": ["type": ["integer", "null"], "description": "10–1800 for pause or choice; otherwise null."],
                 "block_minutes": ["type": ["integer", "null"], "description": "1–1440 for deal, choice or override; otherwise null. Override requires at least deal.minimumReplacementBreakMinutes."]
@@ -205,6 +209,8 @@ nonisolated struct MockConversationClient: ConversationClient {
         if fails { throw ConversationClientError.transport(code: URLError.notConnectedToInternet.rawValue) }
         let text = context.recentMessages.last(where: { $0.role == .user })?.text.lowercased() ?? ""
         if text.contains("test-loading") { try await Task.sleep(for: .seconds(10)) }
+        if text.contains("urgent") { return .init(reply: "Let’s get you access for what you need.", decision: .urgent, unlockMinutes: 5) }
+        if text.contains("frustrated") { return .init(reply: "I hear you. Let’s ease the friction.", decision: .frustration, unlockMinutes: 5) }
         if text.contains("override") { return .init(reply: "One small exception, then stop.", decision: .override, unlockMinutes: 1, blockMinutes: context.deal?.minimumReplacementBreakMinutes ?? 30) }
         if text.contains("choice") { return .init(reply: "Choose a short delay, three minutes then ten away, or open for three minutes now.", decision: .choice, unlockMinutes: 3, pauseSeconds: 10, blockMinutes: 10) }
         if text.contains("deal") { return .init(reply: "Three minutes, then ten minutes away?", decision: .deal, unlockMinutes: 3, blockMinutes: 10) }

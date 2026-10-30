@@ -108,6 +108,12 @@ struct ConversationView: View {
                         if sending { followsLatest = true }
                         if followsLatest { proxy.scrollTo("latest", anchor: .bottom) }
                     }
+                    .task(id: conversation.feedbackEntry?.id) {
+                        guard let entry = conversation.feedbackEntry else { return }
+                        followsLatest = true
+                        await Task.yield()
+                        withAnimation { proxy.scrollTo(entry.id, anchor: .bottom) }
+                    }
                     .onChange(of: conversation.reflectionScheduleID) {
                         if followsLatest { proxy.scrollTo("latest", anchor: .bottom) }
                     }

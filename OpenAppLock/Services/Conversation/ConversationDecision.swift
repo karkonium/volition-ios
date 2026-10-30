@@ -2,7 +2,7 @@ import Foundation
 
 /// Model output is advice until validated and bound to a live local request.
 nonisolated struct ConversationDecision: Codable, Equatable, Sendable {
-    enum Decision: String, Codable, Sendable { case ask, deny, approve, wait, pause, deal, choice, override }
+    enum Decision: String, Codable, Sendable { case ask, deny, approve, wait, pause, deal, choice, override, urgent, frustration }
     let reply: String
     let decision: Decision
     let unlockMinutes: Int?
@@ -16,7 +16,7 @@ nonisolated struct ConversationDecision: Codable, Equatable, Sendable {
         let result = try JSONDecoder().decode(Self.self, from: data)
         guard !result.reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               result.reply.count <= 8000 else { throw InvalidResponse.invalid }
-        if [.approve, .pause, .deal, .choice, .override].contains(result.decision) {
+        if [.approve, .pause, .deal, .choice, .override, .urgent, .frustration].contains(result.decision) {
             guard let minutes = result.unlockMinutes, (1...60).contains(minutes) else { throw InvalidResponse.invalid }
         } else if result.unlockMinutes != nil { throw InvalidResponse.invalid }
         if result.decision == .wait {

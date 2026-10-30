@@ -122,7 +122,7 @@ final class ConversationCoordinator {
          keys: any ConversationKeyStoring = ConversationEnvironmentKeyStore(),
          access: ConversationEnforcement = ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController()),
          timer: any ConversationTimerScheduling = DeviceConversationTimer(),
-         requestStore: ConversationRequestStore = .init(), checkInRoll: @escaping @Sendable () -> Bool = { Bool.random() }) {
+         requestStore: ConversationRequestStore = .init(), checkInRoll: @escaping @Sendable () -> Bool = { true }) {
         self.service = service ?? DevelopmentCoachService(client: client, keys: keys)
         self.checkInRoll = checkInRoll
         self.preferences = preferences
@@ -382,7 +382,8 @@ final class ConversationCoordinator {
                 $0.date <= contextInstant && contextInstant.timeIntervalSince($0.date) < 86400
             }.suffix(10))
             coachingContext.recentPauseAttempts = history.recentPauseAttempts(for: requestedApp.id, now: contextInstant)
-            coachingContext.preferDeal = coachingContext.recentPauseAttempts >= 2
+            coachingContext.recommendedIntervention = ConversationContext.intervention(after: context.activitySummary?.grantsLastHour ?? 0)
+            coachingContext.preferDeal = coachingContext.recentPauseAttempts >= 2 || coachingContext.recommendedIntervention == "deal"
             coachingContext.emotionCheckInSuggested = history.canAskEmotion(at: contextInstant) && checkInRoll()
             coachingContext.waitUntilLocal = context.waitUntil.map { $0.formatted(date: .abbreviated, time: .shortened) }
             coachingContext.deal = activeDeal.map { .init(grantID: $0.grantID, blockedUntil: $0.blockedUntil,
@@ -442,16 +443,18 @@ final class ConversationCoordinator {
                     }
                     try persist(); requestID = nil
                 } catch { history = previous; throw error }
-            } else if decision.decision == .approve, let minutes = decision.unlockMinutes {
+            } else if [.approve, .urgent, .frustration].contains(decision.decision), let minutes = decision.unlockMinutes {
                 attemptedApproval = true
-                if waitUntil(for: requestedApp.id) != nil { throw ConversationAccessError.waiting }
+                let relief = decision.decision == .urgent || decision.decision == .frustration
+                let reliefDealID = relief ? activeDeal?.grantID : nil
+                if waitUntil(for: requestedApp.id, excludingDealGrantID: reliefDealID) != nil { throw ConversationAccessError.waiting }
                 let access = access; let timer = timer; let approvalInstant = clock.now()
                 stage = "grant_registration"
                 ConversationDiagnostics.live.log("grant.begin rule=\(requestedApp.id.logTag) minutes=\(minutes)")
                 let targetData = try JSONEncoder().encode(target)
                 let activated = try await Task.detached {
                     let isolatedTarget = try JSONDecoder().decode(ApplicationToken.self, from: targetData)
-                    return try access.approve(token: isolatedTarget, minutes: minutes, fingerprint: fingerprint, now: approvalInstant, timer: timer)
+                    return try access.approve(token: isolatedTarget, minutes: minutes, fingerprint: fingerprint, now: approvalInstant, timer: timer, overridingDealID: reliefDealID, immediateRelief: relief)
                 }.value
                 activatedForRequest = activated
                 guard generation == currentGeneration,
@@ -508,7 +511,7 @@ final class ConversationCoordinator {
             guard generation == currentGeneration, !Task.isCancelled else {
                 if let activated = activatedForRequest {
                     let access = access
-                    try? await Task.detached { try access.end(grantID: activated.plan.grantID) }.value
+                    try? await Task.detached { try access.end(grantID: activated.plan.grantID, cancelDeal: true) }.value
                 }
                 return
             }

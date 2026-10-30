@@ -6,7 +6,6 @@ import SwiftUI
 struct ConversationEmotionCheckIn: View {
     let reflection: ConversationReflection
     @Environment(ConversationCoordinator.self) private var conversation
-    @State private var addingCustom = false
     @State private var customEmotion = ""
     @FocusState private var customFocused: Bool
     private var customValid: Bool {
@@ -20,21 +19,21 @@ struct ConversationEmotionCheckIn: View {
             }
             if let emotion = reflection.emotion {
                 Text(reflection.customEmotion ?? emotion.copy.string).font(.caption).foregroundStyle(.secondary)
-            } else if !addingCustom {
+            } else {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 125))], alignment: .leading, spacing: 6) {
-                    ForEach(ConversationReflection.Emotion.allCases, id: \.self) { emotion in
+                    ForEach(ConversationReflection.Emotion.allCases.filter { $0 != .other }, id: \.self) { emotion in
                         Button {
-                            if emotion == .other { addingCustom = true; customFocused = true }
-                            else { conversation.chooseEmotion(emotion, for: reflection.id) }
+                            customFocused = false
+                            conversation.chooseEmotion(emotion, for: reflection.id)
                         } label: {
-                            Text((emotion == .other ? CopyKey.customEmotionAction : emotion.copy).resource)
+                            Text(emotion.copy.resource)
                                 .font(.caption).frame(maxWidth: .infinity, minHeight: 44)
                         }
                         .buttonStyle(.bordered)
                         .accessibilityIdentifier("reflectionEmotion-\(emotion.rawValue)")
                     }
                 }
-            } else {
+                Text(CopyKey.customEmotionAction.resource).font(.caption.weight(.semibold))
                 TextField(CopyKey.customEmotionPlaceholder.string, text: $customEmotion)
                     .textFieldStyle(.roundedBorder).focused($customFocused).submitLabel(.done)
                     .accessibilityIdentifier("customEmotionField")
@@ -43,8 +42,6 @@ struct ConversationEmotionCheckIn: View {
                 Button(CopyKey.customEmotionSubmit.resource) { submitCustomEmotion() }
                     .buttonStyle(VolitionButtonStyle()).disabled(!customValid)
                     .accessibilityIdentifier("customEmotionSubmitButton")
-                Button(CopyKey.conversationCancel.resource) { customFocused = false; addingCustom = false }
-                    .buttonStyle(VolitionButtonStyle(primary: false))
             }
         }
         .padding(12).background(VolitionStyle.subtle, in: RoundedRectangle(cornerRadius: 12))

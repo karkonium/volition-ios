@@ -30,7 +30,7 @@ def main():
     instructions = textwrap.dedent(match.group(1))
     ids = [case['id'] for case in cases]
     assert len(ids) == len(set(ids))
-    assert all(set(case['allowed']) <= {'ask', 'deny', 'approve', 'wait', 'pause', 'deal', 'choice', 'override'} for case in cases)
+    assert all(set(case['allowed']) <= {'ask', 'deny', 'approve', 'wait', 'pause', 'deal', 'choice', 'override', 'urgent', 'frustration'} for case in cases)
     if not args.live:
         print(f'Validated {len(cases)} evaluation fixtures and the production prompt. No network requests made.')
         return
@@ -43,7 +43,7 @@ def main():
     schema = {'type': 'object', 'additionalProperties': False,
               'required': ['reply', 'decision', 'unlock_minutes', 'wait_minutes', 'pause_seconds', 'block_minutes'],
               'properties': {'reply': {'type': 'string'},
-                             'decision': {'type': 'string', 'enum': ['ask', 'deny', 'approve', 'wait', 'pause', 'deal', 'choice', 'override']},
+                             'decision': {'type': 'string', 'enum': ['ask', 'deny', 'approve', 'wait', 'pause', 'deal', 'choice', 'override', 'urgent', 'frustration']},
                              'unlock_minutes': {'type': ['integer', 'null']},
                              'wait_minutes': {'type': ['integer', 'null']},
                              'pause_seconds': {'type': ['integer', 'null']},
@@ -57,7 +57,8 @@ def main():
                    'recentMessages': [{'id': app_id, 'date': iso(now), 'role': 'user', 'text': case['message']}],
                    'recommendedPauseSeconds': case.get('pauseSeconds', 10),
                    'pauseBeforeDealRequired': False, 'recentPauseAttempts': case.get('pauseAttempts', 0),
-                   'preferDeal': case.get('pauseAttempts', 0) >= 2, 'emotionCheckInSuggested': case.get('checkIn', False),
+                   'recommendedIntervention': 'awareness_or_choice' if count == 0 else ('delay' if count == 1 else 'deal'),
+                   'preferDeal': case.get('pauseAttempts', 0) >= 2 or count >= 2, 'emotionCheckInSuggested': case.get('checkIn', False),
                    'recentReflections': ([{'appID': app_id, 'date': iso(now), 'state': 'completed', 'seconds': 10, 'skipped': False, 'unlockMinutes': 3}] if case.get('completedPause') else []),
                    'recentRemovalAttempts': [], 'accessEvents': [], 'activitySummary': {'grantsLast30Minutes': count, 'grantsLastHour': count,
                        'sameAppGrantsLastHour': count, 'grantedMinutesLastHour': count * 5,
@@ -86,7 +87,7 @@ def main():
             unlock, wait = decision.get('unlock_minutes'), decision.get('wait_minutes')
             pause, block = decision.get('pause_seconds'), decision.get('block_minutes')
             valid = decision['decision'] in case['allowed']
-            valid &= (type(unlock) is int and 1 <= unlock <= 60 and wait is None) if decision['decision'] in {'approve', 'pause', 'deal', 'choice', 'override'} else unlock is None
+            valid &= (type(unlock) is int and 1 <= unlock <= 60 and wait is None) if decision['decision'] in {'approve', 'pause', 'deal', 'choice', 'override', 'urgent', 'frustration'} else unlock is None
             valid &= (type(wait) is int and 1 <= wait <= 5 and unlock is None) if decision['decision'] == 'wait' else wait is None
             valid &= (type(pause) is int and 10 <= pause <= 1800) if decision['decision'] in {'pause', 'choice'} else pause is None
             valid &= (type(block) is int and 1 <= block <= 1440) if decision['decision'] in {'deal', 'choice', 'override'} else block is None

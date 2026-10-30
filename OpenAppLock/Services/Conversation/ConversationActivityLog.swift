@@ -93,7 +93,7 @@ nonisolated struct ConversationActivityEntry: Codable, Equatable, Identifiable, 
         case .ask: outcome = .asked
         case .deny: outcome = .denied
         case .wait: outcome = .wait
-        case .approve, .override: outcome = event.grantID == nil ? .unconfirmed : .unlocked
+        case .approve, .override, .urgent, .frustration: outcome = event.grantID == nil ? .unconfirmed : .unlocked
         }
         systemResponse = outcome.title
         if let until = event.expiresAt { unlockMinutes = Int(until.timeIntervalSince(event.date) / 60) }

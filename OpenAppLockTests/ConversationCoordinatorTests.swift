@@ -37,6 +37,49 @@ struct ConversationCoordinatorTests {
         return (coordinator, history, rule, token)
     }
 
+    @Test("Urgency and frustration directly release an accepted deal and remain confirmed grants")
+    func priorityRelief() async throws {
+        for message in ["urgent", "frustrated"] {
+            let (coordinator, history, rule, _) = try setup(checkIn: true)
+            await coordinator.refresh(snapshots: [rule])
+            await coordinator.send("deal", snapshots: { [rule] })
+            let offer = try #require(coordinator.pendingReflections.first)
+            coordinator.chooseEmotion(.skip, for: offer.id)
+            await coordinator.completeReflection(offer.id, acceptDeal: true, snapshots: { [rule] })
+            let original = try #require(coordinator.grants.first)
+            await coordinator.endUnlock(grantID: original.plan.grantID)
+            await coordinator.send(message, snapshots: { [rule] })
+            #expect(coordinator.grants.count == 1)
+            #expect(coordinator.pendingReflections.isEmpty)
+            #expect(history.value.activityLog.last?.modelDecision == (message == "urgent" ? .urgent : .frustration))
+            #expect(history.value.accessEvents.last?.decision == .approve)
+            #expect(history.value.accessEvents.last?.grantID != nil)
+        }
+    }
+
+    @Test("Conversation clarifications do not advance progression, confirmed grants do")
+    func recommendedProgression() async throws {
+        let client = NegotiationRecordingClient()
+        let (coordinator, _, rule, _) = try setup(client: client)
+        await coordinator.refresh(snapshots: [rule])
+        await coordinator.send("What options do I have?", snapshots: { [rule] })
+        await coordinator.send("approve", snapshots: { [rule] })
+        var contexts = await client.contexts()
+        #expect(contexts.count == 2)
+        #expect(contexts.allSatisfy { $0.recommendedIntervention == "awareness_or_choice" })
+        await coordinator.endUnlock()
+        await coordinator.send("approve", snapshots: { [rule] })
+        contexts = await client.contexts()
+        #expect(contexts.last?.recommendedIntervention == "delay")
+        #expect(contexts.last?.activitySummary?.grantsLastHour == 1)
+        await coordinator.endUnlock()
+        await coordinator.send("What should I try now?", snapshots: { [rule] })
+        let final = try #require(await client.contexts().last)
+        #expect(final.recommendedIntervention == "deal")
+        #expect(final.preferDeal)
+        #expect(final.activitySummary?.grantsLastHour == 2)
+    }
+
     @Test("Repeated shield requests return to Chat; notification links select their own app")
     func repeatedShieldRequestsAndNotificationLinks() async throws {
         let defaults = try #require(UserDefaults(suiteName: "Routing-\(UUID().uuidString)"))

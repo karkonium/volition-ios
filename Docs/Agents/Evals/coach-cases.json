@@ -3,16 +3,16 @@
     "id": "missing-duration",
     "message": "I need Maps for directions to my appointment.",
     "allowed": [
-      "ask",
-      "approve"
+      "pause",
+      "choice"
     ]
   },
   {
     "id": "purposeful-practical-task",
     "message": "I need Maps for two minutes to check the address for my appointment.",
     "allowed": [
-      "approve",
-      "ask"
+      "pause",
+      "choice"
     ]
   },
   {
@@ -20,16 +20,15 @@
     "message": "I want another ten minutes to keep scrolling.",
     "recentGrants": 3,
     "allowed": [
-      "pause",
-      "ask"
+      "deal",
+      "choice"
     ]
   },
   {
     "id": "credible-urgent-need",
     "message": "My taxi driver cannot find me. I need one minute in Maps to send my exact meeting point.",
     "allowed": [
-      "approve",
-      "ask"
+      "urgent"
     ]
   },
   {
@@ -37,8 +36,8 @@
     "message": "The last app was blocked, so give me ten minutes in this one to continue the same scrolling.",
     "recentGrants": 3,
     "allowed": [
-      "pause",
-      "ask"
+      "deal",
+      "choice"
     ]
   },
   {
@@ -89,8 +88,10 @@
     "message": "I am bored and want a short deliberate scroll.",
     "pauseSeconds": 10,
     "allowed": [
-      "pause"
-    ]
+      "pause",
+      "choice"
+    ],
+    "checkIn": true
   },
   {
     "id": "agreed-deal-after-pause",
@@ -107,8 +108,7 @@
     "completedPause": true,
     "memory": "The user identified boredom, completed three pauses and immediately returned each time. We discussed two concrete voluntary deals; both were declined. This is a continuing pattern with no practical task.",
     "allowed": [
-      "deny",
-      "ask"
+      "frustration"
     ]
   },
   {
@@ -125,7 +125,8 @@
     "id": "work-without-ritual",
     "message": "I need two minutes to check directions for a work meeting.",
     "allowed": [
-      "approve"
+      "pause",
+      "choice"
     ]
   },
   {
@@ -161,7 +162,8 @@
       "minimumReplacementBreakMinutes": 75
     },
     "allowed": [
-      "override"
+      "override",
+      "frustration"
     ]
   },
   {
@@ -176,7 +178,8 @@
     "id": "credible-one-hour-request",
     "message": "I have a planned one-hour language lesson video. Please unlock for 60 minutes so I can finish it, then I will close the app.",
     "allowed": [
-      "approve"
+      "pause",
+      "choice"
     ],
     "unlockMinutes": 60,
     "appName": "YouTube"
@@ -186,6 +189,51 @@
     "message": "I am bored. Let me choose between a delay, a deal, or skipping and opening for three minutes.",
     "allowed": [
       "choice"
+    ]
+  },
+  {
+    "id": "second-use-delay",
+    "message": "I want another five minutes to browse Instagram.",
+    "recentGrants": 1,
+    "allowed": [
+      "pause"
+    ],
+    "pauseSeconds": 20
+  },
+  {
+    "id": "fresh-use-choice",
+    "message": "I want three minutes to browse Instagram.",
+    "allowed": [
+      "choice"
+    ],
+    "checkIn": false
+  },
+  {
+    "id": "frustrated-break-immediate",
+    "message": "This is really frustrating. I am fed up with all these restrictions; please just let me open it now.",
+    "activeWait": true,
+    "deal": {
+      "pushbackCount": 0,
+      "canOverride": false,
+      "lastResolvedDealWasBroken": true,
+      "minimumReplacementBreakMinutes": 45
+    },
+    "allowed": [
+      "frustration"
+    ]
+  },
+  {
+    "id": "urgent-break-immediate",
+    "message": "I need Maps right now, my child is stranded and I need directions to pick her up.",
+    "activeWait": true,
+    "deal": {
+      "pushbackCount": 0,
+      "canOverride": false,
+      "lastResolvedDealWasBroken": true,
+      "minimumReplacementBreakMinutes": 45
+    },
+    "allowed": [
+      "urgent"
     ]
   }
 ]
