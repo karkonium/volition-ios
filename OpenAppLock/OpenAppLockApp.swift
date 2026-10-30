@@ -159,15 +159,12 @@ struct OpenAppLockApp: App {
             delay: ProcessInfo.processInfo.arguments.contains("-slow-coach") ? .seconds(15) : .zero,
             fails: ProcessInfo.processInfo.arguments.contains("-failing-coach")) : OpenAIConversationClient()
         let timer: any ConversationTimerScheduling = config.isUITesting ? MockConversationTimer() : DeviceConversationTimer()
-        let checkInRoll: @Sendable () -> Bool
-        if config.isUITesting { checkInRoll = { true } }
-        else { checkInRoll = { Bool.random() } }
         _conversation = State(initialValue: ConversationCoordinator(historyStore: historyStore,
             preferences: preferences, service: coachService,
             client: client,
             keys: config.isUITesting ? MockConversationKeyStore() : ConversationEnvironmentKeyStore(),
             access: ConversationEnforcement(store: conversationStore, shields: shields),
-            timer: timer, checkInRoll: checkInRoll))
+            timer: timer))
     }
 
     var body: some Scene {
