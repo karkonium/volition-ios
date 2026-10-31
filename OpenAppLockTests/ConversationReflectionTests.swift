@@ -94,6 +94,7 @@ struct ConversationReflectionTests {
             .init(date: now, appID: app, appName: "App", reason: "Task", decision: .deal, reply: "Offer")
         ]
         let summary = ConversationActivitySummary(events: events, appID: app, now: now)
+        #expect(summary.sameAppGrantedMinutesToday == 5)
         #expect(summary.shortGrantsToday == 1)
         #expect(summary.longGrantsToday == 1)
         #expect(summary.sameAppShortGrantsToday == 1)

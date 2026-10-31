@@ -15,6 +15,7 @@ nonisolated struct ConversationActivitySummary: Codable, Equatable, Sendable {
     let longGrantsToday: Int
     let sameAppShortGrantsToday: Int
     let sameAppLongGrantsToday: Int
+    let sameAppGrantedMinutesToday: Int
 
     init(events: [ConversationAccessEvent], appID: UUID, now: Date) {
         let grants = events.filter { $0.date <= now && $0.decision == .approve && $0.grantID != nil }
@@ -22,6 +23,9 @@ nonisolated struct ConversationActivitySummary: Codable, Equatable, Sendable {
         let short = today.filter { (60...300).contains(($0.expiresAt ?? $0.date).timeIntervalSince($0.date)) }
         let long = today.filter { ($0.expiresAt ?? $0.date).timeIntervalSince($0.date) > 300 && ($0.expiresAt ?? $0.date).timeIntervalSince($0.date) <= 3600 }
         shortGrantsToday = short.count; longGrantsToday = long.count
+        sameAppGrantedMinutesToday = Int(today.filter { $0.appID == appID }.reduce(0.0) {
+            $0 + max(0, ($1.expiresAt ?? $1.date).timeIntervalSince($1.date) / 60)
+        }.rounded())
         sameAppShortGrantsToday = short.filter { $0.appID == appID }.count
         sameAppLongGrantsToday = long.filter { $0.appID == appID }.count
         let hour = grants.filter { now.timeIntervalSince($0.date) < 3600 }

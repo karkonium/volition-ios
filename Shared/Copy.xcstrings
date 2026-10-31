@@ -1,6 +1,105 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "reflection.delayTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delay"
+          }
+        }
+      }
+    },
+    "reflection.dealTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deal"
+          }
+        }
+      }
+    },
+    "reflection.openTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip / Open"
+          }
+        }
+      }
+    },
+    "interface.uiSelectedAppUsageHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirmed unlocks and minutes granted today for this app, not measured screen time."
+          }
+        }
+      }
+    },
+    "interface.uiProfileStep" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3. Set your intention"
+          }
+        }
+      }
+    },
+    "interface.uiNameExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple lets Volition show the app you picked, but keeps its name private. Type the same name here so your coach knows which app you mean when you chat."
+          }
+        }
+      }
+    },
+    "interface.uiNameExplanationTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Why copy the name?"
+          }
+        }
+      }
+    },
+    "interface.uiSelectOne" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select one"
+          }
+        }
+      }
+    },
+    "interface.uiSelectedAppUsage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlocks today: %lld · %lld min granted"
+          }
+        }
+      }
+    },
     "reflection.choiceHelp" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -117,7 +216,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skip / Open for %d min"
+            "value" : "%d minutes of access"
           }
         }
       }
@@ -2251,7 +2350,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "3. Set your intention"
+            "value" : "4. Additional information"
           }
         }
       }
@@ -2306,7 +2405,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "2. Give it a name"
+            "value" : "2. Copy the app name"
           }
         }
       }
@@ -3263,7 +3362,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Delay %lld seconds, then %lld minutes"
+            "value": "%lld seconds, then %lld minutes"
           }
         }
       }
@@ -3274,7 +3373,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accept %lld minutes now, then %lld minutes blocked"
+            "value": "%lld minutes now, then %lld minutes blocked"
           }
         }
       }

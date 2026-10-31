@@ -1,10 +1,13 @@
 import SwiftUI
 import Charts
+import FamilyControls
+import SwiftData
 
 struct InsightsView: View {
     @Environment(ConversationCoordinator.self) private var conversation
     @Environment(\.dynamicTypeSize) private var textSize
     @State private var days = 1
+    @Query private var rules: [BlockingRule]
     var body: some View {
         NavigationStack {
             TimelineView(.periodic(from: .now, by: 60)) { timeline in
@@ -63,7 +66,12 @@ struct InsightsView: View {
                             let totals = AccessInsights(entries: appEntries, start: start, end: end)
                             VolitionCard {
                                 HStack(alignment: .top, spacing: 12) {
-                                    VolitionIcon(symbol: "app")
+                                    if let rule = rules.first(where: { $0.id == id && !$0.isDeleted }),
+                                       let token = AppSelectionCodec.decode(rule.combinedSelectionData).applicationTokens.first {
+                                        VolitionAppIcon(token: token).accessibilityIdentifier("insightsAppIcon")
+                                    } else {
+                                        VolitionIcon(symbol: "apps.iphone")
+                                    }
                                     VStack(alignment: .leading, spacing: 5) {
                                         Text(appEntries.last?.appName ?? CopyKey.conversationTargetGeneric.string).font(.subheadline.weight(.semibold))
                                         Text(CopyKey.uiAppInsights.string(totals.grants, totals.grantedMinutes))

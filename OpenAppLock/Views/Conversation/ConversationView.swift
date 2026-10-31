@@ -31,7 +31,7 @@ struct ConversationView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                appSelector.padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 6)
+                TimelineView(.periodic(from: .now, by: 30)) { _ in appSelector }.padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 6)
                 if !conversation.displayedGrants.isEmpty {
                     grantCards.padding(.horizontal, 16).padding(.bottom, 8)
                         .accessibilityIdentifier("conversationUnlockBanners")
@@ -50,16 +50,6 @@ struct ConversationView: View {
                                     .font(.footnote).foregroundStyle(.secondary)
                             }
                         }.chatRow()
-                        if let summary = conversation.selectedActivitySummary {
-                            Text(CopyKey.sessionCounts.string(summary.sameAppShortGrantsToday, summary.sameAppLongGrantsToday))
-                                .font(.caption).foregroundStyle(.secondary)
-                                .accessibilityHint(CopyKey.sessionCountsHelp.string)
-                                .accessibilityIdentifier("conversationSessionCounts").chatRow()
-                        }
-                        if let until = conversation.cooldownUntil {
-                            Text(CopyKey.dealBlockedUntil.string(until.formatted(date: .omitted, time: .shortened)))
-                                .font(.footnote).foregroundStyle(.secondary).chatRow()
-                        }
                         if transcriptMessages.isEmpty { emptyConversation.chatRow() }
                         if transcriptMessages.count > visibleMessages {
                             Button(CopyKey.chatLoadEarlier.resource) { visibleMessages += 60 }
@@ -98,6 +88,15 @@ struct ConversationView: View {
                     .onScrollGeometryChange(for: Bool.self) { geometry in
                         geometry.contentSize.height - geometry.contentOffset.y - geometry.containerSize.height < 120
                     } action: { _, nearBottom in followsLatest = nearBottom }
+                    .onScrollGeometryChange(for: CGFloat.self) { $0.containerSize.height } action: { previous, height in
+                        if height < previous {
+                            followsLatest = true
+                            Task { @MainActor in
+                                await Task.yield()
+                                proxy.scrollTo("latest", anchor: .bottom)
+                            }
+                        }
+                    }
                     .onAppear {
                         if !transcriptMessages.isEmpty { proxy.scrollTo("latest", anchor: .bottom) }
                     }
@@ -114,8 +113,11 @@ struct ConversationView: View {
                         await Task.yield()
                         withAnimation { proxy.scrollTo(entry.id, anchor: .bottom) }
                     }
-                    .onChange(of: conversation.reflectionScheduleID) {
-                        if followsLatest { proxy.scrollTo("latest", anchor: .bottom) }
+                    .task(id: conversation.reflectionScheduleID) {
+                        guard !conversation.pendingReflections.isEmpty else { return }
+                        followsLatest = true
+                        await Task.yield()
+                        proxy.scrollTo("latest", anchor: .bottom)
                     }
                     .onChange(of: conversation.errorMessage) {
                         if followsLatest && !conversation.appSelectionNeeded { proxy.scrollTo("latest", anchor: .bottom) }
@@ -172,6 +174,18 @@ struct ConversationView: View {
                     Spacer(minLength: 4)
                     Image(systemName: "chevron.up.chevron.down").font(.caption.weight(.semibold))
                         .foregroundStyle(Color.secondary).accessibilityHidden(true)
+                }
+                if let summary = conversation.selectedActivitySummary {
+                    Text(CopyKey.uiSelectedAppUsage.string(summary.sameAppShortGrantsToday + summary.sameAppLongGrantsToday,
+                        summary.sameAppGrantedMinutesToday))
+                        .font(.caption).foregroundStyle(Color.secondary)
+                        .accessibilityHint(CopyKey.uiSelectedAppUsageHelp.string)
+                        .accessibilityIdentifier("conversationSessionCounts")
+                }
+                if let until = conversation.cooldownUntil {
+                    Text(CopyKey.dealBlockedUntil.string(until.formatted(date: Calendar.current.isDateInToday(until) ? .omitted : .abbreviated, time: .shortened)))
+                        .font(.caption).foregroundStyle(Color.secondary)
+                        .accessibilityIdentifier("conversationSelectedAppBlockedUntil")
                 }
             }
         }

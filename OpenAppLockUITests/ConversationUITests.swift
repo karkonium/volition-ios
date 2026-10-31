@@ -37,11 +37,21 @@ final class ConversationUITests: XCTestCase {
         let end = app.buttons["endConversationUnlockButton"].waitToAppear()
         let feedback = app.buttons["experienceRating-helpful"].waitToAppear()
         XCTAssertTrue(feedback.isHittable, "Deal acceptance should scroll to feedback without a swipe")
+        let selectedApp = app.buttons["conversationChooseAppButton"]
+        XCTAssertTrue(selectedApp.label.contains("Unlocks today: 2"))
+        XCTAssertTrue(selectedApp.label.contains("8 min granted"))
+        XCTAssertFalse(app.element("conversationTranscript").staticTexts["conversationSessionCounts"].exists)
         capture("Accepted deal unlock", app)
         end.tap()
         XCTAssertTrue(end.waitForNonExistence(timeout: 5))
         XCTAssertFalse(app.buttons["conversationDealAccept"].exists)
+        XCTAssertTrue(selectedApp.label.contains("Agreed break until"))
         capture("Early end retains agreed break without countdown", app)
+        let insights = app.tabBars.buttons["Insights"]
+        if insights.exists { insights.tap() }
+        else { app.element("sidebarItem-insights").tap() }
+        XCTAssertTrue(app.staticTexts["Intentional Access"].waitToAppear().exists)
+        capture("Insights with saved app icons", app)
     }
 
     func testUserChosenPauseAndThirtyMinuteUnlock() {
@@ -234,6 +244,38 @@ final class ConversationUITests: XCTestCase {
         capture("Three intervention choices", app)
         open.tap()
         app.buttons["endConversationUnlockButton"].waitToAppear().tap()
+    }
+
+    func testInterventionChoicesRemainReadableAtAccessibilitySize() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing", "-onboarding-completed", "-seed-scenario=conversation", "-large-text", "-dark-mode"]
+        app.launch()
+        chooseApp(app)
+        send("choice", app, answerCheckIn: false)
+        let transcript = app.element("conversationTranscript")
+        let skip = app.buttons["reflectionEmotion-skip"]
+        XCTAssertTrue(skip.waitForExistence(timeout: 5))
+        for _ in 0..<5 where !skip.isHittable { transcript.swipeUp() }
+        XCTAssertTrue(skip.isHittable); skip.tap()
+        capture("Intervention card at accessibility text size", app)
+        var widths: [CGFloat] = []
+        for id in ["conversationChooseDelayButton", "conversationChooseDealButton", "conversationChooseOpenButton"] {
+            let button = app.buttons[id]
+            XCTAssertTrue(button.waitForExistence(timeout: 5))
+            for _ in 0..<12 where !button.isHittable {
+                let down = button.frame.midY < transcript.frame.midY
+                let start = transcript.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: down ? 0.35 : 0.65))
+                let end = transcript.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: down ? 0.65 : 0.35))
+                start.press(forDuration: 0.05, thenDragTo: end)
+            }
+            capture(id + " visibility", app)
+            XCTAssertTrue(button.isHittable)
+            XCTAssertGreaterThanOrEqual(button.frame.height, 44)
+            widths.append(button.frame.width)
+            capture(id + " at accessibility text size", app)
+        }
+        XCTAssertEqual(widths[0], widths[1], accuracy: 1)
+        XCTAssertEqual(widths[1], widths[2], accuracy: 1)
     }
 
     func testFeedbackRatingsStayInOneRow() {

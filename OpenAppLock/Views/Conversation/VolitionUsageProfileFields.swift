@@ -1,74 +1,100 @@
 import SwiftUI
 
-/// Multi-choice disclosures use checkboxes and an expanded selection hint,
-/// without collapsed answer summaries. Questions precede their controls.
-/// No usage statistics or numeric limits are required; editing uses the same UI.
+/// Left-aligned form rows share spacing and dividers. Multiple-choice questions
+/// use checkboxes; the session-style question uses one selected radio option.
 struct VolitionUsageProfileFields: View {
     @Binding var profile: ConversationUsageProfile
     var onExpand: () -> Void = {}
     @State private var purposesExpanded = false
     @State private var changesExpanded = false
+    @State private var styleExpanded = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            DisclosureGroup(isExpanded: $purposesExpanded) {
-                Text(CopyKey.profileSelectMultiple.resource)
-                    .font(.caption).foregroundStyle(Color.secondary)
-                    .accessibilityIdentifier("profilePurposesSelectMultiple")
-                ForEach(ConversationUsageProfile.Purpose.allCases, id: \.self) { purpose in
-                    choice(purpose.copy, selected: profile.purposes.contains(purpose)) {
-                        if !profile.purposes.insert(purpose).inserted { profile.purposes.remove(purpose) }
-                    }.accessibilityIdentifier("profilePurpose-\(purpose.rawValue)")
-                }
-            } label: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(CopyKey.profilePurpose.resource).foregroundStyle(Color.primary)
-                }.frame(minHeight: 44).accessibilityElement(children: .combine).accessibilityIdentifier("profilePurposes")
-            }
-            DisclosureGroup(isExpanded: $changesExpanded) {
-                Text(CopyKey.profileSelectMultiple.resource)
-                    .font(.caption).foregroundStyle(Color.secondary)
-                    .accessibilityIdentifier("profileChangesSelectMultiple")
-                ForEach(ConversationUsageProfile.Change.allCases, id: \.self) { change in
-                    choice(change.copy, selected: profile.changes.contains(change)) {
-                        if change == .unsure {
-                            profile.changes = profile.changes.contains(.unsure) ? [] : [.unsure]
-                        } else {
-                            profile.changes.remove(.unsure)
-                            if !profile.changes.insert(change).inserted { profile.changes.remove(change) }
-                        }
-                    }.accessibilityIdentifier("profileChange-\(change.rawValue)")
-                }
-            } label: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(CopyKey.profileChange.resource).foregroundStyle(Color.primary)
-                }.frame(minHeight: 44).accessibilityElement(children: .combine).accessibilityIdentifier("profileChanges")
-            }
-            VStack(alignment: .leading, spacing: 4) {
-                Text(CopyKey.profileStyle.resource).foregroundStyle(Color.primary)
-                    .accessibilityIdentifier("profileSessionStyleQuestion")
-                Picker(CopyKey.profileStyle.string, selection: $profile.sessionStyle) {
-                    ForEach(ConversationUsageProfile.SessionStyle.allCases, id: \.self) { style in
-                        Text(style.copy.resource).tag(style)
+            question(.profilePurpose, expanded: $purposesExpanded, id: "profilePurposes")
+            if purposesExpanded {
+                options(hint: .profileSelectMultiple, id: "profilePurposesSelectMultiple") {
+                    ForEach(ConversationUsageProfile.Purpose.allCases, id: \.self) { purpose in
+                        choice(purpose.copy, selected: profile.purposes.contains(purpose)) {
+                            if !profile.purposes.insert(purpose).inserted { profile.purposes.remove(purpose) }
+                        }.accessibilityIdentifier("profilePurpose-\(purpose.rawValue)")
                     }
                 }
-                .pickerStyle(.menu).labelsHidden()
-                .frame(minHeight: 44).accessibilityIdentifier("profileSessionStyle")
+            }
+            Divider()
+            question(.profileChange, expanded: $changesExpanded, id: "profileChanges")
+            if changesExpanded {
+                options(hint: .profileSelectMultiple, id: "profileChangesSelectMultiple") {
+                    ForEach(ConversationUsageProfile.Change.allCases, id: \.self) { change in
+                        choice(change.copy, selected: profile.changes.contains(change)) {
+                            if change == .unsure {
+                                profile.changes = profile.changes.contains(.unsure) ? [] : [.unsure]
+                            } else {
+                                profile.changes.remove(.unsure)
+                                if !profile.changes.insert(change).inserted { profile.changes.remove(change) }
+                            }
+                        }.accessibilityIdentifier("profileChange-\(change.rawValue)")
+                    }
+                }
+            }
+            Divider()
+            question(.profileStyle, expanded: $styleExpanded, id: "profileSessionStyle")
+            if styleExpanded {
+                options(hint: .uiSelectOne, id: "profileStyleSelectOne") {
+                    ForEach(ConversationUsageProfile.SessionStyle.allCases, id: \.self) { style in
+                        choice(style.copy, selected: profile.sessionStyle == style, multiple: false) {
+                            profile.sessionStyle = style
+                        }.accessibilityIdentifier("profileStyle-\(style.rawValue)")
+                    }
+                }
             }
             Text(CopyKey.profileOptional.resource).font(.caption).foregroundStyle(Color.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .onChange(of: purposesExpanded) { _, expanded in if expanded { onExpand() } }
-        .onChange(of: changesExpanded) { _, expanded in if expanded { onExpand() } }
     }
 
-    private func choice(_ copy: CopyKey, selected: Bool, action: @escaping () -> Void) -> some View {
+    private func question(_ copy: CopyKey, expanded: Binding<Bool>, id: String) -> some View {
+        Button {
+            if !expanded.wrappedValue { onExpand() }
+            withAnimation(.easeInOut(duration: 0.2)) { expanded.wrappedValue.toggle() }
+        } label: {
+            HStack(alignment: .center, spacing: 12) {
+                Text(copy.resource).font(.subheadline).foregroundStyle(Color.primary)
+                    .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: expanded.wrappedValue ? "chevron.up" : "chevron.down")
+                    .font(.caption).foregroundStyle(Color.secondary).accessibilityHidden(true)
+            }.padding(.vertical, 4).frame(minHeight: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).accessibilityIdentifier(id)
+        .accessibilityValue(expanded.wrappedValue ? "Expanded" : "Collapsed")
+    }
+
+    private func options<Content: View>(hint: CopyKey, id: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(hint.resource).font(.caption).foregroundStyle(Color.secondary)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.horizontal, 4).padding(.bottom, 8)
+                .accessibilityIdentifier(id)
+            content()
+        }
+        .padding(12)
+        .background(VolitionStyle.subtle, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func choice(_ copy: CopyKey, selected: Bool, multiple: Bool = true, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack {
-                Text(copy.resource).foregroundStyle(Color.primary)
-                Spacer()
-                Image(systemName: selected ? "checkmark.square.fill" : "square")
-                    .foregroundStyle(selected ? Color.accentColor : Color.secondary)
-            }.frame(minHeight: 44).contentShape(Rectangle())
+            HStack(alignment: .center, spacing: 12) {
+                Text(copy.resource).font(.subheadline).foregroundStyle(Color.primary)
+                    .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                Image(systemName: multiple ? (selected ? "checkmark.square.fill" : "square") :
+                    (selected ? "largecircle.fill.circle" : "circle"))
+                    .foregroundStyle(selected ? VolitionStyle.accent : Color.secondary)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, 4).padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])

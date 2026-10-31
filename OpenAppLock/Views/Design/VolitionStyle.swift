@@ -65,15 +65,19 @@ struct VolitionIcon: View {
     }
 }
 
-/// Recommended actions use a bright fill and bold label; alternatives remain
+/// Recommended actions use a bright fill and regular label; alternatives remain
 /// readable with a lighter surface and label. Both retain a 44-point touch target.
 struct VolitionButtonStyle: ButtonStyle {
     var primary = true
+    var expands = true
     @Environment(\.isEnabled) private var enabled
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.subheadline.weight(primary ? .bold : .regular))
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .padding(.horizontal, 12)
+        configuration.label.font(.subheadline.weight(.regular))
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: expands ? .infinity : nil)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 16).padding(.vertical, 12)
+            .frame(maxWidth: expands ? .infinity : nil, minHeight: 48)
             .foregroundStyle(primary ? Color.white : configuration.role == .destructive ? Color.red : Color.secondary)
             .background(primary ? (configuration.role == .destructive ? Color.red : VolitionStyle.accent) : VolitionStyle.subtle,
                 in: RoundedRectangle(cornerRadius: 12))

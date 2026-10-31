@@ -103,6 +103,7 @@ struct VolitionAppEditor: View {
     @State private var loadedDraft = false
     @State private var nameAttention = 0
     @State private var nameMissing = false
+    @State private var explainingName = false
     @State private var pickerSelection = FamilyActivitySelection()
     @State private var pickerError: String?
     @State private var saving = false
@@ -153,7 +154,25 @@ struct VolitionAppEditor: View {
                     .buttonStyle(.plain).accessibilityIdentifier("pickVolitionAppButton")
                 }
                 VolitionCard {
-                    VolitionSectionHeading(title: CopyKey.uiNameStep.string)
+                    HStack(spacing: 8) {
+                        VolitionSectionHeading(title: CopyKey.uiNameStep.string)
+                        Button { explainingName = true } label: {
+                            Image(systemName: "questionmark.circle").font(.body)
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain).foregroundStyle(VolitionStyle.accent)
+                        .accessibilityLabel(CopyKey.uiNameExplanationTitle.resource)
+                        .accessibilityIdentifier("appNameExplanationButton")
+                        .popover(isPresented: $explainingName) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text(CopyKey.uiNameExplanationTitle.resource).font(.headline)
+                                Text(CopyKey.uiNameExplanation.resource).font(.subheadline)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }.padding(20).frame(idealWidth: 280, maxWidth: 320)
+                                .presentationCompactAdaptation(.popover)
+                                .accessibilityIdentifier("appNameExplanation")
+                        }
+                    }
                     TextField(CopyKey.volitionAppName.string, text: $name)
                         .textFieldStyle(.roundedBorder).submitLabel(.next)
                         .onSubmit { focused = .intention }
@@ -167,7 +186,10 @@ struct VolitionAppEditor: View {
                             .accessibilityIdentifier("volitionAppNameRequired")
                     }
                 }.volitionAttention(trigger: nameAttention)
-                VolitionCard { VolitionUsageProfileFields(profile: $profile) { focused = nil } }
+                VolitionCard {
+                    VolitionSectionHeading(title: CopyKey.uiProfileStep.string)
+                    VolitionUsageProfileFields(profile: $profile) { focused = nil }
+                }
                 VolitionCard {
                     VolitionSectionHeading(title: CopyKey.uiIntentionStep.string)
                     Text(CopyKey.profileNotesHelp.resource).font(.caption).foregroundStyle(.secondary)

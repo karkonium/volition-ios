@@ -34,14 +34,17 @@ struct ConversationEmotionCheckIn: View {
                     }
                 }
                 Text(CopyKey.customEmotionAction.resource).font(.caption.weight(.semibold))
-                TextField(CopyKey.customEmotionPlaceholder.string, text: $customEmotion)
-                    .textFieldStyle(.roundedBorder).focused($customFocused).submitLabel(.done)
-                    .accessibilityIdentifier("customEmotionField")
-                    .onSubmit { submitCustomEmotion() }
+                HStack(spacing: 8) {
+                    TextField(CopyKey.customEmotionPlaceholder.string, text: $customEmotion)
+                        .textFieldStyle(.roundedBorder).focused($customFocused).submitLabel(.done)
+                        .accessibilityIdentifier("customEmotionField")
+                        .onSubmit { submitCustomEmotion() }
+                    Button(CopyKey.customEmotionSubmit.resource) { submitCustomEmotion() }
+                        .buttonStyle(VolitionButtonStyle(expands: false)).disabled(!customValid)
+                        .accessibilityIdentifier("customEmotionSubmitButton")
+                }
                 Text(CopyKey.customEmotionHelp.resource).font(.caption).foregroundStyle(.secondary)
-                Button(CopyKey.customEmotionSubmit.resource) { submitCustomEmotion() }
-                    .buttonStyle(VolitionButtonStyle()).disabled(!customValid)
-                    .accessibilityIdentifier("customEmotionSubmitButton")
+
             }
         }
         .padding(12).background(VolitionStyle.subtle, in: RoundedRectangle(cornerRadius: 12))
