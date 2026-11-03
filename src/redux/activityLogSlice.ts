@@ -1,5 +1,8 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { CoachDecision } from "../services/decision";
+import type {
+  CoachDecision,
+  CoachDecisionResponse,
+} from "../services/decision";
 export type ActivityOutcome =
   | "pending"
   | "approved"
@@ -33,6 +36,7 @@ export interface ActivityLogEntry {
   outcome: ActivityOutcome;
   feedback?: OutcomeFeedback;
   grantId?: string;
+  advice?: CoachDecisionResponse;
   feedbackSignal?: "high_frustration";
 }
 const slice = createSlice({
@@ -57,12 +61,14 @@ const slice = createSlice({
         id: string;
         decision: CoachDecision;
         coachResponse: string;
+        advice: CoachDecisionResponse;
       }>,
     ) {
       const entry = state.entries.find((item) => item.id === action.payload.id);
       if (entry) {
         entry.decision = action.payload.decision;
         entry.coachResponse = action.payload.coachResponse;
+        entry.advice = action.payload.advice;
       }
     },
     outcomeRecorded(
@@ -71,6 +77,7 @@ const slice = createSlice({
         id: string;
         outcome: ActivityOutcome;
         grantId?: string;
+        advice?: CoachDecisionResponse;
         feedbackSignal?: "high_frustration";
       }>,
     ) {

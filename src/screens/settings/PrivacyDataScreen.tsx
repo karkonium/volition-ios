@@ -14,8 +14,8 @@ export function PrivacyDataScreen(): React.JSX.Element {
       <Text type="H3">Shared with OpenAI</Text>
       <Text>
         Messages, saved app names, intentions, notes, recent allocated sessions,
-        active unlocks and waits, agreements and optional check-ins are sent
-        only while AI sharing is enabled.
+        active unlocks and waits, agreements, recent app-removal feedback and
+        optional check-ins are sent only while AI sharing is enabled.
       </Text>
       <Button
         text={

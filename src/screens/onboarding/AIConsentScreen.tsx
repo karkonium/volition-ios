@@ -14,13 +14,13 @@ export function AIConsentScreen({
       <Text>
         To respond, OpenAI receives your messages, app names, intentions and
         notes, recent allocated access sessions, active grants, waits,
-        agreements and optional recent check-ins. This is not measured app
-        usage.
+        agreements optional recent check-ins and recent app-removal feedback.
+        This is not measured app usage.
       </Text>
       <Text>
-        Chat and private activity history stay on this device. You can withdraw
-        sharing at any time in Privacy & Data, which cancels pending responses
-        and offers.
+        Your history is stored on this device. Each request sends the coaching
+        context described above. You can withdraw sharing at any time in Privacy
+        & Data, which cancels pending responses and offers.
       </Text>
       <Button
         text={consent ? "AI sharing: On" : "AI sharing: Off"}

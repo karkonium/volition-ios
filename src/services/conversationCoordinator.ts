@@ -218,6 +218,7 @@ export class ConversationCoordinator {
           id: logId,
           decision: response.decision,
           coachResponse: response.reply,
+          advice: response,
         }),
       );
       const offer: Intervention = {
