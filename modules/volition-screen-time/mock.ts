@@ -7,7 +7,7 @@ import type {
 // Explicit development-only preview. No call reaches FamilyControls or OpenAI.
 export function createPreviewBridge(): ScreenTimeBridge {
   let grants: ActiveGrant[] = [];
-  const commitments: Commitment[] = [];
+  let commitments: Commitment[] = [];
   let apps: SavedNativeApp[] = [];
   const sample: SavedNativeApp = {
     id: "00000000-0000-4000-8000-000000000001",
@@ -68,10 +68,11 @@ export function createPreviewBridge(): ScreenTimeBridge {
     },
     rollbackGrant: async (id) => {
       grants = grants.filter((grant) => grant.grantId !== id);
+      commitments = commitments.filter((deal) => deal.grantId !== id);
     },
     getActiveGrants: async () =>
       grants.filter((grant) => Date.parse(grant.expiresAt) > Date.now()),
-    getCommitments: async () => commitments,
+    getCommitments: async () => commitments.map((deal) => ({ ...deal })),
     consumeShieldRequest: async () => null,
     recordPushback: async () => undefined,
     syncPresentation: async () => undefined,

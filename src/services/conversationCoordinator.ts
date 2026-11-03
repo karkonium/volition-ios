@@ -85,8 +85,10 @@ export class ConversationCoordinator {
     if (!text) return;
     explicitAppId = explicitAppId ?? state.chat.boundAppId ?? undefined;
     const resolution = resolveAppName(text, state.apps.items);
-    if (!explicitAppId && resolution.type === "ambiguous")
+    if (!explicitAppId && resolution.type === "ambiguous") {
+      this.deps.dispatch(chatActions.selectionRequired());
       throw new Error("Choose which app you mean. Your draft is saved.");
+    }
     const appId =
       explicitAppId ??
       (resolution.type === "selected"
@@ -95,7 +97,10 @@ export class ConversationCoordinator {
     const app = state.apps.items.find(
       (item) => item.id === appId && item.isEnabled,
     );
-    if (!app) throw new Error("Choose an app. Your draft is saved.");
+    if (!app) {
+      this.deps.dispatch(chatActions.selectionRequired());
+      throw new Error("Choose an app. Your draft is saved.");
+    }
     if (!state.auth.aiConsent)
       throw new Error("Enable AI sharing in Privacy & Data to chat.");
     diagnostic("request.started");

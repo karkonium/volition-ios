@@ -1,1 +1,110 @@
-../../../../../Shared/Models/RuleConfiguration.swift
+//
+//  RuleConfiguration.swift
+//  OpenAppLock
+//
+
+import Foundation
+
+/// The kind-specific options of a rule, modelled as a sum type so a rule can
+/// only carry the options that belong to its kind. This makes illegal states
+/// unrepresentable: an Open Limit rule cannot hold a time window, and a Time
+/// Limit rule cannot hold a Block/Allow-Only mode — selection mode is a
+/// Schedule-only option. The reasoning: a usage budget over "everything except
+/// X" (Allow Only) is not meaningful. Selection mode also belongs to the
+/// *rule*, not its app list, so it lives in `ScheduleConfig` rather than on
+/// `AppList`.
+///
+/// Kind-common attributes (name, days, hardMode, isEnabled, appList,
+/// pausedUntil) live on the owning `BlockingRule` / `RuleDraft`, not here.
+nonisolated enum RuleConfiguration: Hashable, Sendable {
+    case schedule(ScheduleConfig)
+    case timeLimit(TimeLimitConfig)
+    case openLimit(OpenLimitConfig)
+    /// Always-on, individual-app blocking; no Hard Mode, pauses, or schedule.
+    case conversation(ConversationConfig)
+
+    var kind: RuleKind {
+        switch self {
+        case .schedule: .schedule
+        case .timeLimit: .timeLimit
+        case .openLimit: .openLimit
+        case .conversation: .conversation
+        }
+    }
+
+    /// The default configuration for a brand-new rule of the given kind
+    /// (9–5 schedule, 45m/day, 5 opens/day).
+    static func `default`(for kind: RuleKind) -> RuleConfiguration {
+        switch kind {
+        case .schedule: .schedule(ScheduleConfig())
+        case .timeLimit: .timeLimit(TimeLimitConfig())
+        case .openLimit: .openLimit(OpenLimitConfig())
+        case .conversation: .conversation(ConversationConfig())
+        }
+    }
+
+    var scheduleConfig: ScheduleConfig? {
+        if case .schedule(let config) = self { config } else { nil }
+    }
+
+    var timeLimitConfig: TimeLimitConfig? {
+        if case .timeLimit(let config) = self { config } else { nil }
+    }
+
+    var openLimitConfig: OpenLimitConfig? {
+        if case .openLimit(let config) = self { config } else { nil }
+    }
+}
+
+/// Schedule-rule options: a recurring time window and how the app list is
+/// interpreted. A window whose end is at or before its start crosses midnight.
+nonisolated struct ScheduleConfig: Hashable, Sendable {
+    let fifteenMinutesBeforeMidnight: Int = 23 * 60 + 45
+    let minimumRuleDurationMinutes: Int = 15
+    
+    var startMinutes: Int
+    var endMinutes: Int
+    var selectionMode: SelectionMode
+    
+    var startIsTooCloseToMidnight: Bool {
+        startMinutes > fifteenMinutesBeforeMidnight
+    }
+    
+    var startAndEndTimesTooClose: Bool {
+        endMinutes > startMinutes &&
+        endMinutes - startMinutes < minimumRuleDurationMinutes
+    }
+
+    init(
+        startMinutes: Int = 9 * 60,
+        endMinutes: Int = 17 * 60,
+        selectionMode: SelectionMode = .block
+    ) {
+        self.startMinutes = startMinutes
+        self.endMinutes = endMinutes
+        self.selectionMode = selectionMode
+    }
+}
+
+/// Time Limit option: a daily cumulative-usage budget in minutes.
+nonisolated struct TimeLimitConfig: Hashable, Sendable {
+    var dailyLimitMinutes: Int
+
+    init(dailyLimitMinutes: Int = 45) {
+        self.dailyLimitMinutes = dailyLimitMinutes
+    }
+}
+
+/// Open Limit option: a daily budget of app opens.
+nonisolated struct OpenLimitConfig: Hashable, Sendable {
+    var maxOpens: Int
+
+    init(maxOpens: Int = 5) {
+        self.maxOpens = maxOpens
+    }
+}
+
+/// The user's durable goal for conversation-based access decisions.
+nonisolated struct ConversationConfig: Hashable, Sendable {
+    var goal: String = ""
+}

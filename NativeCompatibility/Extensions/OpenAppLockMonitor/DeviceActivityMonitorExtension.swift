@@ -1,0 +1,1 @@
+../../../targets/activity-monitor/DeviceActivityMonitorExtension.swift

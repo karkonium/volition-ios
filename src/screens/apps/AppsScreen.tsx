@@ -7,9 +7,8 @@ import { VolitionCard } from "../../components/VolitionCard";
 import { useNow } from "../../components/ActiveGrantBanner";
 import { useAppSelector, useAppDispatch } from "../../redux/store";
 import type { VolitionSavedApp } from "../../redux/appsSlice";
-import { activityLogActions } from "../../redux/activityLogSlice";
 import { chatActions } from "../../redux/chatSlice";
-import { removeApp } from "../../services/runtime";
+import { removeApp, recordRemoval } from "../../services/runtime";
 import { focusProtects } from "../../services/policy";
 import { AppEditorModal } from "./AppEditorModal";
 import type { MainTabs } from "../../navigation/types";
@@ -122,14 +121,7 @@ export function AppsScreen(): React.JSX.Element {
                   const count = Number(minutes);
                   if (!Number.isInteger(count) || count < 1 || count > 60)
                     return;
-                  dispatch(
-                    activityLogActions.removalRecorded({
-                      appId: removing.id,
-                      date: new Date().toISOString(),
-                      reason,
-                      disposition: "requested_access",
-                    }),
-                  );
+                  recordRemoval(removing, reason, "requested_access");
                   dispatch(
                     chatActions.boundRequest({
                       appId: removing.id,
@@ -158,7 +150,10 @@ export function AppsScreen(): React.JSX.Element {
           <Button
             text="Keep app"
             variant="ghost"
-            onPress={() => setRemoving(null)}
+            onPress={() => {
+              if (removing) recordRemoval(removing, reason, "kept");
+              setRemoving(null);
+            }}
           />
         </Flex>
       </Modal>

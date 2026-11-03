@@ -16,36 +16,39 @@ struct SavedAppRecord: Record {
 /// The existing coordinated store remains authoritative. JavaScript receives a
 /// grant only after timer registration, durable publication and shield readback.
 public final class VolitionScreenTimeModule: Module {
-    private var enforcement: ConversationEnforcement {
+    private static var enforcement: ConversationEnforcement {
         ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController())
     }
-    private func failure(_ message: String) -> NSError {
+    private static func failure(_ message: String) -> NSError {
         NSError(domain: "VolitionScreenTime", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
     }
-    private func token(_ encoded: String) throws -> ApplicationToken {
+    private static func token(_ encoded: String) throws -> ApplicationToken {
         guard let data = Data(base64Encoded: encoded) else { throw failure("Invalid app selection") }
         return try JSONDecoder().decode(ApplicationToken.self, from: data)
     }
-    private func grantRecord(_ grant: ConversationGrantStore.Grant, snapshots: [RuleSnapshotDTO]) -> [String: Any] {
+    private static func grantRecord(_ grant: ConversationGrantStore.Grant, snapshots: [RuleSnapshotDTO]) -> [String: Any] {
         ["grantId": grant.plan.grantID.uuidString.lowercased(),
          "appId": ConversationGrantStore.applicable(to: grant.token, in: snapshots).first?.id.uuidString.lowercased() ?? "",
          "tokenBase64": (try? JSONEncoder().encode(grant.token).base64EncodedString()) ?? "",
          "minutes": grant.plan.minutes,
          "expiresAt": ISO8601DateFormatter().string(from: grant.plan.expiresAt)]
     }
-    public func definition() -> ModuleDefinition {
-        Name("VolitionScreenTime")
-        AsyncFunction("requestAuthorization") { () -> String in
-            try await AuthorizationCenter.shared.requestAuthorization(for: .individual)
-            return await MainActor.run { AuthorizationCenter.shared.authorizationStatus == .approved ? "approved" : "denied" }
-        }
-        Function("getAuthorizationStatus") { () -> String in
+    private static func authorizationStatus() -> String {
             switch AuthorizationCenter.shared.authorizationStatus {
-            case .approved: return "approved"
+            case .approved, .approvedWithDataAccess: return "approved"
             case .denied: return "denied"
             case .notDetermined: return "notDetermined"
             @unknown default: return "unknown"
             }
+    }
+    public func definition() -> ModuleDefinition {
+        Name("VolitionScreenTime")
+        AsyncFunction("requestAuthorization") { () -> String in
+            try await AuthorizationCenter.shared.requestAuthorization(for: .individual)
+            return await MainActor.run { Self.authorizationStatus() }
+        }
+        Function("getAuthorizationStatus") { () -> String in
+            Self.authorizationStatus()
         }
         AsyncFunction("presentAppPicker") { (promise: Promise) in
             Task { @MainActor in FamilyActivityPickerPresenter.shared.present(promise: promise) }
@@ -53,36 +56,36 @@ public final class VolitionScreenTimeModule: Module {
         AsyncFunction("reconcileShields") { (apps: [SavedAppRecord]) -> String in
             let snapshots = try apps.map { app -> RuleSnapshotDTO in
                 guard let id = UUID(uuidString: app.id), !app.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                      app.name.count <= 600, !app.goal.isEmpty, app.goal.count <= 2000 else { throw self.failure("Invalid saved app") }
+                      app.name.count <= 600, !app.goal.isEmpty, app.goal.count <= 2000 else { throw Self.failure("Invalid saved app") }
                 var selection = FamilyActivitySelection()
-                selection.applicationTokens = [try self.token(app.tokenBase64)]
+                selection.applicationTokens = [try Self.token(app.tokenBase64)]
                 return RuleSnapshotDTO(id: id, name: app.name, kindRaw: RuleKind.conversation.rawValue,
                     isEnabled: app.isEnabled, hardMode: false, selectionModeRaw: SelectionMode.block.rawValue,
                     selectionData: AppSelectionCodec.encode(selection), dayNumbers: [], startMinutes: 0, endMinutes: 0,
                     dailyLimitMinutes: 0, maxOpens: 0, conversationGoal: app.goal)
             }
-            guard Set(apps.map(\.tokenBase64)).count == apps.count else { throw self.failure("Duplicate app") }
-            _ = try self.enforcement.sync(snapshots)
+            guard Set(apps.map(\.tokenBase64)).count == apps.count else { throw Self.failure("Duplicate app") }
+            _ = try Self.enforcement.sync(snapshots)
             return ConversationGrantStore.fingerprint(snapshots)
         }
         AsyncFunction("createGrant") { (encoded: String, minutes: Int, fingerprint: String, breakMinutes: Int?, overridingID: String?, relief: Bool, consentRevision: Int) -> [String: Any] in
             let active = await MainActor.run { UIApplication.shared.applicationState == .active }
-            guard active else { throw self.failure("Open Volition to unlock") }
-            let decodedToken = try self.token(encoded)
+            guard active else { throw Self.failure("Open Volition to unlock") }
+            let decodedToken = try Self.token(encoded)
             let appIDs = try ConversationGrantStore().transaction { state in
                 Set(ConversationGrantStore.applicable(to: decodedToken, in: state.snapshots).map(\.id))
             }
             let allowed = try await MainActor.run {
                 let wait = try LegacyImport.shared.waitUntil(appIDs: appIDs)
-                return AuthorizationCenter.shared.authorizationStatus == .approved && (wait.map { $0 <= Date() } ?? true)
+                return Self.authorizationStatus() == "approved" && (wait.map { $0 <= Date() } ?? true)
             }
-            guard allowed else { throw self.failure("An existing wait or permission prevents access") }
-            let grant = try self.enforcement.approve(token: decodedToken, minutes: minutes, fingerprint: fingerprint,
+            guard allowed else { throw Self.failure("An existing wait or permission prevents access") }
+            let grant = try Self.enforcement.approve(token: decodedToken, minutes: minutes, fingerprint: fingerprint,
                 blockMinutes: breakMinutes, overridingDealID: overridingID.flatMap(UUID.init(uuidString:)), immediateRelief: relief, activationAllowed: {
                     AppGroup.defaults.bool(forKey: "expoAIConsent") && AppGroup.defaults.integer(forKey: "expoConsentRevision") == consentRevision
                 })
             let snapshots = try ConversationGrantStore().transaction { $0.snapshots }
-            return self.grantRecord(grant, snapshots: snapshots)
+            return Self.grantRecord(grant, snapshots: snapshots)
         }
         AsyncFunction("setAIConsent") { (allowed: Bool, revision: Int) in
             try ConversationGrantStore().transaction { _ in
@@ -91,19 +94,19 @@ public final class VolitionScreenTimeModule: Module {
             }
         }
         AsyncFunction("rollbackGrant") { (id: String) in
-            guard let uuid = UUID(uuidString: id) else { throw self.failure("Invalid grant") }
-            try self.enforcement.end(grantID: uuid, cancelDeal: true)
+            guard let uuid = UUID(uuidString: id) else { throw Self.failure("Invalid grant") }
+            try Self.enforcement.end(grantID: uuid, cancelDeal: true)
             await ConversationSessionPresentation.shared.end(uuid)
         }
         AsyncFunction("revokeGrant") { (id: String) in
-            guard let uuid = UUID(uuidString: id) else { throw self.failure("Invalid grant") }
-            try self.enforcement.end(grantID: uuid)
+            guard let uuid = UUID(uuidString: id) else { throw Self.failure("Invalid grant") }
+            try Self.enforcement.end(grantID: uuid)
             await ConversationSessionPresentation.shared.end(uuid)
         }
         AsyncFunction("getActiveGrants") { () -> [[String: Any]] in
-            self.enforcement.reconcileStored()
+            Self.enforcement.reconcileStored()
             return try ConversationGrantStore().transaction { state in
-                state.activeGrants.map { self.grantRecord($0, snapshots: state.snapshots) }
+                state.activeGrants.map { Self.grantRecord($0, snapshots: state.snapshots) }
             }
         }
         AsyncFunction("getCommitments") { () -> [[String: Any]] in
@@ -119,7 +122,7 @@ public final class VolitionScreenTimeModule: Module {
             }
         }
         AsyncFunction("recordPushback") { (encoded: String) in
-            try self.enforcement.recordDealPushback(token: self.token(encoded))
+            try Self.enforcement.recordDealPushback(token: Self.token(encoded))
         }
         AsyncFunction("consumeShieldRequest") { () -> String? in
             let active = await MainActor.run { UIApplication.shared.applicationState == .active }
@@ -141,12 +144,12 @@ public final class VolitionScreenTimeModule: Module {
             let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: "volition.openai", kSecAttrAccount as String: "api-key"]
             let deletion = SecItemDelete(query as CFDictionary)
-            guard deletion == errSecSuccess || deletion == errSecItemNotFound else { throw self.failure("Credential storage unavailable") }
+            guard deletion == errSecSuccess || deletion == errSecItemNotFound else { throw Self.failure("Credential storage unavailable") }
             if !key.isEmpty {
                 var item = query
                 item[kSecValueData as String] = Data(key.utf8)
                 item[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-                guard SecItemAdd(item as CFDictionary, nil) == errSecSuccess else { throw self.failure("Credential storage unavailable") }
+                guard SecItemAdd(item as CFDictionary, nil) == errSecSuccess else { throw Self.failure("Credential storage unavailable") }
             }
         }
         AsyncFunction("getAPIKey") { () -> String? in
@@ -156,7 +159,7 @@ public final class VolitionScreenTimeModule: Module {
             var result: CFTypeRef?
             let status = SecItemCopyMatching(query as CFDictionary, &result)
             if status == errSecItemNotFound { return nil }
-            guard status == errSecSuccess, let data = result as? Data else { throw self.failure("Credential storage unavailable") }
+            guard status == errSecSuccess, let data = result as? Data else { throw Self.failure("Credential storage unavailable") }
             return String(data: data, encoding: .utf8)
         }
         AsyncFunction("exportLegacyState") { () -> String in
@@ -165,10 +168,10 @@ public final class VolitionScreenTimeModule: Module {
         AsyncFunction("updateFocus") { (json: String) in
             let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
             let state = try decoder.decode(FocusProtectionState.self, from: Data(json.utf8))
-            try self.enforcement.updateFocus(state, monitor: DeviceFocusMonitor())
+            try Self.enforcement.updateFocus(state, monitor: DeviceFocusMonitor())
         }
         AsyncFunction("getFocus") { () -> String in
-            let state = try ConversationGrantStore().transaction { _ in try self.enforcement.focusStore.load() }
+            let state = try ConversationGrantStore().transaction { _ in try Self.enforcement.focusStore.load() }
             let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
             return String(decoding: try encoder.encode(state), as: UTF8.self)
         }

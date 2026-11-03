@@ -61,7 +61,7 @@ export function MainTabNavigator(): React.JSX.Element {
       <Tabs.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
-      tabBarButtonTestID:`sidebarItem-${route.name.toLowerCase()}`,
+          tabBarButtonTestID: `sidebarItem-${route.name.toLowerCase()}`,
           tabBarPosition: width >= 768 ? "left" : "bottom",
           tabBarActiveTintColor: theme.colors.tabBarActiveTintColor,
           tabBarInactiveTintColor: theme.colors.textSecondary,

@@ -21,6 +21,7 @@ final class ExpoMigrationUITests: XCTestCase {
         let app = XCUIApplication(bundleIdentifier: "com.a5karki.volition")
         app.launch()
         XCTAssertTrue(control(app, "conversationChooseAppButton").waitForExistence(timeout: 90))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Preview mode")).firstMatch.waitForExistence(timeout: 10))
         capture(app, "Expo Chat")
         for name in ["apps", "insights", "focus", "settings", "chat"] {
             let tab = control(app, "sidebarItem-\(name)")

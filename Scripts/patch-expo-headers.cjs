@@ -33,3 +33,52 @@ if (source.includes("@protocol RCTBridgeModule;")) {
     ),
   );
 }
+// React Native removes the legacy architecture for native compilation, but its
+// Swift import flags omit that define. Also keep +Internal headers private in
+// the generated framework umbrella instead of exporting deprecated internals.
+const reactRoot = path.join(__dirname, "..", "node_modules", "react-native");
+const specPath = path.join(reactRoot, "React-Core.podspec");
+source = fs.readFileSync(specPath, "utf8");
+source = source.replace(
+  'ss.private_header_files   = "React/Cxx*/*.h"',
+  'ss.private_header_files   = ["React/Cxx*/*.h", "React/**/*+Internal.h"]',
+);
+if (
+  !source.includes("ss.source_files = headers\n      ss.private_header_files")
+) {
+  source = source.replace(
+    "ss.source_files = headers\n",
+    'ss.source_files = headers\n      ss.private_header_files = "React/**/*+Internal.h"\n',
+  );
+}
+fs.writeFileSync(specPath, source);
+for (const relative of [
+  "React/Base/RCTMultipartDataTask.h",
+  "Libraries/Network/RCTHTTPRequestHandler.h",
+]) {
+  const header = path.join(reactRoot, relative);
+  source = fs.readFileSync(header, "utf8");
+  if (!source.includes("NS_ASSUME_NONNULL_BEGIN")) {
+    const lines = source.split("\n");
+    let lastImport = -1;
+    lines.forEach((line, index) => {
+      if (line.startsWith("#import")) lastImport = index;
+    });
+    lines.splice(lastImport + 1, 0, "\nNS_ASSUME_NONNULL_BEGIN\n");
+    fs.writeFileSync(header, lines.join("\n") + "\nNS_ASSUME_NONNULL_END\n");
+  }
+}
+const websocket = path.join(
+  reactRoot,
+  "React/CoreModules/RCTWebSocketModule.h",
+);
+source = fs.readFileSync(websocket, "utf8");
+source = source.replace(
+  "typedef SRWebSocket * (^SRWebSocketProvider)(NSURLRequest *request);",
+  "typedef SRWebSocket * _Nonnull (^SRWebSocketProvider)(NSURLRequest * _Nonnull request);",
+);
+fs.writeFileSync(websocket, source);
+const http = path.join(reactRoot, 'Libraries/Network/RCTHTTPRequestHandler.h');
+source = fs.readFileSync(http, 'utf8');
+source = source.replace('typedef NSURLSessionConfiguration * (^NSURLSessionConfigurationProvider)(void);', 'typedef NSURLSessionConfiguration * _Nonnull (^NSURLSessionConfigurationProvider)(void);');
+fs.writeFileSync(http, source);

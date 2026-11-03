@@ -1,5 +1,7 @@
 import ExpoModulesCore
 import FamilyControls
+import ManagedSettings
+import UIKit
 import SwiftUI
 
 final class VolitionAppIconView: ExpoView {
@@ -9,7 +11,7 @@ final class VolitionAppIconView: ExpoView {
         guard let data = Data(base64Encoded: encoded),
               let token = try? JSONDecoder().decode(ApplicationToken.self, from: data) else { return }
         let host = UIHostingController(rootView: AnyView(Label(token).labelStyle(.iconOnly)))
-        host.view.backgroundColor = .clear
+        host.view.backgroundColor = UIColor.clear
         host.view.translatesAutoresizingMaskIntoConstraints = false
         addSubview(host.view)
         NSLayoutConstraint.activate([

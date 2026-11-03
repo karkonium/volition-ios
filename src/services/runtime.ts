@@ -171,18 +171,41 @@ export async function saveApp(app: VolitionSavedApp): Promise<void> {
   await persistor.flush();
   await syncNative();
 }
+export function recordRemoval(
+  app: VolitionSavedApp,
+  reason: string,
+  disposition: string,
+): void {
+  const date = new Date().toISOString();
+  store.dispatch(
+    activityLogActions.removalRecorded({
+      appId: app.id,
+      date,
+      reason,
+      disposition,
+    }),
+  );
+  store.dispatch(
+    activityLogActions.added({
+      id: Crypto.randomUUID(),
+      appId: app.id,
+      appName: app.name,
+      date,
+      message: reason,
+      decision: null,
+      outcome: disposition === "removed" ? "removed" : "removalRequested",
+      feedbackSignal: "high_frustration",
+    }),
+  );
+}
 export async function removeApp(appId: string, reason: string): Promise<void> {
+  const previous = store
+    .getState()
+    .apps.items.find((item) => item.id === appId);
   const apps = store.getState().apps.items.filter((item) => item.id !== appId);
   await VolitionScreenTime.reconcileShields(apps);
   store.dispatch(appsActions.removed(appId));
-  store.dispatch(
-    activityLogActions.removalRecorded({
-      appId,
-      date: new Date().toISOString(),
-      reason,
-      disposition: "removed",
-    }),
-  );
+  if (previous) recordRemoval(previous, reason, "removed");
   await persistor.flush();
   await syncNative();
 }

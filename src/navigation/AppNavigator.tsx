@@ -1,5 +1,5 @@
 import { previewMode } from "../../modules/volition-screen-time";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { AppState, Linking, useColorScheme } from "react-native";
 import {
   NavigationContainer,
@@ -26,12 +26,14 @@ export function AppNavigator(): React.JSX.Element {
   const { theme } = useTheme();
   const scheme = useColorScheme();
   const [ready, setReady] = useState(false);
+  const initialized = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState(0);
   const initialize = async (): Promise<void> => {
     setError(null);
     try {
       await initializeRuntime();
+      initialized.current = true;
       setReady(true);
     } catch {
       setError(
@@ -42,11 +44,11 @@ export function AppNavigator(): React.JSX.Element {
   useEffect(() => {
     void initialize();
     const listener = AppState.addEventListener("change", (status) => {
-      if (status === "active")
+      if (status === "active" && initialized.current)
         void syncNative().catch(() => diagnostic("native.sync_failed"));
     });
     const timer = setInterval(() => {
-      if (AppState.currentState === "active")
+      if (AppState.currentState === "active" && initialized.current)
         void syncNative().catch(() => diagnostic("native.sync_failed"));
     }, 30000);
     return () => {

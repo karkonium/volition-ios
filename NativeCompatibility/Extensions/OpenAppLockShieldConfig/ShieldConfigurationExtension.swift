@@ -1,0 +1,1 @@
+../../../targets/shield-config/ShieldConfigurationExtension.swift

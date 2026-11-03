@@ -13,6 +13,7 @@ const slice = createSlice({
   name: "chat",
   initialState: {
     routeVersion: 0,
+    selectionAttention: 0,
     memory: "",
     messages: [] as ChatMessage[],
     draft: "",
@@ -26,7 +27,11 @@ const slice = createSlice({
     memoryImported(state, action: PayloadAction<string>) {
       state.memory = action.payload;
     },
+    selectionRequired(state) {
+      state.selectionAttention++;
+    },
     shieldRequested(state, action: PayloadAction<string>) {
+      state.selectionAttention = 0;
       state.selectedAppId = action.payload;
       state.boundAppId = action.payload;
       state.routeVersion++;
@@ -44,10 +49,12 @@ const slice = createSlice({
       state.boundAppId = null;
     },
     boundSelected(state, action: PayloadAction<string>) {
+      state.selectionAttention = 0;
       state.selectedAppId = action.payload;
       state.boundAppId = action.payload;
     },
     selected(state, action: PayloadAction<string>) {
+      state.selectionAttention = 0;
       state.selectedAppId = action.payload;
     },
     messageAdded(state, action: PayloadAction<ChatMessage>) {

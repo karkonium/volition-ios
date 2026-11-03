@@ -1,3 +1,4 @@
+import { AttentionRegion } from "../../components/AttentionRegion";
 import React, { useRef, useState } from "react";
 import { AccessibilityInfo } from "react-native";
 import * as Crypto from "expo-crypto";
@@ -62,17 +63,19 @@ export function AppEditorForm({
         }
       />
       <Text type="H3">2. Give it a name</Text>
-      <TextField
-        ref={nameField}
-        placeholderLabel="e.g. SoundCloud"
-        value={name}
-        onChange={(text) => {
-          setName(text);
-          setMissing(false);
-        }}
-        maxLength={600}
-        testID="volitionAppName"
-      />
+      <AttentionRegion trigger={missing ? 1 : 0}>
+        <TextField
+          ref={nameField}
+          placeholderLabel="e.g. SoundCloud"
+          value={name}
+          onChange={(text) => {
+            setName(text);
+            setMissing(false);
+          }}
+          maxLength={600}
+          testID="volitionAppName"
+        />
+      </AttentionRegion>
       {missing && (
         <Text accessibilityRole="alert">Please give this app a name.</Text>
       )}

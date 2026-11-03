@@ -1,3 +1,4 @@
+import { AttentionRegion } from "../../components/AttentionRegion";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useRef, useState, useEffect } from "react";
 import { ScrollView } from "react-native";
@@ -59,6 +60,12 @@ export function ChatScreen(): React.JSX.Element {
   useEffect(() => {
     if (nearBottom) transcript.current?.scrollToEnd({ animated: true });
   }, [state.chat.messages.length, offer?.status, feedback?.id, nearBottom]);
+  useEffect(() => {
+    if (feedback) {
+      setNearBottom(true);
+      transcript.current?.scrollToEnd({ animated: true });
+    }
+  }, [feedback?.id]);
   return (
     <Flex vertical style={styles.root}>
       {state.grants.activeGrants.length > 0 && (
@@ -85,12 +92,19 @@ export function ChatScreen(): React.JSX.Element {
         }
       >
         <Header title="Chat" subtitle="A moment of intention" />
-        <Button
-          text={app?.name ?? "Choose an app"}
-          variant="outline"
-          testID="conversationChooseAppButton"
-          onPress={() => setPicker(true)}
-        />
+        <AttentionRegion trigger={state.chat.selectionAttention}>
+          <Button
+            text={app?.name ?? "Choose an app"}
+            variant="outline"
+            testID="conversationChooseAppButton"
+            onPress={() => setPicker(true)}
+          />
+        </AttentionRegion>
+        {state.chat.selectionAttention > 0 && (
+          <Text testID="conversationAppSelectionHint">
+            Choose the app you mean. Your draft is saved.
+          </Text>
+        )}
         {state.chat.messages.length > state.chat.visibleCount && (
           <Button
             text="Earlier messages"
@@ -102,6 +116,9 @@ export function ChatScreen(): React.JSX.Element {
           vertical
           gap="sm"
           testID="conversationTranscript"
+          onLayout={() => {
+            if (nearBottom) transcript.current?.scrollToEnd({ animated: true });
+          }}
           onTouchStart={() => setNearBottom(false)}
         >
           {state.chat.messages

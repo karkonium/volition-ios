@@ -33,6 +33,7 @@ export interface ActivityLogEntry {
   outcome: ActivityOutcome;
   feedback?: OutcomeFeedback;
   grantId?: string;
+  feedbackSignal?: "high_frustration";
 }
 const slice = createSlice({
   name: "activityLog",
@@ -43,6 +44,7 @@ const slice = createSlice({
       date: string;
       reason: string;
       disposition: string;
+      feedbackSignal: "high_frustration";
     }[],
   },
   reducers: {
@@ -69,6 +71,7 @@ const slice = createSlice({
         id: string;
         outcome: ActivityOutcome;
         grantId?: string;
+        feedbackSignal?: "high_frustration";
       }>,
     ) {
       const entry = state.entries.find((item) => item.id === action.payload.id);
@@ -99,7 +102,10 @@ const slice = createSlice({
         disposition: string;
       }>,
     ) {
-      state.removalLedger.push(action.payload);
+      state.removalLedger.push({
+        ...action.payload,
+        feedbackSignal: "high_frustration",
+      });
     },
     cleared(state) {
       state.entries = [];
