@@ -1,1 +1,1 @@
-../../../../Shared/Logic/URL+RuleID.swift
+../../../../modules/volition-screen-time/ios/Shared/Logic/URL+RuleID.swift

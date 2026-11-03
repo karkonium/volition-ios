@@ -1,1 +1,1 @@
-../../../../Shared/Stores/RuleSnapshotUserDefaultsStore.swift
+../../../../modules/volition-screen-time/ios/Shared/Stores/RuleSnapshotUserDefaultsStore.swift

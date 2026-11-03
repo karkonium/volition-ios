@@ -1,1 +1,1 @@
-../../../../Shared/Stores/NotificationPreferences.swift
+../../../../modules/volition-screen-time/ios/Shared/Stores/NotificationPreferences.swift

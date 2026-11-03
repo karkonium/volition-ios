@@ -1,1 +1,1 @@
-../../../../Shared/Platform/ConversationRequestNotification.swift
+../../../../modules/volition-screen-time/ios/Shared/Platform/ConversationRequestNotification.swift

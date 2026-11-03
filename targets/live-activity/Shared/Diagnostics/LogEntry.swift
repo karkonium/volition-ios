@@ -1,1 +1,1 @@
-../../../../Shared/Diagnostics/LogEntry.swift
+../../../../modules/volition-screen-time/ios/Shared/Diagnostics/LogEntry.swift

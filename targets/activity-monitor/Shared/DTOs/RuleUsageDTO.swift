@@ -1,1 +1,1 @@
-../../../../Shared/DTOs/RuleUsageDTO.swift
+../../../../modules/volition-screen-time/ios/Shared/DTOs/RuleUsageDTO.swift

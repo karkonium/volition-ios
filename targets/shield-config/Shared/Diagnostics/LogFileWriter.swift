@@ -1,1 +1,1 @@
-../../../../Shared/Diagnostics/LogFileWriter.swift
+../../../../modules/volition-screen-time/ios/Shared/Diagnostics/LogFileWriter.swift

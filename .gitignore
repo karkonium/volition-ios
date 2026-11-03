@@ -18,3 +18,5 @@ node_modules/
 /android/
 coverage/
 *.tsbuildinfo
+
+NativeCompatibility/App/Conversation.env

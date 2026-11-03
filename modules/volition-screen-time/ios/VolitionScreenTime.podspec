@@ -11,6 +11,7 @@ Pod::Spec.new do |s|
   s.static_framework = true
   s.dependency 'ExpoModulesCore'
   s.source_files = '**/*.swift'
+  s.exclude_files = 'LegacyModels/RuleDraft.swift', 'LegacyModels/RulePreset.swift'
   s.resources = 'Shared/Copy.xcstrings'
   s.frameworks = 'FamilyControls', 'ManagedSettings', 'ManagedSettingsUI', 'DeviceActivity', 'ActivityKit', 'SwiftUI', 'UserNotifications'
   s.swift_version = '5.0'

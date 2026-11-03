@@ -1,1 +1,1 @@
-../../../../Shared/Enforcement/UninstallProtectionPolicy.swift
+../../../../modules/volition-screen-time/ios/Shared/Enforcement/UninstallProtectionPolicy.swift

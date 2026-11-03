@@ -1,1 +1,1 @@
-../../../../Shared/Models/Calendar+NextMidnight.swift
+../../../../modules/volition-screen-time/ios/Shared/Models/Calendar+NextMidnight.swift

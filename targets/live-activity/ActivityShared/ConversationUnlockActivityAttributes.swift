@@ -1,1 +1,1 @@
-../../../ActivityShared/ConversationUnlockActivityAttributes.swift
+../../../modules/volition-screen-time/ios/ActivityShared/ConversationUnlockActivityAttributes.swift

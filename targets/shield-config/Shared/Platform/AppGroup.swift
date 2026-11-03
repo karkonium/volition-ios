@@ -1,1 +1,1 @@
-../../../../Shared/Platform/AppGroup.swift
+../../../../modules/volition-screen-time/ios/Shared/Platform/AppGroup.swift

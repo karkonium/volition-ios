@@ -1,1 +1,1 @@
-../../../../Shared/Logic/UNNotificationContent+URL.swift
+../../../../modules/volition-screen-time/ios/Shared/Logic/UNNotificationContent+URL.swift

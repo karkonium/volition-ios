@@ -1,1 +1,1 @@
-../../../../Shared/Models/RuleSchedule.swift
+../../../../modules/volition-screen-time/ios/Shared/Models/RuleSchedule.swift

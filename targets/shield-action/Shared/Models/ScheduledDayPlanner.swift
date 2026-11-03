@@ -1,1 +1,1 @@
-../../../../Shared/Models/ScheduledDayPlanner.swift
+../../../../modules/volition-screen-time/ios/Shared/Models/ScheduledDayPlanner.swift

@@ -1,1 +1,1 @@
-../../../../Shared/Models/ConversationReminderPlan.swift
+../../../../modules/volition-screen-time/ios/Shared/Models/ConversationReminderPlan.swift

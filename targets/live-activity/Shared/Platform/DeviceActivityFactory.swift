@@ -1,1 +1,1 @@
-../../../../Shared/Platform/DeviceActivityFactory.swift
+../../../../modules/volition-screen-time/ios/Shared/Platform/DeviceActivityFactory.swift

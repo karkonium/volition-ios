@@ -66,6 +66,12 @@ public final class VolitionScreenTimeModule: Module {
             }
             guard Set(apps.map(\.tokenBase64)).count == apps.count else { throw Self.failure("Duplicate app") }
             _ = try Self.enforcement.sync(snapshots)
+            try ConversationGrantStore().transaction { _ in
+                AppGroup.defaults.set(false, forKey: AppGroup.uninstallProtectionKey)
+                ManagedSettingsShieldController().setAppRemovalDenied(false)
+                RuleSnapshotUserDefaultsStore().save(snapshots)
+            }
+            RuleScheduler(monitor: DeviceActivityCenterMonitor()).sync(snapshots: snapshots)
             return ConversationGrantStore.fingerprint(snapshots)
         }
         AsyncFunction("createGrant") { (encoded: String, minutes: Int, fingerprint: String, breakMinutes: Int?, overridingID: String?, relief: Bool, consentRevision: Int) -> [String: Any] in

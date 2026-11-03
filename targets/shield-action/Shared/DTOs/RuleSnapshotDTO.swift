@@ -1,1 +1,1 @@
-../../../../Shared/DTOs/RuleSnapshotDTO.swift
+../../../../modules/volition-screen-time/ios/Shared/DTOs/RuleSnapshotDTO.swift
