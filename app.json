@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Volition",
+    "slug": "volition",
+    "scheme": ["volition", "openapplock"],
+    "version": "1.0.0",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.a5karki.volition",
+      "supportsTablet": true,
+      "deploymentTarget": "18.0",
+      "entitlements": {
+        "com.apple.developer.family-controls": true,
+        "com.apple.security.application-groups": ["group.com.a5karki.volition"]
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSSupportsLiveActivities": true
+      },
+      "appleTeamId": "X3956RJC8P"
+    },
+    "plugins": [
+      "./plugins/with-volition-targets",
+      "expo-font",
+      "expo-notifications",
+      "expo-sharing",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "18.0",
+            "useFrameworks": "static",
+            "usePrecompiledModules": false,
+            "enableSceneSupport": true,
+            "buildReactNativeFromSource": true
+          }
+        }
+      ],
+      "expo-asset",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false
+        }
+      ],
+      "expo-image",
+      "expo-video",
+      "expo-web-browser"
+    ],
+    "platforms": ["ios"],
+    "icon": "./assets/icon.png"
+  }
+}

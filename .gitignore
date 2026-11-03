@@ -10,3 +10,11 @@ build/
 Config/*
 !Config/Conversation.env.example
 OpenAppLock/Conversation.env
+
+# Expo generated files
+node_modules/
+.expo/
+/ios/
+/android/
+coverage/
+*.tsbuildinfo

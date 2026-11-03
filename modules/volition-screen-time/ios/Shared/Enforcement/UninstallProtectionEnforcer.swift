@@ -1,0 +1,1 @@
+../../../../../Shared/Enforcement/UninstallProtectionEnforcer.swift

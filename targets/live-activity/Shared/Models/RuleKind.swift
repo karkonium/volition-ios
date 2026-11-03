@@ -1,0 +1,1 @@
+../../../../Shared/Models/RuleKind.swift

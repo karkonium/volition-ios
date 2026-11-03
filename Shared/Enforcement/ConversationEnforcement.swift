@@ -87,17 +87,21 @@ nonisolated struct ConversationEnforcement {
     /// All covering stores are reconciled and checked before approval returns.
     /// A remaining configured blocker revokes the grant and stops its timer.
     /// Readback is configuration evidence, not proof of the OS-visible screen.
+    /// Admission is revalidated inside both transactions, including consent
+    /// revision checks supplied by alternate application shells.
     /// Explicit coach urgency/frustration relief may waive the exact current deal
     /// without replacement terms; consent/configuration/Focus and release checks remain.
     func approve(token: ApplicationToken, minutes: Int, fingerprint: String,
                  now: Date = .now, timer: any ConversationTimerScheduling = DeviceConversationTimer(),
-                 blockMinutes: Int? = nil, overridingDealID: UUID? = nil, immediateRelief: Bool = false) throws -> ConversationGrantStore.Grant {
+                 blockMinutes: Int? = nil, overridingDealID: UUID? = nil, immediateRelief: Bool = false,
+                 activationAllowed: @Sendable () -> Bool = { true }) throws -> ConversationGrantStore.Grant {
         if immediateRelief && blockMinutes != nil { throw ConversationAccessError.staleRequest }
         if let blockMinutes, !(1...1440).contains(blockMinutes) { throw ConversationUnlockPlan.ValidationError.invalidDuration }
         let plan = try ConversationUnlockPlan(grantID: UUID(), minutes: minutes,
             start: Date(timeIntervalSince1970: floor(now.timeIntervalSince1970)))
         do {
             try store.transaction { state in
+                guard activationAllowed() else { throw ConversationAccessError.staleRequest }
                 guard !state.activeGrants.contains(where: { $0.token == token && !$0.plan.hasExpired(at: now) }) else { throw ConversationAccessError.alreadyUnlocked }
                 let protection = try focusStore.load()
                 guard !ConversationGrantStore.applicable(to: token, in: state.snapshots).contains(where: { protection.protects(appID: $0.id, at: now) }) else {
@@ -135,6 +139,7 @@ nonisolated struct ConversationEnforcement {
         }
         do {
             return try store.transaction { state in
+                guard activationAllowed() else { throw ConversationAccessError.staleRequest }
                 guard let grant = state.activeGrants.first(where: { $0.plan.grantID == plan.grantID }),
                       ConversationGrantStore.isValid(grant, in: state.snapshots),
                       !plan.hasExpired(at: currentTime()) else { throw ConversationAccessError.staleRequest }

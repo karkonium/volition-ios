@@ -1,0 +1,1 @@
+../../../../../Shared/Enforcement/UninstallProtectionPolicy.swift

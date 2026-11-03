@@ -26,6 +26,21 @@ struct ConversationAccessTests {
             conversationGoal: "Use intentionally.")
     }
 
+    @Test("Withdrawn admission rejects approval before registering a timer")
+    func admissionWithdrawn() throws {
+        let app = try token(1)
+        let (access, _) = try makeAccess()
+        let rule = snapshot([app]); _ = try access.sync([rule])
+        let timer = MockConversationTimer()
+        #expect(throws: ConversationAccessError.staleRequest) {
+            try access.approve(token: app, minutes: 5, fingerprint: ConversationGrantStore.fingerprint([rule]),
+                timer: timer, activationAllowed: { false })
+        }
+        let state = try access.store.transaction { $0 }
+        #expect(state.activeGrants.isEmpty)
+        #expect(state.dealCommitments.isEmpty)
+    }
+
     @Test("Urgency relief releases the exact deal without pushbacks or replacement, and rollback restores it")
     func immediateDealRelief() throws {
         let app = try token(1)

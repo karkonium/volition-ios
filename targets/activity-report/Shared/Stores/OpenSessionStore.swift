@@ -1,0 +1,1 @@
+../../../../Shared/Stores/OpenSessionStore.swift

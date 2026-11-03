@@ -1,0 +1,1 @@
+../../../../Shared/Models/RuleConfiguration.swift

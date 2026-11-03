@@ -1,0 +1,1 @@
+../../../../Shared/Diagnostics/LogMerge.swift
