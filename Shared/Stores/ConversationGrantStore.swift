@@ -51,7 +51,7 @@ nonisolated struct ConversationGrantStore: Sendable {
         self.fileURL = fileURL
     }
 
-    func transaction<T>(_ operation: (inout State) throws -> T) throws -> T {
+    func transaction<T>(onFailure: () -> Void = {}, _ operation: (inout State) throws -> T) throws -> T {
         guard let fileURL else { throw ConversationAccessError.storageUnavailable }
         var error: NSError?
         var result: Result<T, Error>?
@@ -61,10 +61,16 @@ nonisolated struct ConversationGrantStore: Sendable {
                 if FileManager.default.fileExists(atPath: url.path) {
                     state = try JSONDecoder().decode(State.self, from: Data(contentsOf: url))
                 }
-                let value = try operation(&state)
-                try saveMirror(state.snapshots)
-                try JSONEncoder().encode(state).write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
-                return value
+                do {
+                    let value = try operation(&state)
+                    try saveMirror(state.snapshots)
+                    try JSONEncoder().encode(state).write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+                    return value
+                } catch {
+                    // Roll back coupled policy/monitor writes before releasing coordination.
+                    onFailure()
+                    throw error
+                }
             }
         }
         if let error { throw error }

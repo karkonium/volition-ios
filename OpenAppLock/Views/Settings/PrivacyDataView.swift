@@ -1,22 +1,14 @@
 import SwiftUI
 
-/// Sharing, local storage and erasure are distinct controls. Withdrawal cancels
-/// pending work; erasure preserves only the minimal active enforcement state.
+/// AI coaching is required; this screen explains its data use and provides local
+/// erasure without changing the independent Screen Time authorization.
 struct PrivacyDataView: View {
     @Environment(ConversationCoordinator.self) private var conversation
     @State private var confirmingErase = false
     @State private var eraseFailed = false
     var body: some View {
         VolitionScroll {
-            VolitionCard {
-                Toggle(CopyKey.aiConsentToggle.resource, isOn: Binding(
-                    get: { conversation.preferences.hasConsent },
-                    set: { conversation.setAIConsent($0) }))
-                    .font(.subheadline.weight(.semibold))
-                    .accessibilityIdentifier("aiConsentToggle")
-                Text(CopyKey.aiConsentWithdrawal.resource).font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(CopyKey.aiCoachingRequired.resource).font(.subheadline).foregroundStyle(.secondary)
             AISharingDetails()
             VolitionCard {
                 if let url = privacyPolicyURL {

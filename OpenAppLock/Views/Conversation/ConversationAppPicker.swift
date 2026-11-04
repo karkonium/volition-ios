@@ -24,7 +24,6 @@ struct ConversationAppPicker: View {
 
     var body: some View {
         VolitionScroll {
-            Text(CopyKey.uiPickerIntro.resource).font(.subheadline).foregroundStyle(.secondary)
             VolitionSectionHeading(title: CopyKey.uiSavedApps.string, count: results.count)
             if results.isEmpty {
                 VolitionCard {
@@ -64,9 +63,13 @@ struct ConversationAppPicker: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(rule.name).font(.subheadline.weight(.semibold)).foregroundStyle(Color.primary)
                         Text(rule.conversationGoal).font(.caption).foregroundStyle(Color.secondary).lineLimit(2)
-                        Label((protected ? CopyKey.uiFocusStatus : open ? .appTemporarilyOpen : .appConversationProtected).resource,
-                            systemImage: protected ? "moon" : open ? "lock.open" : "shield")
-                            .font(.caption2.weight(.medium)).foregroundStyle(Color.secondary)
+                        if protected {
+                            Label(CopyKey.uiFocusStatus.resource, systemImage: "moon")
+                                .font(.caption2.weight(.medium)).foregroundStyle(Color.secondary)
+                        } else if open {
+                            Label(CopyKey.appTemporarilyOpen.resource, systemImage: "lock.open")
+                                .font(.caption2.weight(.medium)).foregroundStyle(Color.secondary)
+                        }
                     }
                     Spacer(minLength: 0)
                     Image(systemName: selected ? "checkmark.circle.fill" : "circle")

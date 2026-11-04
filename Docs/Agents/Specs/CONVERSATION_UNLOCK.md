@@ -2,6 +2,13 @@
 
 ## Product contract
 
+Ordinary conversation uses the `chat` decision with all duration fields null.
+Selecting or mentioning an app, boredom, urgency or frustration alone does not
+request access. The coach listens and answers without offering unlocks or
+interventions. An explicit current access request (or a direct answer to its
+pending question) enables the access progression. Chat records a Conversation
+log outcome, never an access event or deal pushback, and preserves pending offers.
+
 Welcome → AI sharing choice → Screen Time permission → save apps → Chat. Each profile contains one
 individual app token and required name (1–600 characters). Optional structured
 intentions and free-text notes (up to 2,000 characters) live alongside the legacy
@@ -310,8 +317,9 @@ and owns transport cancellation. Summarization failure uses bounded recent conte
 
 AI consent precedes every transmission and withdrawal cancels pending work. Content
 erasure removes transcript, memory, content logs and reason/reply text from retained
-minimal active enforcement events. Release builds never bundle personal credentials;
-a production coach gateway and public privacy policy remain release blockers.
+minimal active enforcement events. Personal-prototype Release builds currently
+bundle the local credential, including TestFlight. A server-held credential and
+public privacy policy remain necessary before public distribution.
 
 Insights report grants/access opportunities, never measured usage. Warm/balanced/
 direct tone defaults to balanced without changing local policy. Focus protection
@@ -447,3 +455,52 @@ when activation adds no visible transcript message.
 Validation for this revision: 25 synthetic live GPT-5.4 mini cases passed,
 covering routine/urgent distinction, sequential interventions, explicit choices,
 user-proposed terms, and immediate urgency/frustration relief during a deal.
+
+## Robustness and recovery
+
+Unreadable history is write-protected until a successful reload; ordinary refresh,
+cancellation and consent changes never replace it. Clear Chat and content erasure
+must fail visibly if preserving saved profiles and waits cannot be guaranteed.
+App edits commit even when their optional structured profile is unchanged.
+Content erasure retains saved structured intentions as well as free-text goals.
+Feedback persistence is best-effort and never gates removing an app.
+
+Forms share trimmed-input limits and show field-specific errors on invalid Save
+attempts. Focus custom selections must contain only currently enabled saved apps;
+missing selections never silently become all apps. Dirty app/Focus editors require
+explicit discard. Diagnostics distinguish empty data from read/delete/export
+failures and offer retry. Focus monitor replacement may retire only superseded
+Focus registrations, restoring prior schedules on failure; unrelated grant monitors
+are never evicted to make room.
+
+## Concise interventions and first-request variety
+
+The selected-app status uses one inline count/minutes/break-end sentence. Choice
+buttons use explicit title, pause/access terms, and next-step lines with matching
+reserved height. Activation renders progress before any deal/pause offer card,
+so selecting Deal does not show a second acceptance prompt during registration.
+Emotion questions now sample roughly one-third of eligible requests while keeping
+the persisted global two-minute cooldown. A first request without an intention
+can ask for an intention, show a separate emotion check-in, or offer a short
+opening. Follow-ups consume the answer rather than repeating the first check-in.
+Repeat-use delays/deals, Focus and accepted-break enforcement still apply.
+
+## Personal-prototype TestFlight coaching
+
+Debug and Release use the same direct OpenAI client and ignored local
+`OpenAppLock/Conversation.env`. Release no longer injects UnavailableCoachService,
+ignores the bundled environment or disables direct HTTP requests. This restores
+the current prototype in TestFlight, including iOS 18. This is not a production
+credential architecture: the key is extractable from the app. Keep testers
+trusted and move the credential to a server before public distribution.
+No backend, invitation setup or extra user-facing credential controls are added.
+
+## Required AI coaching and section hierarchy
+
+AI coaching is a core feature and is enabled on startup for both fresh and older
+installations, including previous optional opt-outs. There is no user-facing AI
+sharing toggle, defer action or re-enable gate. Onboarding explains what is sent
+to OpenAI and continues to the separate system Screen Time authorization step.
+Privacy & Data keeps the disclosure and local erasure controls. Internal request
+cancellation guards remain testable. Permissions and all four Add App headings
+now sit above, rather than inside, their content cards.

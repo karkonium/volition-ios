@@ -440,6 +440,7 @@ nonisolated final class DeviceActivityCenterMonitor: ActivityMonitoring, @unchec
     }
 
     func stopMonitoring(names: [String]) {
+        guard !names.isEmpty else { return }
         center.stopMonitoring(names.map { DeviceActivityName($0) })
     }
 }

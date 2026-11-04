@@ -5,6 +5,8 @@ protocol ConversationKeyStoring {
 }
 
 /// OpenAppLock/Conversation.env is copied into the main app bundle at build time.
+/// Personal-prototype configuration is loaded in both Debug and Release. This
+/// embeds the credential in the app; replace with a relay before public distribution.
 /// Accepts comments, optional export, and single/double quoted values without
 /// shell expansion. Missing/placeholder keys stay unconfigured. Malformed known
 /// values fail locally; credentials never enter defaults or extension storage.
@@ -14,9 +16,6 @@ nonisolated struct ConversationEnvironment: Sendable {
     enum InvalidConfiguration: Error { case malformed }
 
     static let bundled: ConversationEnvironment = {
-        #if !DEBUG
-        return try! ConversationEnvironment(contents: "")
-        #else
         do {
             let url = Bundle.main.url(forResource: "Conversation", withExtension: "env")
             return try ConversationEnvironment(contents: try url.map { try String(contentsOf: $0, encoding: .utf8) } ?? "")
@@ -25,7 +24,6 @@ nonisolated struct ConversationEnvironment: Sendable {
             if fallback.logsEnabled { Diag.error(.conversation, "///CONVO-LOG config.invalid source=bundled-env; check local file and rebuild") }
             return fallback
         }
-        #endif
     }()
 
     init(contents: String) throws {

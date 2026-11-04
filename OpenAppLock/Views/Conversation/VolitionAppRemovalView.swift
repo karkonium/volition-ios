@@ -17,6 +17,8 @@ struct VolitionAppRemovalView: View {
     @State private var minutes = 5
     @State private var saving = false
     @State private var error: String?
+    @State private var attemptedContinue = false
+    @State private var feedbackUnavailable = false
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -44,11 +46,23 @@ struct VolitionAppRemovalView: View {
                         TextField(CopyKey.removalReason.string, text: $reason, axis: .vertical)
                             .lineLimit(3...6).focused($focused)
                             .accessibilityIdentifier("removalReasonField")
+                        if let issue = FormValidation.removalError(reason), attemptedContinue || FormValidation.trim(reason).count > 2000 {
+                            Text(issue.resource).font(.caption).foregroundStyle(.red).accessibilityIdentifier("removalReasonError")
+                        }
                     } footer: { Text(CopyKey.removalWhyHelp.resource) }
+                }
+                if feedbackUnavailable {
+                    Section {
+                        Text(CopyKey.feedbackStorageWarning.resource).foregroundStyle(.red)
+                        if !offering {
+                            Button(CopyKey.removalAnyway.resource, role: .destructive) { finish(.removed) }
+                                .accessibilityIdentifier("removalWithoutFeedbackButton")
+                        }
+                    }
                 }
                 if let error { Section { Text(error).foregroundStyle(.red) } }
             }
-            .disabled(saving || attemptID == nil)
+            .disabled(saving)
             .navigationTitle(rule.name)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -57,7 +71,7 @@ struct VolitionAppRemovalView: View {
                 if !offering {
                     ToolbarItem(placement: .confirmationAction) {
                         Button(CopyKey.removalContinue.resource) { advance() }
-                            .disabled(saving || attemptID == nil || reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || reason.count > 2000)
+                            .disabled(saving)
                             .accessibilityIdentifier("removalContinueButton")
                     }
                 }
@@ -65,7 +79,7 @@ struct VolitionAppRemovalView: View {
             .onAppear {
                 guard attemptID == nil else { return }
                 do { attemptID = try conversation.beginRemoval(appID: rule.id, appName: rule.name) }
-                catch { self.error = CopyKey.volitionSaveError.string }
+                catch { feedbackUnavailable = true }
             }
             .onDisappear {
                 guard let attemptID else { return }
@@ -77,28 +91,34 @@ struct VolitionAppRemovalView: View {
     }
 
     private func advance() {
+        attemptedContinue = true
+        guard FormValidation.removalError(reason) == nil else { focused = true; return }
         focused = false
-        do {
-            guard let attemptID else { return }
-            try conversation.recordRemovalReason(attemptID, reason: reason)
-            offering = true
-        } catch { self.error = CopyKey.volitionSaveError.string }
+        if let attemptID {
+            do { try conversation.recordRemovalReason(attemptID, reason: reason) }
+            catch { feedbackUnavailable = true }
+        }
+        offering = true
     }
 
     private func finish(_ outcome: ConversationRemovalAttempt.Outcome) {
-        focused = false
-        guard let attemptID else { dismiss(); return }
-        saving = true
+        guard !saving else { return }
+        focused = false; saving = true; error = nil
         do {
             if outcome == .removed {
                 conversation.cancelRequest()
                 rule.isEnabled = false
                 do { try context.save() } catch { context.rollback(); throw error }
             }
-            try conversation.finishRemoval(attemptID, outcome: outcome,
-                minutes: outcome == .temporaryUnlockRequested ? minutes : nil)
+            // Feedback is advisory; only a failed rule write may prevent removal.
+            if let attemptID {
+                do {
+                    try conversation.finishRemoval(attemptID, outcome: outcome,
+                        minutes: outcome == .temporaryUnlockRequested ? minutes : nil)
+                } catch { feedbackUnavailable = true }
+            }
             if outcome == .temporaryUnlockRequested {
-                onRequest(CopyKey.removalRequestMessage.string(reason.trimmingCharacters(in: .whitespacesAndNewlines), minutes))
+                onRequest(CopyKey.removalRequestMessage.string(FormValidation.trim(reason), minutes))
             }
             Task {
                 do {
@@ -109,24 +129,8 @@ struct VolitionAppRemovalView: View {
                     }
                     saving = false
                     dismiss()
-                } catch {
-                    self.error = CopyKey.volitionSaveError.string
-                    saving = false
-                }
+                } catch { self.error = CopyKey.volitionSaveError.string; saving = false }
             }
-        } catch {
-            self.error = CopyKey.volitionSaveError.string
-            // A profile save may have succeeded before feedback persistence failed.
-            // Reconcile that durable removal even while offering a feedback retry.
-            if !rule.isEnabled {
-                Task {
-                    if let rules = try? context.fetch(FetchDescriptor<BlockingRule>()) {
-                        await enforcer.refresh(rules: rules)
-                        await conversation.refresh(snapshots: rules.map(\.dto))
-                    }
-                    saving = false
-                }
-            } else { saving = false }
-        }
+        } catch { self.error = CopyKey.volitionSaveError.string; saving = false }
     }
 }

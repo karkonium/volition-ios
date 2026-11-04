@@ -39,7 +39,7 @@ struct LogStoreTests {
         try write("README.txt", ["ignore me"], in: dir)
 
         let store = LogStore(directory: dir, calendar: utc)
-        let days = store.availableDays()
+        let days = try store.availableDays()
         #expect(days.map(\.key) == ["2026-06-22", "2026-06-20"])
         #expect(days[0].lineCount == 3)  // 2 app + 1 monitor
         #expect(days[1].lineCount == 1)
@@ -60,7 +60,7 @@ struct LogStoreTests {
             ["2026-06-22T10:00:02.000Z [EVENT] [monitor/monitor] m1"], in: dir)
 
         let store = LogStore(directory: dir, calendar: utc)
-        let text = store.mergedText(for: "2026-06-22")
+        let text = try store.mergedText(for: "2026-06-22")
         #expect(
             text == """
                 2026-06-22T10:00:00.000Z [INFO] [app/enforcer] a1
@@ -89,8 +89,8 @@ struct LogStoreTests {
         try write("app-2026-06-22.log", ["x"], in: dir)
         try write("monitor-2026-06-22.log", ["y"], in: dir)
         let store = LogStore(directory: dir, calendar: utc)
-        store.clearAll()
-        #expect(store.availableDays().isEmpty)
+        try store.clearAll()
+        #expect(try store.availableDays().isEmpty)
     }
 
     @Test("Prune deletes only files older than the retention window")
@@ -101,6 +101,6 @@ struct LogStoreTests {
         try write("app-2026-05-01.log", ["old"], in: dir)
         let store = LogStore(directory: dir, calendar: utc)
         store.prune(today: date(2026, 6, 22), retentionDays: 14)
-        #expect(store.availableDays().map(\.key) == ["2026-06-22"])
+        #expect(try store.availableDays().map(\.key) == ["2026-06-22"])
     }
 }

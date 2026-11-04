@@ -73,7 +73,7 @@ struct VolitionUsageProfileFields: View {
     private func options<Content: View>(hint: CopyKey, id: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(hint.resource).font(.caption).foregroundStyle(Color.secondary)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 4).padding(.bottom, 8)
                 .accessibilityIdentifier(id)
             content()

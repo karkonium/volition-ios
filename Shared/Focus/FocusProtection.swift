@@ -83,23 +83,32 @@ nonisolated protocol FocusMonitoring: Sendable {
 nonisolated struct DeviceFocusMonitor: FocusMonitoring {
     func register(_ state: FocusProtectionState, now: Date) throws {
         let center = DeviceActivityCenter()
-        let existing = Set(center.activities.map(\.rawValue))
-        try MonitoringCapacity.validate(existing: Array(existing), adding: Array(state.activityNames(at: now)))
-        for period in state.periods where period.isEnabled && !existing.contains(period.activityName) {
-            try center.startMonitoring(DeviceActivityName(period.activityName), during: DeviceActivitySchedule(
+        let occupied = Set(center.activities.map(\.rawValue))
+        let existing = Dictionary(uniqueKeysWithValues: center.activities.compactMap { activity in
+            center.schedule(for: activity).map { (activity.rawValue, $0) }
+        })
+        var desired: [String: DeviceActivitySchedule] = [:]
+        for period in state.periods where period.isEnabled && period.isValid {
+            desired[period.activityName] = DeviceActivitySchedule(
                 intervalStart: DateComponents(hour: period.startMinutes / 60, minute: period.startMinutes % 60),
-                intervalEnd: DateComponents(hour: period.endMinutes / 60, minute: period.endMinutes % 60), repeats: true))
+                intervalEnd: DateComponents(hour: period.endMinutes / 60, minute: period.endMinutes % 60), repeats: true)
         }
-        if let session = state.session, session.isActive(at: now), !existing.contains(session.activityName) {
+        if let session = state.session, session.isActive(at: now) {
             let components: Set<Calendar.Component> = [.year, .month, .day, .hour, .minute, .second]
-            try center.startMonitoring(DeviceActivityName(session.activityName), during: DeviceActivitySchedule(
+            desired[session.activityName] = DeviceActivitySchedule(
                 intervalStart: Calendar.current.dateComponents(components, from: session.start),
-                intervalEnd: Calendar.current.dateComponents(components, from: session.expiresAt), repeats: false))
+                intervalEnd: Calendar.current.dateComponents(components, from: session.expiresAt), repeats: false)
         }
+        try FocusMonitorReplacement.apply(existing: existing, occupied: occupied, desired: desired,
+            start: { name, schedule in try center.startMonitoring(DeviceActivityName(name), during: schedule) },
+            stop: { names in if !names.isEmpty { center.stopMonitoring(names.map { DeviceActivityName($0) }) } })
     }
+
     func keepOnly(_ names: Set<String>) {
         let center = DeviceActivityCenter()
-        center.stopMonitoring(center.activities.filter { $0.rawValue.hasPrefix("focus-") && !names.contains($0.rawValue) })
+        let retired = center.activities.filter { $0.rawValue.hasPrefix("focus-") && !names.contains($0.rawValue) }
+        guard !retired.isEmpty else { return }
+        center.stopMonitoring(retired)
     }
 }
 

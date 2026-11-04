@@ -130,7 +130,7 @@ struct OnboardingView: View {
                 VolitionIcon(symbol: "hand.raised", accented: true)
                 Text(CopyKey.aiConsentTitle.resource).font(.title.bold())
                 AISharingDetails()
-                Text(CopyKey.aiConsentWithdrawal.resource).font(.footnote).foregroundStyle(.secondary)
+                Text(CopyKey.aiCoachingRequired.resource).font(.footnote).foregroundStyle(.secondary)
                 Button(CopyKey.privacyTitle.resource, systemImage: "arrow.up.right") { showingPrivacy = true }
                     .buttonStyle(VolitionButtonStyle(primary: false))
                     .sheet(isPresented: $showingPrivacy) { NavigationStack { PrivacyDataView() } }
@@ -185,13 +185,8 @@ struct OnboardingView: View {
                 step = .privacy
             }
         case .privacy:
-            VStack(spacing: 16) {
-                pillButton(CopyKey.aiConsentAccept.string, identifier: "acceptAIConsentButton") {
-                    conversation.setAIConsent(true); step = .permission
-                }
-                Button(CopyKey.aiConsentLater.resource) { conversation.setAIConsent(false); step = .permission }
-                    .buttonStyle(VolitionButtonStyle(primary: false))
-                    .accessibilityIdentifier("deferAIConsentButton")
+            pillButton(CopyKey.onboardingContinueButton.string, identifier: "continueAIInfoButton") {
+                step = .permission
             }
         case .permission:
             pillButton(

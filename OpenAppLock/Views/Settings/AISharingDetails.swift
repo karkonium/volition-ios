@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// The same disclosure appears in onboarding, chat review and privacy settings.
-/// The accept action belongs to the caller; displaying details never grants consent.
+/// Explains required AI coaching during onboarding and in Privacy & Data.
 struct AISharingDetails: View {
     var body: some View {
         VStack(spacing: 16) {
@@ -31,31 +30,5 @@ struct AISharingDetails: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }.padding(.vertical, 2)
-    }
-}
-
-struct AIConsentReviewView: View {
-    @Environment(ConversationCoordinator.self) private var conversation
-    @Environment(\.dismiss) private var dismiss
-    var body: some View {
-        NavigationStack {
-            VolitionScroll {
-                Text(CopyKey.aiConsentTitle.resource).font(.title2.bold())
-                AISharingDetails()
-                Text(CopyKey.aiConsentWithdrawal.resource).font(.footnote).foregroundStyle(.secondary)
-            }
-            .safeAreaInset(edge: .bottom) {
-                Button(CopyKey.aiConsentAccept.resource) {
-                    conversation.setAIConsent(true)
-                    dismiss()
-                }.buttonStyle(VolitionButtonStyle())
-                    .accessibilityIdentifier("acceptAIConsentButton")
-                    .padding(16).background(VolitionStyle.background)
-            }
-            .volitionRoot(CopyKey.uiSharingDetails.string)
-            .toolbar { ToolbarItem(placement: .cancellationAction) {
-                Button(CopyKey.conversationCancel.resource) { dismiss() }
-            } }
-        }
     }
 }

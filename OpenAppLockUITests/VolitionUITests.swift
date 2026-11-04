@@ -19,7 +19,8 @@ final class VolitionUITests: XCTestCase {
         app.swipeUp()
         app.buttons["removeVolitionAppButton"].waitToAppear().tap()
         let reason = app.element("removalReasonField").waitToAppear()
-        XCTAssertFalse(app.buttons["removalContinueButton"].isEnabled)
+        app.buttons["removalContinueButton"].tap()
+        app.staticTexts["removalReasonError"].waitToAppear()
         reason.tap(); reason.typeText("I need to reply and this feels frustrating")
         app.buttons["removalContinueButton"].tap()
         capture("Supportive removal alternatives", app)
@@ -35,6 +36,28 @@ final class VolitionUITests: XCTestCase {
         app.buttons["removalContinueButton"].tap()
         app.buttons["removalConfirmButton"].waitToAppear().tap()
         XCTAssertTrue(app.buttons["volitionApp-Intentional Access"].waitForNonExistence(timeout: 5))
+    }
+
+    func testSettingsAndAppHeadingsSitOutsideCards() {
+        let app = XCUIApplication.launchOpenAppLock(seedScenario: "conversation")
+        app.goToSettingsTab()
+        let heading = app.element("settingsPermissionsHeading")
+        for _ in 0..<4 where !heading.isHittable { app.swipeUp() }
+        let card = app.element("settingsPermissionsCard").waitToAppear()
+        XCTAssertLessThanOrEqual(heading.frame.maxY, card.frame.minY)
+        capture("Settings section headings outside cards", app)
+        app.goToAppsTab()
+        app.buttons["addVolitionAppButton"].waitToAppear().tap()
+        for (title, container) in [("appSelectionStep", "appSelectionCard"), ("appNameStep", "appNameCard"),
+                                   ("appProfileStep", "appProfileCard"), ("appIntentionStep", "appIntentionCard")] {
+            let label = app.element(title)
+            for _ in 0..<5 where !label.isHittable { app.swipeUp() }
+            XCTAssertTrue(label.exists)
+            let surface = app.element(container)
+            XCTAssertTrue(surface.exists)
+            XCTAssertLessThanOrEqual(label.frame.maxY, surface.frame.minY)
+            capture(title + " outside card", app)
+        }
     }
 
     func testOptionalStructuredProfileCanBeEdited() {
@@ -136,7 +159,11 @@ final class VolitionUITests: XCTestCase {
         app.buttons["endConversationUnlockButton"].tap()
         field.tap(); field.typeText("wait before more time")
         app.buttons["conversationSendButton"].tap()
+        // The current flow asks an optional check-in before showing the wait offer.
+        app.buttons["reflectionEmotion-skip"].waitToAppear().tap()
         app.staticTexts["Let’s leave this app closed for now. What were you hoping to do?"].waitToAppear()
+        app.buttons["startReflectionButton"].waitToAppear()
+        XCTAssertFalse(app.element("reflectionCountdown").exists)
         XCTAssertFalse(app.element("conversationCooldown").exists)
         XCTAssertFalse(app.buttons["endConversationUnlockButton"].exists)
         XCTAssertTrue(field.isEnabled)

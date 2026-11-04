@@ -18,11 +18,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--case', action='append', dest='case_ids', help='Run only these fixture IDs; repeat for multiple cases.')
     parser.add_argument('--live', action='store_true')
     default_model = re.search(r'static let model = "([^"]+)"', (ROOT / 'OpenAppLock/Services/Conversation/OpenAIConversationClient.swift').read_text()).group(1)
     parser.add_argument('--model', default=default_model)
     args = parser.parse_args()
     cases = json.loads((ROOT / 'Docs/Agents/Evals/coach-cases.json').read_text())
+    if args.case_ids:
+        unknown = set(args.case_ids) - {case['id'] for case in cases}
+        if unknown: sys.exit('Unknown case ID')
+        cases = [case for case in cases if case['id'] in args.case_ids]
     source = (ROOT / 'OpenAppLock/Services/Conversation/CoachingPolicy.swift').read_text()
     match = re.search(r'static let instructions = """\n(.*?)\n    """', source, re.S)
     if not match:
@@ -30,7 +35,7 @@ def main():
     instructions = textwrap.dedent(match.group(1))
     ids = [case['id'] for case in cases]
     assert len(ids) == len(set(ids))
-    assert all(set(case['allowed']) <= {'ask', 'deny', 'approve', 'wait', 'pause', 'deal', 'choice', 'override', 'urgent', 'frustration'} for case in cases)
+    assert all(set(case['allowed']) <= {'chat', 'ask', 'deny', 'approve', 'wait', 'pause', 'deal', 'choice', 'override', 'urgent', 'frustration'} for case in cases)
     if not args.live:
         print(f'Validated {len(cases)} evaluation fixtures and the production prompt. No network requests made.')
         return
@@ -43,7 +48,7 @@ def main():
     schema = {'type': 'object', 'additionalProperties': False,
               'required': ['reply', 'decision', 'unlock_minutes', 'wait_minutes', 'pause_seconds', 'block_minutes'],
               'properties': {'reply': {'type': 'string'},
-                             'decision': {'type': 'string', 'enum': ['ask', 'deny', 'approve', 'wait', 'pause', 'deal', 'choice', 'override', 'urgent', 'frustration']},
+                             'decision': {'type': 'string', 'enum': ['chat', 'ask', 'deny', 'approve', 'wait', 'pause', 'deal', 'choice', 'override', 'urgent', 'frustration']},
                              'unlock_minutes': {'type': ['integer', 'null']},
                              'wait_minutes': {'type': ['integer', 'null']},
                              'pause_seconds': {'type': ['integer', 'null']},
@@ -54,11 +59,13 @@ def main():
         context = {'goals': ['Use apps intentionally for practical tasks; avoid impulsive repeated scrolling.'],
                    'appNickname': case.get('appName', 'Maps'), 'currentAppID': app_id, 'memory': case.get('memory', ''), 'timeZone': 'UTC',
                    'currentTime': iso(now), 'tone': 'balanced', 'focusProtected': case.get('focusProtected', False),
-                   'recentMessages': [{'id': app_id, 'date': iso(now), 'role': 'user', 'text': case['message']}],
+                   'recentMessages': [dict(item, id=app_id, date=iso(now)) for item in case.get('history', [])] +
+                       [{'id': app_id, 'date': iso(now), 'role': 'user', 'text': case['message']}],
                    'recommendedPauseSeconds': case.get('pauseSeconds', 10),
                    'pauseBeforeDealRequired': False, 'recentPauseAttempts': case.get('pauseAttempts', 0),
                    'recommendedIntervention': 'awareness_or_choice' if count == 0 else ('delay' if count == 1 else 'deal'),
                    'preferDeal': case.get('pauseAttempts', 0) >= 2 or count >= 2, 'emotionCheckInSuggested': case.get('checkIn', False),
+                   'initialRequestApproach': case.get('initialApproach', 'intention'), 'isInitialRequest': True,
                    'recentReflections': ([{'appID': app_id, 'date': iso(now), 'state': 'completed', 'seconds': 10, 'skipped': False, 'unlockMinutes': 3}] if case.get('completedPause') else []),
                    'recentRemovalAttempts': [], 'accessEvents': [], 'activitySummary': {'grantsLast30Minutes': count, 'grantsLastHour': count,
                        'sameAppGrantsLastHour': count, 'grantedMinutesLastHour': count * 5,

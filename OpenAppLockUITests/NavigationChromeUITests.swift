@@ -50,7 +50,7 @@ final class NavigationChromeUITests: XCTestCase {
             shot.name = "Title-free \(title)"; shot.lifetime = .keepAlways; add(shot)
         }
         app.buttons["privacyDataButton"].tap()
-        app.switches["aiConsentToggle"].waitToAppear()
+        app.element("aiSharingDetails").waitToAppear()
         let bar = app.navigationBars["Privacy & Data"]
         XCTAssertTrue(bar.waitForExistence(timeout: 5))
         bar.buttons.firstMatch.tap()

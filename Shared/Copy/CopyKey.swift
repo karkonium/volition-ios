@@ -5,6 +5,23 @@ import Foundation
 /// code only ever references the symbolic case. `nonisolated` so shield/monitor
 /// extension code (outside the MainActor default) can resolve copy.
 nonisolated enum CopyKey: String, CaseIterable {
+    case activityChatted = "activity.chatted"
+    case validationMessageLimit = "robustness.validationMessageLimit"
+    case validationRemovalReason = "robustness.validationRemovalReason"
+    case validationFocusName = "robustness.validationFocusName"
+    case validationFocusDays = "robustness.validationFocusDays"
+    case validationFocusApps = "robustness.validationFocusApps"
+    case validationFocusMissingApps = "robustness.validationFocusMissingApps"
+    case validationNoApps = "robustness.validationNoApps"
+    case discardChangesTitle = "robustness.discardChangesTitle"
+    case discardChangesAction = "robustness.discardChangesAction"
+    case keepEditing = "robustness.keepEditing"
+    case feedbackStorageWarning = "robustness.feedbackStorageWarning"
+    case diagnosticsOperationError = "robustness.diagnosticsOperationError"
+    case focusCapacityError = "robustness.focusCapacityError"
+    case historyRetryLoad = "robustness.historyRetryLoad"
+    case validationNotesLimit = "robustness.validationNotesLimit"
+
     case customEmotionAction = "reflection.customEmotionAction"
     case customEmotionPlaceholder = "reflection.customEmotionPlaceholder"
     case customEmotionSubmit = "reflection.customEmotionSubmit"
@@ -14,6 +31,11 @@ nonisolated enum CopyKey: String, CaseIterable {
     case feedbackNeutral = "conversation.feedbackNeutral"
     case feedbackAnnoying = "conversation.feedbackAnnoying"
     case feedbackThanks = "conversation.feedbackThanks"
+    case concisePause = "reflection.concisePause"
+    case delayDuration = "reflection.delayDuration"
+    case unlockedDuration = "reflection.unlockedDuration"
+    case thenUnlockedDuration = "reflection.thenUnlockedDuration"
+    case thenBlockedDuration = "reflection.thenBlockedDuration"
     case interventionDelayTitle = "reflection.delayTitle"
     case interventionDealTitle = "reflection.dealTitle"
     case interventionOpenTitle = "reflection.openTitle"
@@ -113,6 +135,10 @@ nonisolated enum CopyKey: String, CaseIterable {
     case uiNameExplanationTitle = "interface.uiNameExplanationTitle"
     case uiSelectOne = "interface.uiSelectOne"
     case uiSelectedAppUsageHelp = "interface.uiSelectedAppUsageHelp"
+    case uiUnlockOne = "interface.uiUnlockOne"
+    case uiUnlockMany = "interface.uiUnlockMany"
+    case uiMinuteOne = "interface.uiMinuteOne"
+    case uiMinuteMany = "interface.uiMinuteMany"
     case uiSelectedAppUsage = "interface.uiSelectedAppUsage"
     case uiIntentionStep = "interface.uiIntentionStep"
     case uiChangeApp = "interface.uiChangeApp"
@@ -142,6 +168,7 @@ nonisolated enum CopyKey: String, CaseIterable {
     case enforcementUncertain = "expansion.enforcementUncertain"
     case aiConsentAccept = "expansion.aiConsentAccept"
     case aiConsentLater = "expansion.aiConsentLater"
+    case aiCoachingRequired = "expansion.aiCoachingRequired"
     case aiConsentTitle = "expansion.aiConsentTitle"
     case aiConsentDisclosure = "expansion.aiConsentDisclosure"
     case aiConsentWithdrawal = "expansion.aiConsentWithdrawal"
@@ -293,6 +320,8 @@ nonisolated enum CopyKey: String, CaseIterable {
     case conversationEndUnlock = "conversation.conversationEndUnlock"
     case conversationRequestAccess = "conversation.conversationRequestAccess"
     case conversationWaiting = "conversation.conversationWaiting"
+    case conversationHistoryClearConfirm = "conversation.historyClearConfirm"
+    case conversationHistoryClearAction = "conversation.historyClearAction"
     case conversationHistoryClear = "conversation.conversationHistoryClear"
     case conversationMissingKey = "conversation.conversationMissingKey"
     case conversationNetworkError = "conversation.conversationNetworkError"
@@ -511,6 +540,12 @@ nonisolated enum CopyKey: String, CaseIterable {
 
     /// Resolved String for non-SwiftUI producers (shields, notifications, logic).
     var string: String { String(localized: resource) }
+
+    /// Use a single exact unit for pause labels rather than composite durations.
+    static func pauseDuration(seconds: Int) -> String {
+        let units: Set<Duration.UnitsFormatStyle.Unit> = seconds.isMultiple(of: 60) ? [.minutes] : [.seconds]
+        return Duration.seconds(seconds).formatted(.units(allowed: units, width: .wide))
+    }
 
     /// Resolved + formatted for interpolated copy (placeholders live in the catalog value).
     func string(_ args: CVarArg...) -> String { String(format: string, arguments: args) }

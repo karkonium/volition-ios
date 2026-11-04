@@ -12,8 +12,9 @@ nonisolated enum CoachTone: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// AI sharing defaults on when no choice exists. An explicit opt-out survives
-/// relaunch and upgrades, independently of Screen Time permission.
+/// AI coaching is a required part of the app. Startup enables it for fresh and
+/// upgraded installations, independently of the system Screen Time permission.
+/// The internal cancellation switch remains available to lifecycle tests.
 @Observable
 final class CoachPreferences {
     private let defaults: UserDefaults
@@ -21,7 +22,8 @@ final class CoachPreferences {
     var tone: CoachTone { didSet { defaults.set(tone.rawValue, forKey: "coachTone") } }
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        hasConsent = defaults.object(forKey: "aiConsentVersion") == nil || defaults.integer(forKey: "aiConsentVersion") == 1
+        hasConsent = true
+        defaults.set(1, forKey: "aiConsentVersion")
         tone = CoachTone(rawValue: defaults.string(forKey: "coachTone") ?? "") ?? .balanced
     }
     func setConsent(_ granted: Bool) {

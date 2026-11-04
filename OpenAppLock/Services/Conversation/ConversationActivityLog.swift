@@ -18,7 +18,7 @@ nonisolated struct ConversationActivityEntry: Codable, Equatable, Identifiable, 
     }
     enum FeedbackSignal: String, Codable, Sendable { case highFrustration = "high_frustration" }
     enum Outcome: String, Codable, Sendable {
-        case pending, unlocked, asked, denied, wait, failed, cancelled, unconfirmed, interrupted
+        case chatted, pending, unlocked, asked, denied, wait, failed, cancelled, unconfirmed, interrupted
         case blockedByWait = "blocked_by_wait"
         case alreadyUnlocked = "already_unlocked"
         case reflection, dealOffered, dealDeclined, removalRequested
@@ -31,6 +31,7 @@ nonisolated struct ConversationActivityEntry: Codable, Equatable, Identifiable, 
             case .reflection: CopyKey.reflectionRecorded.string
             case .pending: CopyKey.activityPending.string
             case .unlocked: CopyKey.activityUnlocked.string
+            case .chatted: CopyKey.activityChatted.string
             case .asked: CopyKey.activityAsked.string
             case .denied: CopyKey.activityDenied.string
             case .wait: CopyKey.activityWait.string
@@ -90,6 +91,7 @@ nonisolated struct ConversationActivityEntry: Codable, Equatable, Identifiable, 
         switch event.decision {
         case .deal: outcome = .dealOffered
         case .pause, .choice: outcome = .reflection
+        case .chat: outcome = .chatted
         case .ask: outcome = .asked
         case .deny: outcome = .denied
         case .wait: outcome = .wait

@@ -1,6 +1,293 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "conversation.historyClearConfirm" : {
+      "extractionState" : "manual",
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear conversation history?" } } }
+    },
+    "conversation.historyClearAction" : {
+      "extractionState" : "manual",
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear" } } }
+    },
+    "activity.chatted" : {
+      "extractionState" : "manual",
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Conversation" } } }
+    },
+    "interface.uiUnlockOne" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld unlock"
+          }
+        }
+      }
+    },
+    "interface.uiUnlockMany" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld unlocks"
+          }
+        }
+      }
+    },
+    "interface.uiMinuteOne" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld min"
+          }
+        }
+      }
+    },
+    "interface.uiMinuteMany" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld mins"
+          }
+        }
+      }
+    },
+    "expansion.aiCoachingRequired" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI coaching is part of how Volition works. Access requests use the information below to get a response from OpenAI."
+          }
+        }
+      }
+    },
+    "reflection.concisePause" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause %@"
+          }
+        }
+      }
+    },
+    "reflection.delayDuration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ pause"
+          }
+        }
+      }
+    },
+    "reflection.unlockedDuration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ unlocked"
+          }
+        }
+      }
+    },
+    "reflection.thenUnlockedDuration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "then %@ unlocked"
+          }
+        }
+      }
+    },
+    "reflection.thenBlockedDuration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "then %@ blocked"
+          }
+        }
+      }
+    },
+    "robustness.validationMessageLimit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep your message to 4,000 characters or fewer."
+          }
+        }
+      }
+    },
+    "robustness.validationRemovalReason" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a reason using 1–2,000 characters."
+          }
+        }
+      }
+    },
+    "robustness.validationFocusName" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Give this schedule a name using 1–100 characters."
+          }
+        }
+      }
+    },
+    "robustness.validationFocusDays" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose at least one day."
+          }
+        }
+      }
+    },
+    "robustness.validationFocusApps" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose at least one saved app."
+          }
+        }
+      }
+    },
+    "robustness.validationFocusMissingApps" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some selected apps are no longer saved. Choose your apps again."
+          }
+        }
+      }
+    },
+    "robustness.validationNoApps" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save an app in Apps before starting Focus."
+          }
+        }
+      }
+    },
+    "robustness.discardChangesTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard unsaved changes?"
+          }
+        }
+      }
+    },
+    "robustness.discardChangesAction" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard changes"
+          }
+        }
+      }
+    },
+    "robustness.keepEditing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep editing"
+          }
+        }
+      }
+    },
+    "robustness.feedbackStorageWarning" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feedback could not be saved. You can still remove this app."
+          }
+        }
+      }
+    },
+    "robustness.diagnosticsOperationError" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The logs could not be read, exported, or fully deleted. Try again."
+          }
+        }
+      }
+    },
+    "robustness.focusCapacityError" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There is no room for another timer. End an unlock or turn off an unused Focus schedule, then try again."
+          }
+        }
+      }
+    },
+    "robustness.historyRetryLoad" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry loading history"
+          }
+        }
+      }
+    },
+    "robustness.validationNotesLimit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep your notes to 2,000 characters or fewer."
+          }
+        }
+      }
+    },
     "reflection.delayTitle" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -62,7 +349,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple lets Volition show the app you picked, but keeps its name private. Type the same name here so your coach knows which app you mean when you chat."
+            "value" : "Apple keeps the selected app’s name private. Add the same name here to make it easier to talk about the app in chat."
           }
         }
       }
@@ -95,7 +382,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unlocks today: %lld · %lld min granted"
+            "value" : "%@, %@ granted"
           }
         }
       }
@@ -1085,7 +1372,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Agreed break until %@"
+            "value" : "locked till %@"
           }
         }
       }
@@ -1096,7 +1383,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Decline"
+            "value" : "Decline deal"
           }
         }
       }
@@ -1393,7 +1680,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your conversation, your choice"
+            "value" : "How AI coaching works"
           }
         }
       }
@@ -1965,7 +2252,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A public privacy policy is not yet available. Review the data-sharing explanation above before enabling AI coaching."
+            "value" : "A public privacy policy is not yet available. The information above explains how AI coaching uses your data."
           }
         }
       }
@@ -2482,7 +2769,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open a category or use search, then tap an individual app. Your choice returns here automatically."
+            "value" : "Open a category or use search, then tap an individual app."
           }
         }
       }
@@ -2537,7 +2824,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI permission and your data"
+            "value" : "How AI uses your data"
           }
         }
       }
@@ -3329,7 +3616,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unlock for %lld minutes"
+            "value": "Unlock app"
           }
         }
       }
@@ -3505,7 +3792,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keep app closed"
+            "value" : "Keep app locked"
           }
         }
       }

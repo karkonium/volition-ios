@@ -37,6 +37,54 @@ struct ConversationCoordinatorTests {
         return (coordinator, history, rule, token)
     }
 
+    @Test("Ordinary chat preserves interventions and never grants access or counts as deal pushback")
+    func ordinaryChatHasNoAccessEffects() async throws {
+        let client = ChattingConversationClient()
+        let (coordinator, history, rule, _) = try setup(client: client, checkIn: true)
+        await coordinator.refresh(snapshots: [rule])
+        await coordinator.send("I'm bored, can we talk?", snapshots: { [rule] })
+        #expect(history.value.messages.last?.text == "Of course. What's on your mind?")
+        #expect(history.value.accessEvents.isEmpty)
+        #expect(history.value.activityLog.last?.outcome == .chatted)
+        #expect(coordinator.grants.isEmpty)
+        #expect(coordinator.pendingReflections.isEmpty)
+        #expect(coordinator.feedbackEntry == nil)
+
+        await coordinator.send("deal", snapshots: { [rule] })
+        let offer = try #require(coordinator.pendingReflections.first)
+        let eventsBeforeChat = history.value.accessEvents.count
+        await coordinator.send("How was your day?", snapshots: { [rule] })
+        #expect(coordinator.pendingReflections.first?.id == offer.id)
+        #expect(history.value.accessEvents.count == eventsBeforeChat)
+        coordinator.chooseEmotion(.skip, for: offer.id)
+        await coordinator.completeReflection(offer.id, acceptDeal: true, snapshots: { [rule] })
+        let grant = try #require(coordinator.grants.first)
+        await coordinator.endUnlock(grantID: grant.plan.grantID)
+        let eventsBeforeDealChat = history.value.accessEvents.count
+        await coordinator.send("Work was stressful today", snapshots: { [rule] })
+        await coordinator.send("Thanks for listening", snapshots: { [rule] })
+        #expect(await client.contexts().last?.deal?.pushbackCount == 0)
+        #expect(history.value.accessEvents.count == eventsBeforeDealChat)
+        #expect(history.value.activityLog.last?.outcome == .chatted)
+        #expect(coordinator.grants.isEmpty)
+    }
+
+    @Test("First-request guidance remains distinct from a follow-up and respects emotion eligibility")
+    func initialRequestGuidance() async throws {
+        for emotion in [false, true] {
+            let client = RecordingConversationClient()
+            let (coordinator, _, rule, _) = try setup(client: client, checkIn: emotion)
+            await coordinator.send("Open the app", snapshots: { [rule] })
+            let first = try #require(await client.contexts().last)
+            #expect(first.isInitialRequest)
+            #expect(first.initialRequestApproach == "emotion" || !emotion)
+            if !emotion { #expect(["intention", "open"].contains(first.initialRequestApproach)) }
+            await coordinator.send("To reply to a friend", snapshots: { [rule] })
+            let followup = try #require(await client.contexts().last)
+            #expect(!followup.isInitialRequest)
+        }
+    }
+
     @Test("Urgency and frustration directly release an accepted deal and remain confirmed grants")
     func priorityRelief() async throws {
         for message in ["urgent", "frustrated"] {
@@ -1360,4 +1408,18 @@ private actor NegotiationRecordingClient: ConversationClient {
     }
     func summarize(memory: String, messages: [ConversationMessage], apiKey: String) async throws -> String { memory }
     func contexts() -> [ConversationContext] { received }
+}
+
+private actor ChattingConversationClient: ConversationClient {
+    private var received: [ConversationContext] = []
+    func contexts() -> [ConversationContext] { received }
+    func respond(to context: ConversationContext, apiKey: String) async throws -> ConversationDecision {
+        received.append(context)
+        if context.recentMessages.last?.text == "deal" {
+            return .init(reply: "Five minutes now, then thirty away?", decision: .deal,
+                unlockMinutes: 5, blockMinutes: 30)
+        }
+        return .init(reply: "Of course. What's on your mind?", decision: .chat, unlockMinutes: nil)
+    }
+    func summarize(memory: String, messages: [ConversationMessage], apiKey: String) async throws -> String { memory }
 }

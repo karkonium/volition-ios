@@ -24,7 +24,7 @@ final class FocusController {
             let access = access; let monitor = monitor
             try await Task.detached { try access.updateFocus(state, monitor: monitor) }.value
             self.state = state; errorMessage = nil
-        } catch { errorMessage = CopyKey.focusSaveError.string }
+        } catch { errorMessage = (error as? ConversationAccessError) == .monitoringUnavailable ? CopyKey.focusCapacityError.string : CopyKey.focusSaveError.string }
     }
     func endCurrent(now: Date = .now) async {
         var updated = state
@@ -36,13 +36,19 @@ final class FocusController {
     }
     func refresh() async {
         do {
-            state = try access.focusStore.load()
-            let access = access; let monitor = monitor; let state = state
-            try await Task.detached {
-                try access.store.transaction { _ in try monitor.register(state, now: .now) }
-                monitor.keepOnly(state.activityNames(at: .now))
+            guard !isSaving else { return }
+            isSaving = true
+            defer { isSaving = false }
+            let access = access; let monitor = monitor
+            state = try await Task.detached {
+                try access.store.transaction { _ in
+                    let current = try access.focusStore.load()
+                    try monitor.register(current, now: .now)
+                    monitor.keepOnly(current.activityNames(at: .now))
+                    return current
+                }
             }.value
             errorMessage = nil
-        } catch { errorMessage = CopyKey.focusSaveError.string }
+        } catch { errorMessage = (error as? ConversationAccessError) == .monitoringUnavailable ? CopyKey.focusCapacityError.string : CopyKey.focusSaveError.string }
     }
 }

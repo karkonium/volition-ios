@@ -6,6 +6,7 @@ struct ConversationSettingsView: View {
     @Environment(NotificationAuthorization.self) private var notifications
     @Environment(\.openURL) private var openURL
     @State private var confirmingClear = false
+    @State private var clearFailed = false
     var body: some View {
         @Bindable var preferences = conversation.preferences
         VolitionScroll {
@@ -40,12 +41,17 @@ struct ConversationSettingsView: View {
                 Button(CopyKey.conversationHistoryClear.resource, role: .destructive) { confirmingClear = true }
                     .buttonStyle(VolitionButtonStyle(primary: false))
                     .accessibilityIdentifier("clearConversationHistoryButton")
+                if clearFailed { Text(CopyKey.conversationStorageError.resource).foregroundStyle(.red).accessibilityIdentifier("clearHistoryError") }
+                if conversation.loadFailed {
+                    Button(CopyKey.historyRetryLoad.resource) { conversation.retryLoadingHistory(); clearFailed = conversation.loadFailed }
+                }
             }
         }
         .tint(VolitionStyle.accent)
         .volitionRoot(CopyKey.volitionCoachSettings.string)
-        .confirmationDialog(CopyKey.conversationHistoryClear.string, isPresented: $confirmingClear, titleVisibility: .visible) {
-            Button(CopyKey.conversationHistoryClear.resource, role: .destructive) { conversation.clearHistory() }
-        } message: { Text(CopyKey.volitionClearHelp.resource) }
+        .alert(CopyKey.conversationHistoryClearConfirm.string, isPresented: $confirmingClear) {
+            Button(CopyKey.conversationCancel.resource, role: .cancel) {}
+            Button(CopyKey.conversationHistoryClearAction.resource, role: .destructive) { clearFailed = !conversation.clearHistory() }
+        }
     }
 }

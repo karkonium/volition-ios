@@ -4,6 +4,15 @@ import Testing
 
 @MainActor
 struct ConversationEnvironmentTests {
+    @Test("Bundled prototype credentials load the same way in Debug and Release")
+    func bundledConfigurationIsNotDisabled() throws {
+        let url = Bundle.main.url(forResource: "Conversation", withExtension: "env")
+        let expected = try ConversationEnvironment(contents: try url.map { try String(contentsOf: $0, encoding: .utf8) } ?? "")
+        // Compare via a Boolean so a regression cannot print the credential.
+        let matches = ConversationEnvironment.bundled.apiKey == expected.apiKey
+        #expect(matches)
+    }
+
     @Test func parsesQuotedLocalEnvironment() throws {
         let config = try ConversationEnvironment(contents: "# local config\nexport OPENAI_API_KEY = \"test-only\"\nCONVO_LOG_ENABLED=0\n")
         #expect(config.apiKey == "test-only")

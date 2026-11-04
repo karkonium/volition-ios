@@ -11,16 +11,16 @@ final class WelcomeAndSelectionUITests: XCTestCase {
 
     func testWelcomeExplainsAccessAndSupportsBackNavigation() {
         let app = XCUIApplication()
-        app.launchArguments = ["-ui-testing", "-onboarding-required", "-ai-consent-required"]
+        app.launchArguments = ["-ui-testing", "-onboarding-required"]
         app.launch()
         app.staticTexts["welcomeHowItWorks"].waitToAppear()
         capture("14 Welcome light", app)
         app.buttons["onboardingContinueButton"].tap()
-        app.buttons["acceptAIConsentButton"].waitToAppear()
+        app.buttons["continueAIInfoButton"].waitToAppear()
         capture("15 Consent light", app)
         app.buttons["onboardingBackButton"].tap()
         app.buttons["onboardingContinueButton"].waitToAppear().tap()
-        app.buttons["deferAIConsentButton"].tap()
+        app.buttons["continueAIInfoButton"].tap()
         app.buttons["allowScreenTimeButton"].waitToAppear()
         capture("16 Permission light", app)
         app.buttons["allowScreenTimeButton"].tap()
@@ -101,20 +101,22 @@ final class WelcomeAndSelectionUITests: XCTestCase {
         app.buttons["pickVolitionAppButton"].waitForLabel(containing: "Selected app")
     }
 
-    func testDeferringAfterReturningWithdrawsConsent() {
+    func testRequiredCoachingRemainsEnabledAfterReturning() {
         let app = XCUIApplication()
-        app.launchArguments = ["-ui-testing", "-onboarding-required", "-ai-consent-required", "-seed-scenario=conversation"]
+        app.launchArguments = ["-ui-testing", "-onboarding-required", "-seed-scenario=conversation"]
         app.launch()
         app.buttons["onboardingContinueButton"].waitToAppear().tap()
-        app.buttons["acceptAIConsentButton"].waitToAppear().tap()
+        app.buttons["continueAIInfoButton"].waitToAppear().tap()
         app.buttons["allowScreenTimeButton"].waitToAppear()
         app.buttons["onboardingBackButton"].tap()
-        app.buttons["deferAIConsentButton"].waitToAppear().tap()
+        app.buttons["continueAIInfoButton"].waitToAppear().tap()
         app.buttons["allowScreenTimeButton"].waitToAppear().tap()
         app.buttons["conversationChooseAppButton"].waitToAppear()
         app.goToSettingsTab()
         app.element("privacyDataButton").waitToAppear().tap()
-        XCTAssertEqual(app.switches["aiConsentToggle"].waitToAppear().value as? String, "0")
+        app.element("aiSharingDetails").waitToAppear()
+        XCTAssertFalse(app.switches["aiConsentToggle"].exists)
+        XCTAssertFalse(app.buttons["deferAIConsentButton"].exists)
     }
 
 }

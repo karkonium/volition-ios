@@ -57,7 +57,7 @@ final class UILayoutPolishUITests: XCTestCase {
         capture("31 Coach settings light", app)
         app.navigationBars.buttons.firstMatch.tap()
         app.element("privacyDataButton").waitToAppear().tap()
-        app.switches["aiConsentToggle"].waitToAppear()
+        app.element("aiSharingDetails").waitToAppear()
         capture("32 Privacy details light", app)
         app.swipeUp()
         app.buttons["eraseCoachingContentButton"].waitToAppear()

@@ -4,7 +4,8 @@
     "message": "I need Maps for directions to my appointment.",
     "allowed": [
       "pause",
-      "choice"
+      "choice",
+      "approve"
     ]
   },
   {
@@ -12,7 +13,8 @@
     "message": "I need Maps for two minutes to check the address for my appointment.",
     "allowed": [
       "pause",
-      "choice"
+      "choice",
+      "approve"
     ]
   },
   {
@@ -89,7 +91,8 @@
     "pauseSeconds": 10,
     "allowed": [
       "pause",
-      "choice"
+      "choice",
+      "approve"
     ],
     "checkIn": true
   },
@@ -126,7 +129,8 @@
     "message": "I need two minutes to check directions for a work meeting.",
     "allowed": [
       "pause",
-      "choice"
+      "choice",
+      "approve"
     ]
   },
   {
@@ -179,7 +183,8 @@
     "message": "I have a planned one-hour language lesson video. Please unlock for 60 minutes so I can finish it, then I will close the app.",
     "allowed": [
       "pause",
-      "choice"
+      "choice",
+      "approve"
     ],
     "unlockMinutes": 60,
     "appName": "YouTube"
@@ -234,6 +239,115 @@
     },
     "allowed": [
       "urgent"
+    ]
+  },
+  {
+    "id": "fresh-missing-intention-ask",
+    "message": "Can you unlock Instagram?",
+    "appName": "Instagram",
+    "initialApproach": "intention",
+    "allowed": [
+      "ask"
+    ]
+  },
+  {
+    "id": "fresh-missing-intention-emotion",
+    "message": "Can you unlock Instagram?",
+    "appName": "Instagram",
+    "initialApproach": "emotion",
+    "checkIn": true,
+    "allowed": [
+      "pause",
+      "choice"
+    ]
+  },
+  {
+    "id": "fresh-missing-intention-short-open",
+    "message": "Can you unlock Instagram?",
+    "appName": "Instagram",
+    "initialApproach": "open",
+    "allowed": [
+      "approve"
+    ]
+  },
+  {
+    "id": "ordinary-greeting",
+    "message": "Hey, how are you?",
+    "allowed": [
+      "chat"
+    ]
+  },
+  {
+    "id": "ordinary-boredom",
+    "message": "I'm bored and want someone to talk to.",
+    "checkIn": true,
+    "recentGrants": 3,
+    "allowed": [
+      "chat"
+    ]
+  },
+  {
+    "id": "ordinary-frustration",
+    "message": "Work was so frustrating today. Can I vent?",
+    "allowed": [
+      "chat"
+    ]
+  },
+  {
+    "id": "ordinary-deal-question",
+    "message": "How do deals work?",
+    "activeWait": true,
+    "deal": {
+      "pushbackCount": 0,
+      "canOverride": false,
+      "minimumReplacementBreakMinutes": 30
+    },
+    "allowed": [
+      "chat"
+    ]
+  },
+  {
+    "id": "ordinary-app-mention",
+    "message": "I use Instagram for work. What do you think about social media?",
+    "appName": "Instagram",
+    "allowed": [
+      "chat"
+    ]
+  },
+  {
+    "id": "ordinary-topic-switch",
+    "history": [
+      {
+        "role": "user",
+        "text": "Open Maps please"
+      },
+      {
+        "role": "assistant",
+        "text": "What are you hoping to do there?"
+      }
+    ],
+    "message": "Actually never mind. Can we just talk about my day?",
+    "allowed": [
+      "chat"
+    ]
+  },
+  {
+    "id": "access-intention-followup",
+    "history": [
+      {
+        "role": "user",
+        "text": "Open Maps please"
+      },
+      {
+        "role": "assistant",
+        "text": "What are you hoping to do there?"
+      }
+    ],
+    "message": "To check directions to work.",
+    "allowed": [
+      "approve",
+      "pause",
+      "choice"
     ]
   }
 ]

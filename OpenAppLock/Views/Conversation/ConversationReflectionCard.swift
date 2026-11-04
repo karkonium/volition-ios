@@ -13,7 +13,8 @@ struct ConversationReflectionCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Image(systemName: "hourglass").accessibilityHidden(true)
-                    Text((ready ? CopyKey.reflectionReady : reflection.state == .offered ? .reflectionOffer : .reflectionTaking).resource)
+                    Text(ready ? CopyKey.reflectionReady.string : CopyKey.concisePause.string(
+                        CopyKey.pauseDuration(seconds: reflection.seconds)))
                         .font(.headline)
                     Spacer()
                     if reflection.state == .counting, !ready, let deadline = reflection.deadline {
@@ -22,13 +23,12 @@ struct ConversationReflectionCard: View {
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier(reflection.state == .counting && !ready ? "reflectionCountdown" : "reflectionHeading")
-                Text(CopyKey.reflectionPlan.string(reflection.appName, reflection.unlockMinutes)).font(.subheadline)
+                Text(CopyKey.thenUnlockedDuration.string(Duration.seconds(reflection.unlockMinutes * 60)
+                    .formatted(.units(allowed: [.hours, .minutes], width: .wide)))).font(.subheadline)
                 if reflection.state == .activating {
                     ProgressView(CopyKey.reflectionOpening.resource)
                 } else {
                     if reflection.state == .offered {
-                        Text(CopyKey.reflectionLongPlan.string(Duration.seconds(reflection.seconds).formatted(.units(allowed: [.minutes, .seconds], width: .wide))))
-                            .font(.subheadline)
                         Button(CopyKey.reflectionStart.resource) { conversation.startReflection(reflection.id) }
                             .buttonStyle(VolitionButtonStyle()).accessibilityIdentifier("startReflectionButton")
                     } else if !ready {
@@ -37,10 +37,9 @@ struct ConversationReflectionCard: View {
                             .frame(minWidth: 44, minHeight: 44)
                             .accessibilityIdentifier("skipReflectionButton")
                     }
-                    Text(CopyKey.reflectionDelayHelp.resource).font(.caption).foregroundStyle(.secondary)
                     if ready {
                         HStack {
-                            Button(CopyKey.reflectionUnlock.string(reflection.unlockMinutes)) {
+                            Button(CopyKey.reflectionUnlock.resource) {
                                 Task { await conversation.completeReflection(reflection.id, snapshots: snapshots) }
                             }
                             .buttonStyle(VolitionButtonStyle(primary: false))

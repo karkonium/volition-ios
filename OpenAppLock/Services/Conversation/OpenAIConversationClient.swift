@@ -17,6 +17,8 @@ nonisolated struct ConversationContext: Codable, Sendable {
     var recentPauseAttempts: Int = 0
     var preferDeal: Bool = false
     var emotionCheckInSuggested: Bool = false
+    var initialRequestApproach: String = "intention"
+    var isInitialRequest: Bool = true
     var recommendedIntervention: String = "awareness_or_choice"
     static func intervention(after confirmedGrantsLastHour: Int) -> String {
         confirmedGrantsLastHour == 0 ? "awareness_or_choice" : (confirmedGrantsLastHour == 1 ? "delay" : "deal")
@@ -76,8 +78,8 @@ nonisolated struct OpenAIConversationClient: ConversationClient {
             "required": ["reply", "decision", "unlock_minutes", "wait_minutes", "pause_seconds", "block_minutes"],
             "properties": [
                 "reply": ["type": "string"],
-                "decision": ["type": "string", "enum": ["ask", "deny", "approve", "wait", "pause", "deal", "choice", "override", "urgent", "frustration"]],
-                "unlock_minutes": ["type": ["integer", "null"], "description": "REQUIRED integer 1–60 for approve, pause, deal, choice, override, urgent and frustration. Null only for ask, deny, wait."],
+                "decision": ["type": "string", "enum": ["chat", "ask", "deny", "approve", "wait", "pause", "deal", "choice", "override", "urgent", "frustration"]],
+                "unlock_minutes": ["type": ["integer", "null"], "description": "REQUIRED integer 1–60 for approve, pause, deal, choice, override, urgent and frustration. Null for chat, ask, deny, wait."],
                 "wait_minutes": ["type": ["integer", "null"]],
                 "pause_seconds": ["type": ["integer", "null"], "description": "10–1800 for pause or choice; otherwise null."],
                 "block_minutes": ["type": ["integer", "null"], "description": "1–1440 for deal, choice or override; otherwise null. Override requires at least deal.minimumReplacementBreakMinutes."]
@@ -127,9 +129,6 @@ nonisolated struct OpenAIConversationClient: ConversationClient {
     }
 
     private func request(operation: String, key: String, instructions: String, input: String, format: [String: Any]) async throws -> String {
-        #if !DEBUG
-        throw ConversationClientError.unavailable
-        #else
         guard let url = URL(string: "https://api.openai.com/v1/responses") else { throw URLError(.badURL) }
         var request = URLRequest(url: url, timeoutInterval: 60)
         request.httpMethod = "POST"
@@ -170,7 +169,6 @@ nonisolated struct OpenAIConversationClient: ConversationClient {
             diagnostics.log("request.failed id=\(id) \(failure.diagnosticSummary)")
             throw failure
         }
-        #endif
     }
 
     private static func safeErrorMetadata(_ data: Data) -> String {

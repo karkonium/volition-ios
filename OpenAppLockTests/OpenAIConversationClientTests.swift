@@ -24,6 +24,7 @@ struct OpenAIConversationClientTests {
             #expect(Set(schema["required"] as? [String] ?? []) == ["reply", "decision", "unlock_minutes", "wait_minutes", "pause_seconds", "block_minutes"])
             let properties = try #require(schema["properties"] as? [String: Any])
             let decision = try #require(properties["decision"] as? [String: Any])
+            #expect((decision["enum"] as? [String])?.contains("chat") == true)
             #expect((decision["enum"] as? [String])?.contains("pause") == true)
             #expect((decision["enum"] as? [String])?.contains("deny") == true)
             #expect(String(decoding: body, as: UTF8.self).contains("previous reason"))

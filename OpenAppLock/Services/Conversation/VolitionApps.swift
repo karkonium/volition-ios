@@ -9,7 +9,7 @@ import SwiftData
 /// Legacy rules are disabled, never silently left enforcing behind the new UI.
 /// Multi-app conversation rules are split once; legacy data remains recoverable.
 enum VolitionApps {
-    enum ValidationError: LocalizedError {
+    enum ValidationError: LocalizedError, Equatable {
         case singleApp, name, intention, duplicate
         var errorDescription: String? {
             switch self {
@@ -33,9 +33,9 @@ enum VolitionApps {
         _ = try selectedApp(in: selection)
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         var intention = intention.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty, name.count <= 100 else { throw ValidationError.name }
+        guard FormValidation.nameError(name) == nil else { throw ValidationError.name }
         if intention.isEmpty, profile != nil { intention = CopyKey.profileDefaultGoal.string }
-        guard !intention.isEmpty, intention.count <= 2000 else { throw ValidationError.intention }
+        guard !intention.isEmpty, FormValidation.notesError(intention) == nil else { throw ValidationError.intention }
         let rules = try context.fetch(FetchDescriptor<BlockingRule>())
         guard !rules.contains(where: {
             $0.id != editing?.id && $0.kind == .conversation && $0.isEnabled &&
@@ -57,7 +57,9 @@ enum VolitionApps {
                 var history = try store.load()
                 history.usageProfiles[rule.id] = profile
                 try store.save(history)
-            } else { try context.save() }
+            }
+            // The archive can be unchanged while the rule and app list changed.
+            if context.hasChanges { try context.save() }
         }
         catch { context.rollback(); throw error }
         return rule

@@ -17,26 +17,27 @@ nonisolated struct ConversationEnforcement {
         guard protection.periods.allSatisfy(\.isValid), protection.session?.isValid ?? true else {
             throw ConversationAccessError.storageUnavailable
         }
-        let previous = try focusStore.load()
-        do {
-            try withRevokedGrantCleanup { state in
-                try monitor.register(protection, now: now)
-                try focusStore.save(protection)
-                let revoked = state.activeGrants.filter { grant in
-                    ConversationGrantStore.applicable(to: grant.token, in: state.snapshots).contains {
-                        protection.protects(appID: $0.id, at: now)
-                    }
+        var previous: FocusProtectionState?
+        try withRevokedGrantCleanup(onFailure: {
+            guard let previous else { return }
+            // Still inside the grant transaction, including commit-write failures.
+            do {
+                try focusStore.save(previous)
+                try monitor.register(previous, now: now)
+                monitor.keepOnly(previous.activityNames(at: now))
+            } catch { Diag.error(.enforcer, "focus rollback incomplete; retry required") }
+        }) { state in
+            previous = try focusStore.load()
+            try monitor.register(protection, now: now)
+            try focusStore.save(protection)
+            let revoked = state.activeGrants.filter { grant in
+                ConversationGrantStore.applicable(to: grant.token, in: state.snapshots).contains {
+                    protection.protects(appID: $0.id, at: now)
                 }
-                state.activeGrants.removeAll { grant in revoked.contains { $0.plan.grantID == grant.plan.grantID } }
-                _ = apply(state, now: now)
             }
+            state.activeGrants.removeAll { grant in revoked.contains { $0.plan.grantID == grant.plan.grantID } }
+            _ = apply(state, now: now)
             monitor.keepOnly(protection.activityNames(at: now))
-        } catch {
-            // Restore the prior policy without lifting shields; foreground sync
-            // can repair timer state after a failed durable write.
-            try? focusStore.save(previous)
-            monitor.keepOnly(previous.activityNames(at: now))
-            throw error
         }
     }
 
@@ -236,9 +237,9 @@ nonisolated struct ConversationEnforcement {
 
     /// Commit revocations before notification/monitor IPC. Cleanup is per grant,
     /// preserving unrelated apps' reminders and keeping slow IPC outside the lock.
-    private func withRevokedGrantCleanup<T>(_ operation: (inout ConversationGrantStore.State) throws -> T) throws -> T {
+    private func withRevokedGrantCleanup<T>(onFailure: () -> Void = {}, _ operation: (inout ConversationGrantStore.State) throws -> T) throws -> T {
         var revoked: [ConversationGrantStore.Grant] = []
-        let result = try store.transaction { state in
+        let result = try store.transaction(onFailure: onFailure) { state in
             let previous = state.activeGrants
             let result = try operation(&state)
             let retained = Set(state.activeGrants.map(\.plan.grantID))

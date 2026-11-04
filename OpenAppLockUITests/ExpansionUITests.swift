@@ -31,15 +31,15 @@ final class ExpansionUITests: XCTestCase {
         XCTAssertFalse(app.buttons["endConversationUnlockButton"].exists)
         capture("Focus overrides model approval", app)
     }
-    func testExplicitConsentOnboardingAtLargeTextInDarkMode() {
+    func testRequiredCoachingDisclosureAtLargeTextInDarkMode() {
         let app = XCUIApplication()
-        app.launchArguments = ["-ui-testing", "-onboarding-required", "-ai-consent-required", "-dark-mode", "-large-text"]
+        app.launchArguments = ["-ui-testing", "-onboarding-required", "-dark-mode", "-large-text"]
         app.launch()
         capture("Welcome dark large text", app)
         app.buttons["onboardingContinueButton"].waitToAppear().tap()
-        app.buttons["acceptAIConsentButton"].waitToAppear()
+        app.buttons["continueAIInfoButton"].waitToAppear()
         capture("AI consent dark large text", app)
-        app.buttons["acceptAIConsentButton"].tap()
+        app.buttons["continueAIInfoButton"].tap()
         app.buttons["allowScreenTimeButton"].waitToAppear()
     }
     func testPrivacyAndCoachControlsInDarkMode() {
@@ -48,14 +48,11 @@ final class ExpansionUITests: XCTestCase {
         app.launch()
         app.goToSettingsTab()
         app.element("privacyDataButton").waitToAppear().tap()
-        app.switches["aiConsentToggle"].waitToAppear()
+        app.element("aiSharingDetails").waitToAppear()
         capture("Privacy dark", app)
-        app.switches["aiConsentToggle"].tap()
+        XCTAssertFalse(app.switches["aiConsentToggle"].exists)
         app.goToChatTab()
-        app.buttons["reviewAIConsentButton"].waitToAppear()
-        capture("Consent withdrawn dark", app)
-        app.buttons["reviewAIConsentButton"].tap()
-        app.buttons["acceptAIConsentButton"].waitToAppear().tap()
-        XCTAssertFalse(app.buttons["acceptAIConsentButton"].exists)
+        XCTAssertFalse(app.buttons["reviewAIConsentButton"].exists)
+
     }
 }

@@ -2,7 +2,7 @@ import Foundation
 
 /// Model output is advice until validated and bound to a live local request.
 nonisolated struct ConversationDecision: Codable, Equatable, Sendable {
-    enum Decision: String, Codable, Sendable { case ask, deny, approve, wait, pause, deal, choice, override, urgent, frustration }
+    enum Decision: String, Codable, Sendable { case chat, ask, deny, approve, wait, pause, deal, choice, override, urgent, frustration }
     let reply: String
     let decision: Decision
     let unlockMinutes: Int?

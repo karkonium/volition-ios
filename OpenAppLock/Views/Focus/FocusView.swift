@@ -16,7 +16,6 @@ struct FocusView: View {
             TimelineView(.periodic(from: .now, by: 1)) { timeline in
                 let session = focus.state.session.flatMap { $0.isActive(at: timeline.date) ? $0 : nil }
                 VolitionScroll {
-                    Text(CopyKey.uiFocusIntro.resource).font(.subheadline).foregroundStyle(.secondary)
                     if let session {
                         VStack(alignment: .leading, spacing: 10) {
                             VolitionSectionHeading(title: CopyKey.focusActiveSession.string)
@@ -50,6 +49,9 @@ struct FocusView: View {
                                 FocusAppSelection(allApps: $allApps, appIDs: $appIDs)
                             }
                             Button(CopyKey.focusStart.string, systemImage: "moon") {
+                                if let issue = FormValidation.focusSelectionError(allApps: allApps, selected: appIDs, available: availableAppIDs) {
+                                    focus.errorMessage = issue.string; return
+                                }
                                 Task {
                                     conversation.cancelRequest()
                                     var state = focus.state
@@ -58,7 +60,7 @@ struct FocusView: View {
                                 }
                             }
                             .buttonStyle(VolitionButtonStyle())
-                            .disabled(focus.isSaving || (!allApps && appIDs.isEmpty) || rules.filter { $0.kind == .conversation && $0.isEnabled }.isEmpty)
+                            .disabled(focus.isSaving)
                             .accessibilityIdentifier("startFocusSessionButton")
                         }
                     }
@@ -79,10 +81,16 @@ struct FocusView: View {
                                         }.frame(minHeight: 44).contentShape(Rectangle())
                                     }.buttonStyle(.plain)
                                     Toggle(CopyKey.focusEnabled.string, isOn: Binding(get: { period.isEnabled }, set: { enabled in
+                                        if enabled, let issue = FormValidation.focusSelectionError(allApps: period.appIDs.isEmpty, selected: period.appIDs, available: availableAppIDs) {
+                                            focus.errorMessage = issue.string; return
+                                        }
                                         var state = focus.state
                                         if let index = state.periods.firstIndex(where: { $0.id == period.id }) { state.periods[index].isEnabled = enabled }
                                         Task { await update(state) }
                                     })).labelsHidden().tint(VolitionStyle.accent).accessibilityLabel(period.name)
+                                }
+                                if let issue = FormValidation.focusSelectionError(allApps: period.appIDs.isEmpty, selected: period.appIDs, available: availableAppIDs) {
+                                    Text(issue.resource).font(.caption).foregroundStyle(.red)
                                 }
                                 Button(CopyKey.focusRemoveSchedule.resource, role: .destructive) {
                                     var state = focus.state; state.periods.removeAll { $0.id == period.id }
@@ -119,6 +127,7 @@ struct FocusView: View {
             .task { await focus.refresh() }
         }
     }
+    private var availableAppIDs: Set<UUID> { Set(rules.filter { $0.kind == .conversation && $0.isEnabled }.map(\.id)) }
     private func update(_ state: FocusProtectionState) async { await focus.save(state); await refresh() }
     private func refresh() async {
         await enforcer.refresh(rules: rules)
@@ -134,10 +143,12 @@ struct FocusView: View {
     }
 }
 
+/// Missing custom selections remain explicit; an empty selection never means all apps here.
 struct FocusAppSelection: View {
     @Binding var allApps: Bool
     @Binding var appIDs: Set<UUID>
     @Query(sort: BlockingRule.displayOrder) private var rules: [BlockingRule]
+    private var available: Set<UUID> { Set(rules.filter { $0.kind == .conversation && $0.isEnabled }.map(\.id)) }
     var body: some View {
         Toggle(CopyKey.focusAllApps.resource, isOn: $allApps).tint(VolitionStyle.accent).font(.subheadline).frame(minHeight: 44)
         if !allApps {
@@ -146,10 +157,17 @@ struct FocusAppSelection: View {
                     if selected { appIDs.insert(rule.id) } else { appIDs.remove(rule.id) }
                 })).tint(VolitionStyle.accent)
             }
+            if !appIDs.isSubset(of: available) {
+                Button(CopyKey.uiChangeApp.resource) { appIDs.formIntersection(available) }
+            }
+        }
+        if let issue = FormValidation.focusSelectionError(allApps: allApps, selected: appIDs, available: available) {
+            Text(issue.resource).font(.caption).foregroundStyle(.red).accessibilityIdentifier("focusAppSelectionError")
         }
     }
 }
 
+/// Invalid Save attempts reveal the first field; dirty drafts require explicit discard.
 private struct FocusPeriodEditor: View {
     let original: FocusPeriod
     @Environment(FocusController.self) private var focus
@@ -159,61 +177,108 @@ private struct FocusPeriodEditor: View {
     @Query private var rules: [BlockingRule]
     @State private var name = ""
     @State private var weekdays: Set<Int> = [2, 3, 4, 5, 6]
-    @State private var start = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: .now)!
-    @State private var end = Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: .now)!
+    @State private var start = Date()
+    @State private var end = Date()
     @State private var allApps = true
     @State private var appIDs = Set<UUID>()
+    @State private var initial: FocusPeriod?
+    @State private var attempted = false
+    @State private var attention: [String: Int] = [:]
+    @State private var confirmingDiscard = false
+    @FocusState private var nameFocused: Bool
     private var period: FocusPeriod {
         let calendar = Calendar.current
-        var period = FocusPeriod(name: name.trimmingCharacters(in: .whitespacesAndNewlines), appIDs: allApps ? [] : appIDs,
+        var value = FocusPeriod(name: FormValidation.trim(name), appIDs: allApps ? [] : appIDs,
             weekdays: weekdays, startMinutes: calendar.component(.hour, from: start) * 60 + calendar.component(.minute, from: start),
             endMinutes: calendar.component(.hour, from: end) * 60 + calendar.component(.minute, from: end))
-        period.id = original.id; period.isEnabled = original.isEnabled; period.skippedUntil = original.skippedUntil
-        return period
+        value.id = original.id; value.isEnabled = original.isEnabled; value.skippedUntil = original.skippedUntil
+        return value
+    }
+    private var isDirty: Bool { initial.map { $0 != period || name != $0.name || allApps != $0.appIDs.isEmpty } ?? false }
+    private var selectionError: CopyKey? {
+        FormValidation.focusSelectionError(allApps: allApps, selected: appIDs,
+            available: Set(rules.filter { $0.kind == .conversation && $0.isEnabled }.map(\.id)))
+    }
+    private var invalidField: String? {
+        if FormValidation.nameError(name) != nil { return "name" }
+        if (period.endMinutes - period.startMinutes + 1440) % 1440 < 15 { return "time" }
+        if weekdays.isEmpty { return "days" }
+        if selectionError != nil { return "apps" }
+        return nil
     }
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField(CopyKey.focusScheduleName.string, text: $name).textFieldStyle(.roundedBorder)
-                        .accessibilityIdentifier("focusScheduleName")
-                    DatePicker(CopyKey.focusStarts.string, selection: $start, displayedComponents: .hourAndMinute)
-                    DatePicker(CopyKey.focusEnds.string, selection: $end, displayedComponents: .hourAndMinute)
-                } footer: { Text(CopyKey.focusScheduleHelp.resource) }
-                Section(CopyKey.focusDays.string) {
-                    ForEach(1...7, id: \.self) { day in
-                        Toggle(Calendar.current.weekdaySymbols[day - 1], isOn: Binding(get: { weekdays.contains(day) }, set: { enabled in
-                            if enabled { weekdays.insert(day) } else { weekdays.remove(day) }
-                        }))
+            ScrollViewReader { proxy in
+                Form {
+                    Section {
+                        TextField(CopyKey.focusScheduleName.string, text: $name).textFieldStyle(.roundedBorder)
+                            .focused($nameFocused).accessibilityIdentifier("focusScheduleName")
+                        if attempted, FormValidation.nameError(name) != nil {
+                            Text(CopyKey.validationFocusName.resource).foregroundStyle(.red).accessibilityIdentifier("focusNameError")
+                        }
+                    }.id("name").volitionAttention(trigger: attention["name", default: 0])
+                    Section {
+                        DatePicker(CopyKey.focusStarts.string, selection: $start, displayedComponents: .hourAndMinute)
+                        DatePicker(CopyKey.focusEnds.string, selection: $end, displayedComponents: .hourAndMinute)
+                        if attempted, (period.endMinutes - period.startMinutes + 1440) % 1440 < 15 {
+                            Text(CopyKey.focusScheduleHelp.resource).foregroundStyle(.red)
+                        }
+                    } footer: { Text(CopyKey.focusScheduleHelp.resource) }
+                    .id("time").volitionAttention(trigger: attention["time", default: 0])
+                    Section(CopyKey.focusDays.string) {
+                        ForEach(1...7, id: \.self) { day in
+                            Toggle(Calendar.current.weekdaySymbols[day - 1], isOn: Binding(get: { weekdays.contains(day) }, set: { enabled in
+                                if enabled { weekdays.insert(day) } else { weekdays.remove(day) }
+                            }))
+                        }
+                        if attempted, weekdays.isEmpty { Text(CopyKey.validationFocusDays.resource).foregroundStyle(.red) }
+                    }.id("days").volitionAttention(trigger: attention["days", default: 0])
+                    Section { FocusAppSelection(allApps: $allApps, appIDs: $appIDs) }.id("apps").volitionAttention(trigger: attention["apps", default: 0])
+                    if let error = focus.errorMessage { Text(error).foregroundStyle(.red) }
+                }
+                .disabled(focus.isSaving)
+                .volitionForm()
+                .navigationTitle(CopyKey.uiPeriodEditorTitle.resource)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(CopyKey.conversationCancel.resource) { if isDirty { confirmingDiscard = true } else { dismiss() } }
+                            .disabled(focus.isSaving)
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(CopyKey.uiSave.resource) {
+                            attempted = true
+                            if let invalidField {
+                                attention[invalidField, default: 0] += 1; nameFocused = invalidField == "name"
+                                withAnimation { proxy.scrollTo(invalidField, anchor: .center) }
+                                return
+                            }
+                            let submitted = period
+                            Task {
+                                conversation.cancelRequest()
+                                var state = focus.state
+                                if let index = state.periods.firstIndex(where: { $0.id == submitted.id }) { state.periods[index] = submitted }
+                                else { state.periods.append(submitted) }
+                                await focus.save(state)
+                                guard focus.errorMessage == nil else { return }
+                                await enforcer.refresh(rules: rules)
+                                await conversation.refresh(snapshots: rules.map(\.dto))
+                                dismiss()
+                            }
+                        }.disabled(focus.isSaving).accessibilityIdentifier("saveFocusScheduleButton")
                     }
                 }
-                Section { FocusAppSelection(allApps: $allApps, appIDs: $appIDs) }
-                if let error = focus.errorMessage { Text(error).foregroundStyle(.red) }
-            }
-            .volitionForm()
-            .navigationTitle(CopyKey.uiPeriodEditorTitle.resource)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(CopyKey.conversationCancel.resource) { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(CopyKey.uiSave.resource) {
-                        Task {
-                            conversation.cancelRequest()
-                            var state = focus.state
-                            if let index = state.periods.firstIndex(where: { $0.id == period.id }) { state.periods[index] = period }
-                            else { state.periods.append(period) }
-                            await focus.save(state)
-                            await enforcer.refresh(rules: rules)
-                            await conversation.refresh(snapshots: rules.map(\.dto))
-                            if focus.errorMessage == nil { dismiss() }
-                        }
-                    }.disabled(!period.isValid || (!allApps && appIDs.isEmpty) || focus.isSaving)
-                    .accessibilityIdentifier("saveFocusScheduleButton")
+                .alert(CopyKey.discardChangesTitle.string, isPresented: $confirmingDiscard) {
+                    Button(CopyKey.discardChangesAction.resource, role: .destructive) { dismiss() }
+                    Button(CopyKey.keepEditing.resource, role: .cancel) {}
                 }
-            }.interactiveDismissDisabled(focus.isSaving)
-            .onAppear {
-                name = original.name; weekdays = original.weekdays; appIDs = original.appIDs; allApps = original.appIDs.isEmpty
-                start = Calendar.current.date(bySettingHour: original.startMinutes / 60, minute: original.startMinutes % 60, second: 0, of: .now)!
-                end = Calendar.current.date(bySettingHour: original.endMinutes / 60, minute: original.endMinutes % 60, second: 0, of: .now)!
+                .interactiveDismissDisabled(focus.isSaving || isDirty)
+                .onAppear {
+                    guard initial == nil else { return }
+                    name = original.name; weekdays = original.weekdays; appIDs = original.appIDs; allApps = original.appIDs.isEmpty
+                    start = Calendar.current.date(bySettingHour: original.startMinutes / 60, minute: original.startMinutes % 60, second: 0, of: .now) ?? .now
+                    end = Calendar.current.date(bySettingHour: original.endMinutes / 60, minute: original.endMinutes % 60, second: 0, of: .now) ?? .now
+                    initial = period
+                }
             }
         }
     }

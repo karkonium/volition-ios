@@ -144,27 +144,24 @@ struct OpenAppLockApp: App {
                 openSessions: openSessions, settings: appSettings, conversationStore: conversationStore))
         _focus = State(initialValue: FocusController(access: ConversationEnforcement(store: conversationStore, shields: shields),
             monitor: config.isUITesting ? MockFocusMonitor() : DeviceFocusMonitor()))
-        let coachService: (any CoachService)?
-        #if DEBUG
-        coachService = nil
-        #else
-        coachService = UnavailableCoachService()
-        #endif
         let historyStore: any ConversationHistoryStoring
-        if let container { historyStore = ConversationHistoryStore(context: container.mainContext) }
+        if config.isUITesting, ProcessInfo.processInfo.arguments.contains("-unavailable-history") { historyStore = UnavailableHistoryStore() }
+        else if let container { historyStore = ConversationHistoryStore(context: container.mainContext) }
         else { historyStore = UnavailableHistoryStore() }
         let preferences = config.isUITesting ? CoachPreferences.testing() : CoachPreferences()
-        if config.isUITesting, ProcessInfo.processInfo.arguments.contains("-ai-consent-required") { preferences.setConsent(false) }
         let client: any ConversationClient = config.isUITesting ? MockConversationClient(
             delay: ProcessInfo.processInfo.arguments.contains("-slow-coach") ? .seconds(15) : .zero,
             fails: ProcessInfo.processInfo.arguments.contains("-failing-coach")) : OpenAIConversationClient()
         let timer: any ConversationTimerScheduling = config.isUITesting ? MockConversationTimer() : DeviceConversationTimer()
+        let checkInRoll: @Sendable () -> Bool
+        if config.isUITesting { checkInRoll = { true } }
+        else { checkInRoll = { Int.random(in: 0..<3) == 0 } }
         _conversation = State(initialValue: ConversationCoordinator(historyStore: historyStore,
-            preferences: preferences, service: coachService,
+            preferences: preferences,
             client: client,
             keys: config.isUITesting ? MockConversationKeyStore() : ConversationEnvironmentKeyStore(),
             access: ConversationEnforcement(store: conversationStore, shields: shields),
-            timer: timer))
+            timer: timer, checkInRoll: checkInRoll))
     }
 
     var body: some Scene {

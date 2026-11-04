@@ -46,6 +46,20 @@ struct ConversationTests {
         }
     }
 
+    @Test("Chat cannot carry any access or intervention duration")
+    func chatDecisions() throws {
+        let chat = ConversationDecision(reply: "I'm listening.", decision: .chat, unlockMinutes: nil)
+        #expect(try ConversationDecision.parse(JSONEncoder().encode(chat)) == chat)
+        for invalid in [
+            ConversationDecision(reply: "Hi", decision: .chat, unlockMinutes: 5),
+            ConversationDecision(reply: "Hi", decision: .chat, unlockMinutes: nil, waitMinutes: 1),
+            ConversationDecision(reply: "Hi", decision: .chat, unlockMinutes: nil, pauseSeconds: 10),
+            ConversationDecision(reply: "Hi", decision: .chat, unlockMinutes: nil, blockMinutes: 30)
+        ] {
+            #expect(throws: (any Error).self) { try ConversationDecision.parse(JSONEncoder().encode(invalid)) }
+        }
+    }
+
     @Test("Old snapshots still decode without a conversation goal")
     func oldSnapshot() throws {
         let rule = RuleSnapshotDTO(id: UUID(), name: "Old", kindRaw: "schedule", isEnabled: true,

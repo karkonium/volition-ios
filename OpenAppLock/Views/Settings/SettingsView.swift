@@ -37,16 +37,19 @@ struct SettingsView: View {
                         }
                     }.buttonStyle(.plain).accessibilityIdentifier("diagnosticsLogsRow")
                 }
-                VolitionCard {
+                VStack(alignment: .leading, spacing: 10) {
                     VolitionSectionHeading(title: CopyKey.uiPermissions.string)
-                    Label((authorization.status == .approved ? CopyKey.uiScreenTimeOn : .uiScreenTimeOff).resource,
-                        systemImage: authorization.status == .approved ? "checkmark.shield" : "exclamationmark.shield")
-                        .font(.subheadline.weight(.medium))
-                    Text(CopyKey.uiPermissionsHelp.resource).font(.caption).foregroundStyle(.secondary)
-                    Button(CopyKey.uiSystemSettings.resource, systemImage: "arrow.up.right") {
-                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                    }.buttonStyle(VolitionButtonStyle(primary: false))
-                        .accessibilityIdentifier("systemPermissionSettingsButton")
+                        .accessibilityIdentifier("settingsPermissionsHeading")
+                    VolitionCard {
+                        Label((authorization.status == .approved ? CopyKey.uiScreenTimeOn : .uiScreenTimeOff).resource,
+                            systemImage: authorization.status == .approved ? "checkmark.shield" : "exclamationmark.shield")
+                            .font(.subheadline.weight(.medium))
+                        Text(CopyKey.uiPermissionsHelp.resource).font(.caption).foregroundStyle(.secondary)
+                        Button(CopyKey.uiSystemSettings.resource, systemImage: "arrow.up.right") {
+                            if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                        }.buttonStyle(VolitionButtonStyle(primary: false))
+                            .accessibilityIdentifier("systemPermissionSettingsButton")
+                    }.accessibilityElement(children: .contain).accessibilityIdentifier("settingsPermissionsCard")
                 }
                 Label(CopyKey.volitionPrivacy.resource, systemImage: "lock")
                     .font(.caption).foregroundStyle(.secondary)

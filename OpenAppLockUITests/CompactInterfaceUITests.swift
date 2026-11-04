@@ -35,7 +35,7 @@ final class CompactInterfaceUITests: XCTestCase {
         app.element("conversationSettingsButton").waitToAppear()
         capture("06 Settings light", app)
         app.element("privacyDataButton").tap()
-        app.switches["aiConsentToggle"].waitToAppear()
+        app.element("aiSharingDetails").waitToAppear()
         capture("07 Privacy light", app)
     }
     func testEditorsHaveDistinctControls() {
@@ -50,7 +50,9 @@ final class CompactInterfaceUITests: XCTestCase {
         navigate("Focus", app)
         app.buttons["addFocusScheduleButton"].waitToAppear().tap()
         app.textFields["focusScheduleName"].waitToAppear()
-        XCTAssertFalse(app.buttons["saveFocusScheduleButton"].isEnabled)
+        XCTAssertTrue(app.buttons["saveFocusScheduleButton"].isEnabled)
+        app.buttons["saveFocusScheduleButton"].tap()
+        app.staticTexts["focusNameError"].waitToAppear()
         XCTAssertEqual(app.buttons["saveFocusScheduleButton"].label, "Save")
         capture("13 Protected period editor light", app)
         app.buttons["Cancel"].firstMatch.tap()

@@ -33,12 +33,12 @@ final class LogStore {
     }
 
     /// Days with logs, newest first.
-    func availableDays() -> [Day] {
+    func availableDays() throws -> [Day] {
         var byDay: [String: (lines: Int, bytes: Int)] = [:]
-        for name in logFilenames() {
+        for name in try logFilenames() {
             guard let parsed = LogFilename.parse(name) else { continue }
             let url = directory.appendingPathComponent(name)
-            let text = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+            let text = try String(contentsOf: url, encoding: .utf8)
             let lines = text.split(separator: "\n", omittingEmptySubsequences: true).count
             let attributes = try? fileManager.attributesOfItem(atPath: url.path)
             let bytes = (attributes?[.size] as? Int) ?? 0
@@ -52,14 +52,14 @@ final class LogStore {
     }
 
     /// All sources for `dayKey`, merged chronologically and joined by newlines.
-    func mergedText(for dayKey: String) -> String {
+    func mergedText(for dayKey: String) throws -> String {
         let perFile: [[String]] =
-            logFilenames()
+            try logFilenames()
             .filter { LogFilename.parse($0)?.day == dayKey }
             .sorted()
             .map { name in
                 let url = directory.appendingPathComponent(name)
-                let text = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+                let text = try String(contentsOf: url, encoding: .utf8)
                 return text.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
             }
         return LogMerge.merge(perFile: perFile).joined(separator: "\n")
@@ -73,24 +73,28 @@ final class LogStore {
         return url
     }
 
-    /// Deletes every log file.
-    func clearAll() {
-        for name in logFilenames() {
-            try? fileManager.removeItem(at: directory.appendingPathComponent(name))
+    /// Deletes every log file, reporting partial failure instead of claiming success.
+    func clearAll() throws {
+        var failure: Error?
+        for name in try logFilenames() {
+            do { try fileManager.removeItem(at: directory.appendingPathComponent(name)) }
+            catch { failure = error }
         }
+        if let failure { throw failure }
     }
 
     /// Deletes files whose day is older than `retentionDays`. Called at launch.
     func prune(today: Date = .now, retentionDays: Int = 14) {
         let stale = LogRetention.filesToPrune(
-            filenames: logFilenames(), today: today, retentionDays: retentionDays,
+            filenames: (try? logFilenames()) ?? [], today: today, retentionDays: retentionDays,
             calendar: calendar)
         for name in stale {
             try? fileManager.removeItem(at: directory.appendingPathComponent(name))
         }
     }
 
-    private func logFilenames() -> [String] {
-        (try? fileManager.contentsOfDirectory(atPath: directory.path)) ?? []
+    private func logFilenames() throws -> [String] {
+        guard fileManager.fileExists(atPath: directory.path) else { return [] }
+        return try fileManager.contentsOfDirectory(atPath: directory.path).filter { LogFilename.parse($0) != nil }
     }
 }

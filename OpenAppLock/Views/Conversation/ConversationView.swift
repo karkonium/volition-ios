@@ -6,6 +6,8 @@ import SwiftUI
 /// Shared chat and independent grants. Compact unlock banners stay above the
 /// transcript; the selected-app control and keyboard-safe composer remain reachable.
 /// Cancelling restores the session draft; late completions cannot alter a new one.
+/// Transcript resizing anchors the latest content above the keyboard. The empty
+/// conversation is a button that focuses the same composer as direct input.
 /// Waits are labeled within coach replies, never shown as unlock countdowns.
 /// Send looks inactive without a selected app but accepts draft submissions to
 /// resolve saved names or draw attention to the chooser without losing the draft.
@@ -18,7 +20,6 @@ struct ConversationView: View {
     @Query(sort: BlockingRule.displayOrder) private var rules: [BlockingRule]
     @FocusState private var messageFocused: Bool
     @State private var choosingApp = false
-    @State private var reviewingSharing = false
     @State private var followsLatest = true
     @State private var visibleMessages = 60
 
@@ -37,64 +38,65 @@ struct ConversationView: View {
                         .accessibilityIdentifier("conversationUnlockBanners")
                 }
                 ScrollViewReader { proxy in
-                    List {
-                        if !conversation.preferences.hasConsent { consentPrompt.chatRow() }
-                        if conversation.target == nil || conversation.appSelectionNeeded {
-                            Text(conversation.appSelectionNeeded ? conversation.errorMessage ?? CopyKey.conversationSelectAppHelp.string : CopyKey.conversationSelectAppHelp.string)
-                                .font(.footnote).foregroundStyle(conversation.appSelectionNeeded ? VolitionStyle.accent : Color.secondary)
-                                .accessibilityIdentifier("conversationAppSelectionHint").chatRow()
-                        }
-                        TimelineView(.periodic(from: .now, by: 60)) { timeline in
-                            if let appID = conversation.selectedAppID, focus.state.protects(appID: appID, at: timeline.date) {
-                                Label(CopyKey.focusProtected.resource, systemImage: "moon.fill")
-                                    .font(.footnote).foregroundStyle(.secondary)
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            if conversation.target == nil || conversation.appSelectionNeeded {
+                                Text(conversation.appSelectionNeeded ? conversation.errorMessage ?? CopyKey.conversationSelectAppHelp.string : CopyKey.conversationSelectAppHelp.string)
+                                    .font(.footnote).foregroundStyle(conversation.appSelectionNeeded ? VolitionStyle.accent : Color.secondary)
+                                    .accessibilityIdentifier("conversationAppSelectionHint").chatRow()
                             }
-                        }.chatRow()
-                        if transcriptMessages.isEmpty { emptyConversation.chatRow() }
-                        if transcriptMessages.count > visibleMessages {
-                            Button(CopyKey.chatLoadEarlier.resource) { visibleMessages += 60 }
-                                .buttonStyle(VolitionButtonStyle(primary: false)).chatRow()
-                        }
-                        ForEach(Array(transcriptMessages.suffix(visibleMessages))) { item in
-                            message(item).id(item.id)
-                                .accessibilityIdentifier("conversationMessage-\(item.role.rawValue)").chatRow()
-                        }
-                        if let error = conversation.errorMessage, !conversation.appSelectionNeeded {
-                            failureNotice(error).chatRow()
-                        }
-                        ForEach(conversation.pendingReflections) { reflection in
-                            Group {
-                                if reflection.awaitingCheckIn {
-                                    ConversationEmotionCheckIn(reflection: reflection)
-                                } else if reflection.isChoice {
-                                    ConversationInterventionChoiceCard(reflection: reflection, snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) })
-                                } else if reflection.isDeal {
-                                    ConversationDealCard(reflection: reflection, snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) })
-                                } else {
-                                    ConversationReflectionCard(reflection: reflection, snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) })
+                            TimelineView(.periodic(from: .now, by: 60)) { timeline in
+                                if let appID = conversation.selectedAppID, focus.state.protects(appID: appID, at: timeline.date) {
+                                    Label(CopyKey.focusProtected.resource, systemImage: "moon.fill")
+                                        .font(.footnote).foregroundStyle(.secondary)
                                 }
                             }.chatRow()
+                            if transcriptMessages.isEmpty { emptyConversation.chatRow() }
+                            if transcriptMessages.count > visibleMessages {
+                                Button(CopyKey.chatLoadEarlier.resource) { visibleMessages += 60 }
+                                    .buttonStyle(VolitionButtonStyle(primary: false)).chatRow()
+                            }
+                            ForEach(Array(transcriptMessages.suffix(visibleMessages))) { item in
+                                message(item).id(item.id)
+                                    .accessibilityIdentifier("conversationMessage-\(item.role.rawValue)").chatRow()
+                            }
+                            if let error = conversation.errorMessage, !conversation.appSelectionNeeded {
+                                failureNotice(error).chatRow()
+                            }
+                            ForEach(conversation.pendingReflections) { reflection in
+                                Group {
+                                    if reflection.state == .activating {
+                                        ProgressView(CopyKey.reflectionOpening.resource)
+                                            .padding(16).accessibilityIdentifier("conversationInterventionActivating")
+                                    } else if reflection.awaitingCheckIn {
+                                        ConversationEmotionCheckIn(reflection: reflection)
+                                    } else if reflection.isChoice {
+                                        ConversationInterventionChoiceCard(reflection: reflection, snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) })
+                                    } else if reflection.isDeal {
+                                        ConversationDealCard(reflection: reflection, snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) })
+                                    } else {
+                                        ConversationReflectionCard(reflection: reflection, snapshots: { rules.filter { !$0.isDeleted }.map(\.dto) })
+                                    }
+                                }.disabled(conversation.isSending).chatRow()
+                            }
+                            if let entry = conversation.feedbackEntry {
+                                ConversationExperienceFeedback(entry: entry).id(entry.id).chatRow()
+                            }
+                            Color.clear.frame(height: 1).id("latest")
                         }
-                        if let entry = conversation.feedbackEntry {
-                            ConversationExperienceFeedback(entry: entry).id(entry.id).chatRow()
-                        }
-                        Color.clear.frame(height: 1).id("latest")
-                            .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Color.clear)
+                        .padding(.horizontal, 16)
                     }
-                    .listStyle(.plain).scrollContentBackground(.hidden)
+                    .defaultScrollAnchor(.bottom, for: .sizeChanges)
                     .accessibilityIdentifier("conversationTranscript")
-                    .environment(\.defaultMinListRowHeight, 0)
                     .scrollDismissesKeyboard(.interactively)
                     .onScrollGeometryChange(for: Bool.self) { geometry in
                         geometry.contentSize.height - geometry.contentOffset.y - geometry.containerSize.height < 120
                     } action: { _, nearBottom in followsLatest = nearBottom }
-                    .onScrollGeometryChange(for: CGFloat.self) { $0.containerSize.height } action: { previous, height in
-                        if height < previous {
-                            followsLatest = true
-                            Task { @MainActor in
-                                await Task.yield()
-                                proxy.scrollTo("latest", anchor: .bottom)
-                            }
+                    .onChange(of: messageFocused) { _, focused in
+                        guard focused else { return }
+                        followsLatest = true
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            proxy.scrollTo("latest", anchor: .bottom)
                         }
                     }
                     .onAppear {
@@ -146,7 +148,6 @@ struct ConversationView: View {
             .onChange(of: scenePhase) { _, phase in if phase != .active { messageFocused = false } }
             .onChange(of: conversation.displayedGrants.map(\.plan.grantID)) { _, ids in if !ids.isEmpty { messageFocused = false } }
             .onDisappear { messageFocused = false }
-            .sheet(isPresented: $reviewingSharing) { AIConsentReviewView() }
             .sheet(isPresented: $choosingApp) {
                 NavigationStack {
                     ConversationAppPicker { token in conversation.select(token); choosingApp = false }
@@ -176,17 +177,13 @@ struct ConversationView: View {
                         .foregroundStyle(Color.secondary).accessibilityHidden(true)
                 }
                 if let summary = conversation.selectedActivitySummary {
-                    Text(CopyKey.uiSelectedAppUsage.string(summary.sameAppShortGrantsToday + summary.sameAppLongGrantsToday,
-                        summary.sameAppGrantedMinutesToday))
+                    Text(selectedAppStatus(summary))
                         .font(.caption).foregroundStyle(Color.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                         .accessibilityHint(CopyKey.uiSelectedAppUsageHelp.string)
                         .accessibilityIdentifier("conversationSessionCounts")
                 }
-                if let until = conversation.cooldownUntil {
-                    Text(CopyKey.dealBlockedUntil.string(until.formatted(date: Calendar.current.isDateInToday(until) ? .omitted : .abbreviated, time: .shortened)))
-                        .font(.caption).foregroundStyle(Color.secondary)
-                        .accessibilityIdentifier("conversationSelectedAppBlockedUntil")
-                }
+
             }
         }
         .buttonStyle(.plain).accessibilityIdentifier("conversationChooseAppButton")
@@ -195,22 +192,32 @@ struct ConversationView: View {
         .volitionAttention(trigger: conversation.selectionAttention)
     }
 
-    private var consentPrompt: some View {
-        VolitionCard {
-            Label(CopyKey.uiAISharingOff.resource, systemImage: "hand.raised").font(.subheadline.weight(.semibold))
-            Text(CopyKey.uiAISharingHelp.resource).font(.footnote).foregroundStyle(.secondary)
-            Button(CopyKey.uiReviewSharing.resource) { messageFocused = false; reviewingSharing = true }
-                .buttonStyle(VolitionButtonStyle(primary: false)).accessibilityIdentifier("reviewAIConsentButton")
-        }
+    private func selectedAppStatus(_ summary: ConversationActivitySummary) -> String {
+        let unlocks = summary.sameAppShortGrantsToday + summary.sameAppLongGrantsToday
+        let minutes = summary.sameAppGrantedMinutesToday
+        let count = (unlocks == 1 ? CopyKey.uiUnlockOne : .uiUnlockMany).string(unlocks)
+        let timeGranted = (minutes == 1 ? CopyKey.uiMinuteOne : .uiMinuteMany).string(minutes)
+        let usage = CopyKey.uiSelectedAppUsage.string(count, timeGranted)
+        guard let until = conversation.cooldownUntil else { return usage }
+        let time = until.formatted(date: Calendar.current.isDateInToday(until) ? .omitted : .abbreviated, time: .shortened)
+        return usage + ", " + CopyKey.dealBlockedUntil.string(time)
     }
+
     private var emptyConversation: some View {
-        VolitionCard {
-            HStack(spacing: 10) {
-                VolitionIcon(symbol: "bubble.left.and.bubble.right", accented: true)
-                Text(CopyKey.volitionChatEmpty.resource).font(.headline)
+        Button {
+            messageFocused = true
+        } label: {
+            VolitionCard {
+                HStack(spacing: 10) {
+                    VolitionIcon(symbol: "bubble.left.and.bubble.right", accented: true)
+                    Text(CopyKey.volitionChatEmpty.resource).font(.headline)
+                }
+                Text(CopyKey.uiChatIntro.resource).font(.subheadline).foregroundStyle(.secondary)
             }
-            Text(CopyKey.uiChatIntro.resource).font(.subheadline).foregroundStyle(.secondary)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("conversationStartChattingButton")
     }
 
     @ViewBuilder private var grantCards: some View {
@@ -285,6 +292,9 @@ struct ConversationView: View {
                 Text(CopyKey.uiCancelledDraft.resource).font(.footnote).foregroundStyle(.secondary)
                     .accessibilityIdentifier("conversationCancelledNotice")
             }
+            if let issue = FormValidation.messageError(conversation.draftMessage) {
+                Text(issue.resource).font(.caption).foregroundStyle(.red).accessibilityIdentifier("conversationLengthError")
+            }
             HStack(alignment: .bottom, spacing: 8) {
                 TextField(CopyKey.conversationMessagePrompt.string, text: $conversation.draftMessage, axis: .vertical)
                     .lineLimit(1...(typeSize.isAccessibilitySize ? 3 : 5)).focused($messageFocused).disabled(conversation.isSending)
@@ -310,7 +320,10 @@ struct ConversationView: View {
             Label(CopyKey.uiRequestFailed.resource, systemImage: "exclamationmark.circle")
                 .font(.subheadline.weight(.semibold)).foregroundStyle(.red)
             Text(error).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("conversationErrorLabel")
-            if conversation.preferences.hasConsent {
+            if conversation.loadFailed {
+                Button(CopyKey.historyRetryLoad.resource) { conversation.retryLoadingHistory() }
+                    .buttonStyle(VolitionButtonStyle(primary: false))
+            } else if conversation.preferences.hasConsent {
                 Button(CopyKey.uiRetry.resource, systemImage: "arrow.clockwise", action: submitDraft)
                     .buttonStyle(VolitionButtonStyle(primary: false)).disabled(!canSend)
                     .accessibilityIdentifier("conversationRetryButton")
@@ -319,7 +332,7 @@ struct ConversationView: View {
     }
     private var canSend: Bool {
         !conversation.draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            conversation.draftMessage.count <= 4000 && !conversation.isSending
+            FormValidation.messageError(conversation.draftMessage) == nil && !conversation.isSending
     }
     private func submitDraft() {
         guard canSend else { return }
@@ -335,7 +348,7 @@ struct ConversationView: View {
 
 private extension View {
     func chatRow() -> some View {
-        listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
-            .listRowSeparator(.hidden).listRowBackground(Color.clear)
+        padding(.vertical, 5)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

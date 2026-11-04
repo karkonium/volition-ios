@@ -14,10 +14,17 @@ struct DiagnosticLogsView: View {
     @Environment(LogStore.self) private var logStore
     @State private var days: [LogStore.Day] = []
     @State private var showClearConfirmation = false
+    @State private var failed = false
 
     var body: some View {
         List {
-            if days.isEmpty {
+            if failed {
+                Section {
+                    Text(CopyKey.diagnosticsOperationError.resource).foregroundStyle(.red)
+                    Button(CopyKey.volitionRetry.resource) { reload() }
+                }
+            }
+            if days.isEmpty && !failed {
                 Section {
                     Text(.diagnosticsNoLogsMessage)
                         .foregroundStyle(.secondary)
@@ -66,8 +73,8 @@ struct DiagnosticLogsView: View {
                         titleVisibility: .visible
                     ) {
                         Button(CopyKey.diagnosticsClearAllLogsButton.resource, role: .destructive) {
-                            logStore.clearAll()
-                            days = logStore.availableDays()
+                            do { try logStore.clearAll(); reload() }
+                            catch { failed = true }
                         }
                         Button(CopyKey.diagnosticsCancelButton.resource, role: .cancel) {}
                     } message: {
@@ -79,7 +86,11 @@ struct DiagnosticLogsView: View {
         .navigationTitle(CopyKey.diagnosticsNavigationTitle.resource)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
-        .onAppear { days = logStore.availableDays() }
+        .onAppear { reload() }
+    }
+    private func reload() {
+        do { days = try logStore.availableDays(); failed = false }
+        catch { failed = true }
     }
 }
 
@@ -87,32 +98,51 @@ struct DiagnosticLogsView: View {
 struct LogDayDetailView: View {
     @Environment(LogStore.self) private var logStore
     let dayKey: String
-
-    private var text: String { logStore.mergedText(for: dayKey) }
+    @State private var text = ""
+    @State private var failed = false
+    @State private var sharing: DiagnosticExport?
 
     var body: some View {
         ScrollView {
-            Text(text.isEmpty ? CopyKey.diagnosticsNoEntriesPlaceholder.string : text)
-                .font(.system(.footnote, design: .monospaced))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .textSelection(.enabled)
-                .padding()
-                .accessibilityIdentifier("logDayText")
+            VStack(alignment: .leading, spacing: 12) {
+                if failed {
+                    Text(CopyKey.diagnosticsOperationError.resource).foregroundStyle(.red)
+                    Button(CopyKey.volitionRetry.resource) { reload() }
+                } else {
+                    Text(text.isEmpty ? CopyKey.diagnosticsNoEntriesPlaceholder.string : text)
+                        .font(.system(.footnote, design: .monospaced)).textSelection(.enabled)
+                        .accessibilityIdentifier("logDayText")
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading).padding()
         }
         .navigationTitle(dayKey)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                if let url = try? logStore.exportFile(for: dayKey) {
-                    ShareLink(item: url) {
-                        Image(systemName: "square.and.arrow.up")
-                    }
-                    .accessibilityIdentifier("exportLogButton")
-                }
+                Button {
+                    do { sharing = DiagnosticExport(url: try logStore.exportFile(for: dayKey)); failed = false }
+                    catch { failed = true }
+                } label: { Image(systemName: "square.and.arrow.up") }
+                .accessibilityLabel(CopyKey.activityExport.resource)
+                .accessibilityIdentifier("exportLogButton")
             }
         }
+        .task { reload() }
+        .sheet(item: $sharing) { item in DiagnosticShareSheet(url: item.url) }
     }
+    private func reload() {
+        do { text = try logStore.mergedText(for: dayKey); failed = false }
+        catch { failed = true }
+    }
+}
+private struct DiagnosticExport: Identifiable { let id = UUID(); let url: URL }
+private struct DiagnosticShareSheet: UIViewControllerRepresentable {
+    let url: URL
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    }
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
 
 /// A `LogStore` over a fresh temp directory seeded with two days of sample

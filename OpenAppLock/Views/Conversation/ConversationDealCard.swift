@@ -13,11 +13,11 @@ struct ConversationDealCard: View {
                 .font(.headline).accessibilityIdentifier("conversationDealTerms")
             Text(CopyKey.dealHelp.resource).font(.caption).foregroundStyle(.secondary)
             HStack {
+                Button(CopyKey.dealDecline.resource) { conversation.declineDeal(reflection.id) }
+                    .buttonStyle(VolitionButtonStyle(primary: false)).accessibilityIdentifier("conversationDealDecline")
                 Button(CopyKey.dealAccept.resource) {
                     Task { await conversation.completeReflection(reflection.id, acceptDeal: true, snapshots: snapshots) }
                 }.buttonStyle(VolitionButtonStyle()).accessibilityIdentifier("conversationDealAccept")
-                Button(CopyKey.dealDecline.resource) { conversation.declineDeal(reflection.id) }
-                    .buttonStyle(VolitionButtonStyle(primary: false)).accessibilityIdentifier("conversationDealDecline")
             }.disabled(reflection.state == .activating)
         }.padding().background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
     }

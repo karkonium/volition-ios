@@ -9,6 +9,8 @@ import UserNotifications
 /// Unambiguous saved names route locally before any API call; unresolved requests
 /// preserve the draft and request explicit selection. Private activity records
 /// capture coach decisions separately from actual outcomes, atomically with replies.
+/// Ordinary chat records a conversation outcome, never an access event or deal
+/// pushback, and preserves pending interventions. Only access decisions replace them.
 /// Clear Chat retains the log; clearing the log never clears enforcement history.
 /// Soft reflections persist independently per app, never override hard waits,
 /// and activate at most once in foreground through the existing grant transaction.
@@ -70,7 +72,7 @@ final class ConversationCoordinator {
     private(set) var routedRequestID: UUID?
     private var requestID: UUID?
     private var generation = UUID()
-    private var loadFailed = false
+    private(set) var loadFailed = false
     var isForeground = true
     private var completingReflections = Set<UUID>()
     private var knownSnapshots: [RuleSnapshotDTO] = []
@@ -122,7 +124,7 @@ final class ConversationCoordinator {
          keys: any ConversationKeyStoring = ConversationEnvironmentKeyStore(),
          access: ConversationEnforcement = ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController()),
          timer: any ConversationTimerScheduling = DeviceConversationTimer(),
-         requestStore: ConversationRequestStore = .init(), checkInRoll: @escaping @Sendable () -> Bool = { true }) {
+         requestStore: ConversationRequestStore = .init(), checkInRoll: @escaping @Sendable () -> Bool = { Int.random(in: 0..<3) == 0 }) {
         self.service = service ?? DevelopmentCoachService(client: client, keys: keys)
         self.checkInRoll = checkInRoll
         self.preferences = preferences
@@ -168,7 +170,7 @@ final class ConversationCoordinator {
             nickname = ""
         }
         target = token
-        errorMessage = nil
+        errorMessage = loadFailed ? CopyKey.conversationStorageError.string : nil
         nickname = ConversationGrantStore.applicable(to: token, in: knownSnapshots).first?.name ?? ""
         selectedSection = .chat
     }
@@ -262,8 +264,9 @@ final class ConversationCoordinator {
             ConversationDiagnostics.live.log("send.skipped reason=\(loadFailed ? "history_load_failed" : "busy")")
             return
         }
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, trimmed.count <= 4000 else { return }
+        let trimmed = FormValidation.trim(text)
+        guard !trimmed.isEmpty else { return }
+        if let error = FormValidation.messageError(text) { errorMessage = error.string; return }
         guard preferences.hasConsent else { errorMessage = CopyKey.aiConsentRequired.string; return }
         let initial = snapshots()
         knownSnapshots = initial
@@ -281,7 +284,6 @@ final class ConversationCoordinator {
         guard let requestedApp = applicable.first else { requireAppSelection(for: trimmed); return }
         confirmedSelectionText = nil; selectionPromptText = nil; appSelectionNeeded = false
         nickname = requestedApp.name
-        cancelReflections(appID: requestedApp.id)
         let entry = ConversationActivityEntry(date: clock.now(), appID: requestedApp.id, appName: requestedApp.name, message: trimmed)
         history.activityLog.append(entry)
         do { try persist() }
@@ -385,6 +387,9 @@ final class ConversationCoordinator {
             coachingContext.recommendedIntervention = ConversationContext.intervention(after: context.activitySummary?.grantsLastHour ?? 0)
             coachingContext.preferDeal = coachingContext.recentPauseAttempts >= 2 || coachingContext.recommendedIntervention == "deal"
             coachingContext.emotionCheckInSuggested = history.canAskEmotion(at: contextInstant) && checkInRoll()
+            coachingContext.isInitialRequest = history.messages.filter { $0.role == .user && $0.requestID == id }.count == 1
+            coachingContext.initialRequestApproach = coachingContext.emotionCheckInSuggested ? "emotion" :
+                (id.uuid.0.isMultiple(of: 2) ? "intention" : "open")
             coachingContext.waitUntilLocal = context.waitUntil.map { $0.formatted(date: .abbreviated, time: .shortened) }
             coachingContext.deal = activeDeal.map { .init(grantID: $0.grantID, blockedUntil: $0.blockedUntil,
                 pushbackCount: $0.pushbackCount ?? 0, lastResolvedDealWasBroken: lastBroken,
@@ -401,6 +406,23 @@ final class ConversationCoordinator {
                 errorMessage = CopyKey.conversationStaleRequest.string; requestID = nil; return
             }
             ConversationDiagnostics.live.log("decision.received decision=\(decision.decision.rawValue) minutes=\(decision.unlockMinutes ?? 0) wait_minutes=\(decision.waitMinutes ?? 0)")
+            if decision.decision == .chat {
+                let beforePublishing = history
+                do {
+                    history.messages.append(.init(date: clock.now(), role: .assistant, text: decision.reply, requestID: id))
+                    updateActivity(entry.id) {
+                        $0.outcome = .chatted; $0.modelDecision = .chat
+                        $0.coachResponse = decision.reply; $0.systemResponse = CopyKey.activityChatted.string
+                        $0.completedAt = clock.now()
+                    }
+                    try persist()
+                } catch { history = beforePublishing; throw error }
+                requestID = nil
+                return
+            }
+            // Only a new access decision replaces a pending intervention. Ordinary
+            // chat preserves it and never records an access attempt or deal pushback.
+            cancelReflections(appID: requestedApp.id)
             var event = ConversationAccessEvent(date: clock.now(), appID: requestedApp.id,
                 appName: requestedApp.name, reason: trimmed, decision: decision.decision, reply: decision.reply)
             if [.pause, .wait, .deal, .choice, .override].contains(decision.decision) {
@@ -572,7 +594,9 @@ final class ConversationCoordinator {
         } catch { errorMessage = CopyKey.conversationStorageError.string }
     }
 
-    func clearHistory() {
+    @discardableResult
+    func clearHistory() -> Bool {
+        guard !loadFailed else { errorMessage = CopyKey.conversationStorageError.string; return false }
         ConversationDiagnostics.live.log("history.clear_requested")
         cancelRequest()
         let previous = history
@@ -589,8 +613,8 @@ final class ConversationCoordinator {
         history.activityLog = activityLog
         history.lastGrantID = grants.first?.plan.grantID
         history.lastGrantExpiry = grants.first?.plan.expiresAt
-        do { try persist(); loadFailed = false }
-        catch { history = previous; errorMessage = CopyKey.conversationStorageError.string }
+        do { try persist(); errorMessage = nil; return true }
+        catch { history = previous; errorMessage = CopyKey.conversationStorageError.string; return false }
     }
 
     func cancelRequest() {
@@ -611,16 +635,18 @@ final class ConversationCoordinator {
     func setAIConsent(_ granted: Bool) {
         cancelRequest()
         preferences.setConsent(granted)
-        errorMessage = nil
+        errorMessage = loadFailed ? CopyKey.conversationStorageError.string : nil
     }
 
-    /// Erase content while retaining sanitized active wait/grant evidence. Grants remain
-    /// independently owned by enforcement and keep their original expiry.
+    /// Erase coaching content while retaining saved app profiles and sanitized active
+    /// wait/grant evidence. Enforcement keeps independent grants and their original expiry.
     @discardableResult
     func eraseCoachingContent() -> Bool {
+        guard !loadFailed else { errorMessage = CopyKey.conversationStorageError.string; return false }
         cancelRequest()
         let previous = history
         var clean = ConversationHistory()
+        clean.usageProfiles = history.usageProfiles
         clean.lastEmotionQuestionAt = history.lastEmotionQuestionAt
         clean.cooldownUntil = history.cooldownUntil.flatMap { $0 > clock.now() ? $0 : nil }
         let activeGrantIDs = Set(grants.map(\.plan.grantID))
@@ -683,6 +709,7 @@ final class ConversationCoordinator {
     }
     private struct PersistenceFailure: Error {}
     private func persist() throws {
+        guard !loadFailed else { throw PersistenceFailure() }
         do { try historyStore.save(history) }
         catch {
             ConversationDiagnostics.live.log("history.save_failed")
@@ -712,6 +739,24 @@ extension ConversationCoordinator {
             return reflection.validUntil
         }.min()
     }
+    /// Reload is explicit; a failed decode never grants permission to write empty history.
+    func retryLoadingHistory() {
+        guard loadFailed else { return }
+        do {
+            var recovered = try historyStore.load()
+            recovered.prepareActivityLog()
+            for index in recovered.reflections.indices where recovered.reflections[index].state == .activating {
+                recovered.reflections[index].state = .interrupted
+                recovered.reflections[index].finishedAt = clock.now()
+            }
+            history = recovered
+            loadFailed = false
+            cancelReflections()
+            try persist()
+            errorMessage = nil
+        } catch { loadFailed = true; errorMessage = CopyKey.conversationStorageError.string }
+    }
+
     func reloadUsageProfiles() throws {
         history.usageProfiles = try historyStore.load().usageProfiles
     }
@@ -952,7 +997,7 @@ extension ConversationCoordinator {
     }
     func recordRemovalReason(_ id: UUID, reason: String) throws {
         let reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !reason.isEmpty, reason.count <= 2000,
+        guard FormValidation.removalError(reason) == nil,
               let index = history.removalAttempts.firstIndex(where: { $0.id == id && $0.outcome == .considering }) else { throw PersistenceFailure() }
         let previous = history
         history.removalAttempts[index].reason = reason

@@ -13,7 +13,7 @@ struct ConversationInterventionChoiceCard: View {
             Button {
                 conversation.chooseIntervention(reflection.id, deal: false)
             } label: {
-                optionLabel(.interventionDelayTitle, detail: CopyKey.interventionDelayChoice.string(reflection.seconds, reflection.unlockMinutes))
+                optionLabel(.interventionDelayTitle, detail: CopyKey.delayDuration.string(pauseDuration), next: CopyKey.thenUnlockedDuration.string(unlockDuration))
             }.buttonStyle(VolitionButtonStyle()).accessibilityIdentifier("conversationChooseDelayButton")
             Button {
                 Task {
@@ -21,7 +21,7 @@ struct ConversationInterventionChoiceCard: View {
                     await conversation.completeReflection(reflection.id, acceptDeal: true, snapshots: snapshots)
                 }
             } label: {
-                optionLabel(.interventionDealTitle, detail: CopyKey.interventionDealChoice.string(reflection.unlockMinutes, reflection.blockMinutes ?? 0))
+                optionLabel(.interventionDealTitle, detail: CopyKey.unlockedDuration.string(unlockDuration), next: CopyKey.thenBlockedDuration.string(blockDuration))
             }.buttonStyle(VolitionButtonStyle()).accessibilityIdentifier("conversationChooseDealButton")
             Button {
                 Task {
@@ -35,10 +35,21 @@ struct ConversationInterventionChoiceCard: View {
         }
     }
 
-    private func optionLabel(_ title: CopyKey, detail: String) -> some View {
+    private var pauseDuration: String {
+        CopyKey.pauseDuration(seconds: reflection.seconds)
+    }
+    private var unlockDuration: String {
+        Duration.seconds(reflection.unlockMinutes * 60).formatted(.units(allowed: [.hours, .minutes], width: .wide))
+    }
+    private var blockDuration: String {
+        Duration.seconds((reflection.blockMinutes ?? 0) * 60).formatted(.units(allowed: [.hours, .minutes], width: .wide))
+    }
+
+    private func optionLabel(_ title: CopyKey, detail: String, next: String? = nil) -> some View {
         VStack(spacing: 4) {
             Text(title.resource)
             Text(detail).font(.caption)
+            Text(next ?? " ").font(.caption).opacity(next == nil ? 0 : 1).accessibilityHidden(next == nil)
         }
         .frame(maxWidth: .infinity)
         .fixedSize(horizontal: false, vertical: true)
