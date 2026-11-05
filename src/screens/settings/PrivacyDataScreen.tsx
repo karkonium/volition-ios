@@ -9,7 +9,8 @@ import {
   type Theme,
   type ResponsiveStyle,
 } from "@itsRares/ahhzo-elements";
-import { Screen, perform } from "../../components/Screen";
+import { perform } from "../../components/Screen";
+import { SettingsPage } from "./SettingsPage";
 import { useAppSelector, useAppDispatch } from "../../redux/store";
 import { grantsActions } from "../../redux/grantsSlice";
 import { chatActions } from "../../redux/chatSlice";
@@ -32,47 +33,31 @@ export function PrivacyDataScreen(): React.JSX.Element {
   const changeConsent = (enabled: boolean) => {
     if (!enabled) perform(() => setConsent(false));
     else
-      Alert.alert(
-        t("enableSharingQuestion"),
-        t("enableSharingBody"),
-        [
-          { text: t("cancel"), style: "cancel" },
-          { text: t("enable"), onPress: () => perform(() => setConsent(true)) },
-        ],
-      );
+      Alert.alert(t("enableSharingQuestion"), t("enableSharingBody"), [
+        { text: t("cancel"), style: "cancel" },
+        { text: t("enable"), onPress: () => perform(() => setConsent(true)) },
+      ]);
   };
   return (
-    <Screen
-      title={t("privacy")}
-      subtitle={t("privacySubtitle")}
-    >
-      <SettingsSection
-        title={t("sharingHeading")}
-        footer={t("sharingFooter")}
-      >
+    <SettingsPage title={t("privacy")} subtitle={t("privacySubtitle")}>
+      <SettingsSection title={t("sharingHeading")} footer={t("sharingFooter")}>
         <SettingsRow
           type="toggle"
           title={t("shareOpenAI")}
           description={
-            consent
-              ? t("sharingOnDescription")
-              : t("sharingOffDescription")
+            consent ? t("sharingOnDescription") : t("sharingOffDescription")
           }
           value={consent}
           onValueChange={changeConsent}
         />
         <View style={styles.card}>
           <Text weight="SemiBold">{t("whatShared")}</Text>
-          <Text>
-            {t("whatSharedBody")}
-          </Text>
+          <Text>{t("whatSharedBody")}</Text>
         </View>
       </SettingsSection>
       <SettingsSection title={t("googleDiagnostics")}>
         <View style={styles.card}>
-          <Text>
-            {t("googleDiagnosticsBody")}
-          </Text>
+          <Text>{t("googleDiagnosticsBody")}</Text>
         </View>
         {firebaseConfigured ? (
           <>
@@ -101,9 +86,7 @@ export function PrivacyDataScreen(): React.JSX.Element {
       </SettingsSection>
       <SettingsSection title={t("onDevice")}>
         <View style={styles.card}>
-          <Text>
-            {t("onDeviceBody")}
-          </Text>
+          <Text>{t("onDeviceBody")}</Text>
         </View>
       </SettingsSection>
       <SettingsSection
@@ -116,27 +99,23 @@ export function PrivacyDataScreen(): React.JSX.Element {
             variant="ghost"
             tone="danger"
             onPress={() =>
-              Alert.alert(
-                t("eraseQuestion"),
-                t("eraseConfirm"),
-                [
-                  { text: t("cancel"), style: "cancel" },
-                  {
-                    text: t("erase"),
-                    style: "destructive",
-                    onPress: () => {
-                      coordinator.cancel();
-                      dispatch(chatActions.cleared());
-                      dispatch(grantsActions.offersCancelled());
-                    },
+              Alert.alert(t("eraseQuestion"), t("eraseConfirm"), [
+                { text: t("cancel"), style: "cancel" },
+                {
+                  text: t("erase"),
+                  style: "destructive",
+                  onPress: () => {
+                    coordinator.cancel();
+                    dispatch(chatActions.cleared());
+                    dispatch(grantsActions.offersCancelled());
                   },
-                ],
-              )
+                },
+              ])
             }
           />
         </View>
       </SettingsSection>
-    </Screen>
+    </SettingsPage>
   );
 }
 const createStyles = (theme: Theme) =>

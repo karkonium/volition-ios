@@ -7,6 +7,7 @@ export type MainTabs = {
 };
 export type SettingsStack = {
   SettingsHome: undefined;
+  Preferences: undefined;
   CoachSettings: undefined;
   PrivacyData: undefined;
   ActivityLog: undefined;

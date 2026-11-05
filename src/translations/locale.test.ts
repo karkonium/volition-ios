@@ -1,4 +1,4 @@
-import { resolveLanguage } from "./locale";
+import { isLanguage, resolveLanguage } from "./locale";
 
 describe("language selection", () => {
   it("prefers a supported saved language", () => {
@@ -11,4 +11,10 @@ describe("language selection", () => {
   it("falls back to English for unsupported or invalid preferences", () => {
     expect(resolveLanguage("fr", ["de-DE"])).toBe("en");
   });
+});
+
+it("accepts only supported selections from the language field", () => {
+  expect(isLanguage("es")).toBe(true);
+  expect(isLanguage(null)).toBe(false);
+  expect(isLanguage("fr")).toBe(false);
 });

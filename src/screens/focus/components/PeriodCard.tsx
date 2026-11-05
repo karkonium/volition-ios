@@ -47,7 +47,13 @@ export function PeriodCard({
           </Text>
         </Flex>
         <Text>{formatSchedule(period)}</Text>
-        <Text type="Small">{t("protects", { apps: period.appIDs.length ? appSummary(period.appIDs, apps) : t("allApps") })}</Text>
+        <Text type="Small">
+          {t("protects", {
+            apps: period.appIDs.length
+              ? appSummary(period.appIDs, apps)
+              : t("allApps"),
+          })}
+        </Text>
         <Flex wrap="wrap" gap="xs">
           <Button
             layout="inline"

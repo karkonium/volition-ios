@@ -1,39 +1,86 @@
-import { Image } from "react-native";
 import React from "react";
+import { Image, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { Button, Text, useThemedStyles } from "@itsRares/ahhzo-elements";
-import { Screen } from "../../components/Screen";
-import { VolitionCard } from "../../components/VolitionCard";
+import {
+  Button,
+  Text,
+  useThemedStyles,
+  type ResponsiveStyle,
+  type Theme,
+} from "@itsRares/ahhzo-elements";
+import { OnboardingFrame } from "./OnboardingFrame";
+
 export function WelcomeScreen({
   onContinue,
 }: {
   onContinue: () => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
-  const styles = useThemedStyles((theme) => ({
-    logo: {
-      width: 96,
-      height: 96,
-      borderRadius: theme.radii.lg,
-      alignSelf: "center" as const,
-      marginVertical: theme.spacing.md,
-    },
-  }));
+  const styles = useThemedStyles(createStyles);
   return (
-    <Screen title="Volition" subtitle={t("welcomeSubtitle")}>
-      <Image
-        source={require("../../../assets/icon.png")}
-        style={styles.logo}
-        accessibilityLabel="Volition"
-      />
-      <VolitionCard>
-        <Text type="H3">{t("welcomeTitle")}</Text>
-        <Text>{t("welcomeBody")}</Text>
-      </VolitionCard>
-      <Text>{t("welcomeStep1")}</Text>
-      <Text>{t("welcomeStep2")}</Text>
-      <Text>{t("welcomeStep3")}</Text>
-      <Button text={t("getStarted")} onPress={onContinue} />
-    </Screen>
+    <OnboardingFrame step={1}>
+      <View style={styles.content}>
+        <View style={styles.hero}>
+          <Image
+            source={require("../../../assets/icon.png")}
+            style={styles.logo}
+            accessibilityLabel="Volition"
+          />
+          <Text type="Small" weight="Bold" style={styles.eyebrow}>
+            VOLITION
+          </Text>
+          <Text type="H1" style={styles.title}>
+            {t("welcomeTitle")}
+          </Text>
+          <Text style={styles.description}>{t("welcomeBody")}</Text>
+        </View>
+        <View style={styles.preview}>
+          <Text type="Small" weight="Bold" style={styles.previewLabel}>
+            {t("onboardingSetupPreview")}
+          </Text>
+          {[t("welcomeStep1"), t("welcomeStep2"), t("welcomeStep3")].map(
+            (item) => (
+              <Text key={item} style={styles.step}>
+                {item}
+              </Text>
+            ),
+          )}
+        </View>
+        <Button text={t("getStarted")} onPress={onContinue} />
+      </View>
+    </OnboardingFrame>
   );
 }
+const createStyles = (theme: Theme) =>
+  ({
+    content: {
+      flexGrow: 1,
+      justifyContent: "center",
+      gap: theme.spacing.lg,
+      paddingVertical: theme.spacing.md,
+    },
+    hero: { alignItems: "center", gap: theme.spacing.sm },
+    logo: {
+      width: 104,
+      height: 104,
+      borderRadius: theme.radii.lg,
+      marginBottom: theme.spacing.xs,
+    },
+    eyebrow: { color: theme.colors.textSecondary, letterSpacing: 2 },
+    title: { textAlign: "center" },
+    description: {
+      color: theme.colors.textSecondary,
+      textAlign: "center",
+      maxWidth: 480,
+    },
+    preview: {
+      backgroundColor: theme.colors.card,
+      borderColor: theme.colors.border,
+      borderWidth: 1,
+      borderRadius: theme.radii.md,
+      padding: theme.spacing.md,
+      gap: theme.spacing.xs,
+    },
+    previewLabel: { color: theme.colors.textSecondary, letterSpacing: 0.5 },
+    step: { color: theme.colors.text },
+  }) satisfies Record<string, ResponsiveStyle>;

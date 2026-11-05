@@ -13,6 +13,7 @@ import { AppEditorScreen } from "../screens/apps/AppEditorScreen";
 import { InsightsScreen } from "../screens/insights/InsightsScreen";
 import { FocusScreen } from "../screens/focus/FocusScreen";
 import { SettingsScreen } from "../screens/settings/SettingsScreen";
+import { PreferencesScreen } from "../screens/settings/PreferencesScreen";
 import { CoachSettingsScreen } from "../screens/settings/CoachSettingsScreen";
 import { PrivacyDataScreen } from "../screens/settings/PrivacyDataScreen";
 import { ActivityLogScreen } from "../screens/settings/ActivityLogScreen";
@@ -44,11 +45,8 @@ function SettingsNavigator(): React.JSX.Element {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.background },
-        headerTintColor: theme.colors.textLink,
+        headerShown: false,
         cardStyle: { backgroundColor: theme.colors.background },
-        headerTitle: "",
-        headerBackTitle: "Settings",
       }}
     >
       <Stack.Screen
@@ -56,6 +54,7 @@ function SettingsNavigator(): React.JSX.Element {
         component={SettingsScreen}
         options={{ headerShown: false }}
       />
+      <Stack.Screen name="Preferences" component={PreferencesScreen} />
       <Stack.Screen name="CoachSettings" component={CoachSettingsScreen} />
       <Stack.Screen name="PrivacyData" component={PrivacyDataScreen} />
       <Stack.Screen name="ActivityLog" component={ActivityLogScreen} />

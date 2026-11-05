@@ -4,6 +4,7 @@ import { Linking, View } from "react-native";
 import {
   Button,
   Icon,
+  ListItem,
   SettingsRow,
   Text,
   TextField,
@@ -12,7 +13,8 @@ import {
   type Theme,
   type ResponsiveStyle,
 } from "@itsRares/ahhzo-elements";
-import { Screen, perform } from "../../components/Screen";
+import { perform } from "../../components/Screen";
+import { SettingsPage } from "./SettingsPage";
 import { useAppSelector, useAppDispatch } from "../../redux/store";
 import { settingsActions, type CoachTone } from "../../redux/settingsSlice";
 import { VolitionScreenTime } from "../../../modules/volition-screen-time";
@@ -36,14 +38,16 @@ export function CoachSettingsScreen(): React.JSX.Element {
   const styles = useThemedStyles(createStyles);
   const { theme } = useTheme();
   return (
-    <Screen title={t("coach")} subtitle={t("coachSubtitle")}>
+    <SettingsPage title={t("coach")} subtitle={t("coachSubtitle")}>
       <SettingsSection title={t("toneHeading")} footer={t("toneFooter")}>
         {tones.map((tone) => (
-          <SettingsRow
+          <ListItem
             key={tone.value}
             title={t(tone.value)}
             description={t(`${tone.value}Desc`)}
-            value={state.tone === tone.value ? t("selected") : undefined}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: state.tone === tone.value }}
+            containerStyle={styles.toneRow}
             leading={
               <Icon
                 accessible={false}
@@ -127,11 +131,18 @@ export function CoachSettingsScreen(): React.JSX.Element {
           onPress={() => perform(() => Linking.openSettings())}
         />
       </SettingsSection>
-    </Screen>
+    </SettingsPage>
   );
 }
 const createStyles = (theme: Theme) =>
   ({
+    toneRow: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radii.base,
+      minHeight: 68,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+    },
     card: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radii.md,

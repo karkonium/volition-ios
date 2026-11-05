@@ -49,7 +49,12 @@ public final class VolitionScreenTimeModule: Module {
     public func definition() -> ModuleDefinition {
         Name("VolitionScreenTime")
         AsyncFunction("requestAuthorization") { () -> String in
-            try await AuthorizationCenter.shared.requestAuthorization(for: .individual)
+            // Dismissing Apple’s prompt is an ordinary, retryable outcome.
+            do {
+                try await AuthorizationCenter.shared.requestAuthorization(for: .individual)
+            } catch FamilyControlsError.authorizationCanceled {
+                return await MainActor.run { Self.authorizationStatus() }
+            }
             return await MainActor.run { Self.authorizationStatus() }
         }
         Function("getAuthorizationStatus") { () -> String in

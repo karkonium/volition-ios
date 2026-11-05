@@ -6,14 +6,14 @@ import {
   type Theme,
   type ResponsiveStyle,
 } from "@itsRares/ahhzo-elements";
-import { Screen } from "../../components/Screen";
+import { SettingsPage } from "./SettingsPage";
 import { diagnosticEntries } from "../../services/diagnostics";
 import { SettingsSection } from "./SettingsSection";
 export function DiagnosticsLogsScreen(): React.JSX.Element {
   const entries = [...diagnosticEntries()].reverse();
   const styles = useThemedStyles(createStyles);
   return (
-    <Screen
+    <SettingsPage
       title="Diagnostics"
       subtitle="Technical event names only. No messages, app selections or credentials."
     >
@@ -34,7 +34,7 @@ export function DiagnosticsLogsScreen(): React.JSX.Element {
           ))
         )}
       </SettingsSection>
-    </Screen>
+    </SettingsPage>
   );
 }
 const createStyles = (theme: Theme) =>

@@ -41,9 +41,7 @@ export function PeriodEditor({
           contentContainerStyle={styles.content}
         >
           <Flex vertical gap="md">
-            <Text type="Small">
-              {t("periodIntro")}
-            </Text>
+            <Text type="Small">{t("periodIntro")}</Text>
             <TextField
               placeholderLabel={t("periodName")}
               accessibilityLabel={t("periodName")}
@@ -53,9 +51,7 @@ export function PeriodEditor({
             />
             <Flex vertical gap="xs">
               <Text type="H4">{t("time")}</Text>
-              <Text type="Small">
-                {t("timeHelp")}
-              </Text>
+              <Text type="Small">{t("timeHelp")}</Text>
               <Flex wrap="wrap" gap="sm">
                 <Flex style={styles.timeField}>
                   <TextField
@@ -77,9 +73,7 @@ export function PeriodEditor({
             </Flex>
             <Flex vertical gap="xs">
               <Text type="H4">{t("repeatOn")}</Text>
-              <Text type="Small">
-                {t("overnightHelp")}
-              </Text>
+              <Text type="Small">{t("overnightHelp")}</Text>
               <Flex wrap="wrap" gap="xs">
                 {days.map((day, index) => (
                   <FocusChoice

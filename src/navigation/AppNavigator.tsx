@@ -1,6 +1,6 @@
 import { previewMode } from "../../modules/volition-screen-time";
 import React, { useEffect, useState, useRef } from "react";
-import { AppState, Linking, useColorScheme } from "react-native";
+import { AppState, Linking, useColorScheme, View } from "react-native";
 import {
   NavigationContainer,
   DefaultTheme,
@@ -30,6 +30,7 @@ export function AppNavigator(): React.JSX.Element {
   const initialized = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState(0);
+  const [visitedEditor, setVisitedEditor] = useState(false);
   const initialize = async (): Promise<void> => {
     setError(null);
     try {
@@ -83,11 +84,43 @@ export function AppNavigator(): React.JSX.Element {
   const finish = (): void => {
     dispatch(authActions.onboardingCompleted());
   };
+  const showEditor = (): void => {
+    setVisitedEditor(true);
+    setStep(3);
+  };
   let content: React.JSX.Element;
-  if (!state.auth.onboarded && step === 0)
-    content = <WelcomeScreen onContinue={() => setStep(1)} />;
-  else if (!state.auth.onboarded && step === 1)
-    content = <AIConsentScreen onContinue={() => setStep(2)} />;
+  if (!state.auth.onboarded && (step < 2 || !state.apps.items.length))
+    content = (
+      <View style={{ flex: 1 }}>
+        {step === 0 && <WelcomeScreen onContinue={() => setStep(1)} />}
+        {step === 1 && (
+          <AIConsentScreen
+            onBack={() => setStep(0)}
+            onContinue={() => setStep(2)}
+          />
+        )}
+        {(step === 2 ||
+          (step === 3 && state.auth.authorization !== "approved")) && (
+          <ScreenTimeGateScreen
+            onBack={() => setStep(1)}
+            onApproved={showEditor}
+          />
+        )}
+        {visitedEditor && (
+          <View
+            style={{
+              flex: 1,
+              display:
+                step === 3 && state.auth.authorization === "approved"
+                  ? "flex"
+                  : "none",
+            }}
+          >
+            <SetupFirstAppScreen onBack={() => setStep(2)} onSaved={finish} />
+          </View>
+        )}
+      </View>
+    );
   else if (state.auth.authorization !== "approved")
     content = <ScreenTimeGateScreen onApproved={() => setStep(3)} />;
   else if (!state.apps.items.length)
