@@ -30,7 +30,9 @@ nonisolated struct FocusCommand: Decodable, Sendable {
             period.skippedUntil = nil
             if let index = focus.periods.firstIndex(where: { $0.id == period.id }) {
                 focus.periods[index] = period
-            } else { focus.periods.append(period) }
+            } else {
+                focus.periods.append(period)
+            }
         case .deleteRoutine:
             guard let sourceId else { throw ConversationAccessError.focusInvalid }
             focus.periods.removeAll { $0.id == sourceId }
@@ -59,9 +61,10 @@ nonisolated struct FocusCommand: Decodable, Sendable {
                 let occurrence = focus.occurrences(at: now, apps: apps, includeUpcoming: false).active
                     .first(where: { $0.id == occurrenceID && $0.protects(appID) })
             else { throw ConversationAccessError.staleRequest }
-            focus.exceptions = (focus.exceptions ?? []).filter { $0.endsAt > now } + [
-                FocusException(occurrenceID: occurrenceID, appID: appID, endsAt: occurrence.endsAt)
-            ]
+            focus.exceptions =
+                (focus.exceptions ?? []).filter { $0.endsAt > now } + [
+                    FocusException(occurrenceID: occurrenceID, appID: appID, endsAt: occurrence.endsAt)
+                ]
         }
     }
 }

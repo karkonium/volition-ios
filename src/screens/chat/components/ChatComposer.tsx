@@ -96,7 +96,10 @@ export function ChatComposer({
       </Flex>
       {showCount && (
         <Text type="ExtraSmall" style={styles.count} testID="characterCount">
-          {t("chatCharacterCount", { count: draft.length, limit: messageLimit })}
+          {t("chatCharacterCount", {
+            count: draft.length,
+            limit: messageLimit,
+          })}
         </Text>
       )}
     </Flex>

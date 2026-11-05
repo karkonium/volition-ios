@@ -2,10 +2,7 @@
   "expo": {
     "name": "Volition",
     "slug": "volition",
-    "scheme": [
-      "volition",
-      "openapplock"
-    ],
+    "scheme": ["volition", "openapplock"],
     "version": "1.0.0",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -14,9 +11,7 @@
       "deploymentTarget": "18.0",
       "entitlements": {
         "com.apple.developer.family-controls": true,
-        "com.apple.security.application-groups": [
-          "group.com.a5karki.volition"
-        ]
+        "com.apple.security.application-groups": ["group.com.a5karki.volition"]
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -53,9 +48,7 @@
       "expo-video",
       "expo-web-browser"
     ],
-    "platforms": [
-      "ios"
-    ],
+    "platforms": ["ios"],
     "icon": "./assets/icon.png"
   }
 }

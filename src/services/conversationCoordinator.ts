@@ -6,13 +6,14 @@ import type { RootState, AppDispatch } from "../redux/store";
 import { chatActions } from "../redux/chatSlice";
 import { grantsActions, type Intervention } from "../redux/grantsSlice";
 import { activityLogActions } from "../redux/activityLogSlice";
-import { resolveAppName } from "./appResolver";
+import { focusActions } from "../redux/focusSlice";
 import {
-  checkInDue,
-  focusProtects,
-  recommendedPauseSeconds,
-  validateEmotion,
-} from "./policy";
+  focusAccessLimit,
+  focusReasons,
+  readFocusSnapshot,
+} from "./focusStatus";
+import { resolveAppName } from "./appResolver";
+import { checkInDue, recommendedPauseSeconds, validateEmotion } from "./policy";
 import type { CoachDecisionResponse } from "./decision";
 import type { DecisionRequest } from "./openaiClient";
 import { diagnostic } from "./diagnostics";
@@ -33,6 +34,45 @@ export interface CoordinatorDependencies {
 /// back that grant and late failures cannot replace a newer request's error.
 export class ConversationCoordinator {
   private pending: AbortController | null = null;
+  private pendingAppId: string | null = null;
+
+  interruptFocusOffers(
+    appIds: ReadonlySet<string>,
+    cancelPending = false,
+  ): void {
+    if (cancelPending && this.pendingAppId && appIds.has(this.pendingAppId))
+      this.cancel();
+    for (const appId of appIds) {
+      const offer = this.state.grants.offers[appId];
+      if (!offer || offer.status === "activating") continue;
+      this.deps.dispatch(grantsActions.offerRemoved(appId));
+      this.deps.dispatch(
+        activityLogActions.outcomeRecorded({
+          id: offer.logId,
+          outcome: "interrupted",
+        }),
+      );
+    }
+  }
+
+  private async readFocus() {
+    const snapshot = readFocusSnapshot(await this.deps.native.getFocus());
+    this.deps.dispatch(focusActions.synced(snapshot));
+    return this.state.focus;
+  }
+
+  private async fitFocus(offer: Intervention): Promise<Intervention | null> {
+    const focus = await this.readFocus();
+    const limit = focusAccessLimit(focus, offer.appId, this.deps.now());
+    if (limit.minutes < 1) return null;
+    const requested = offer.decision.unlock_minutes;
+    if (requested === null || limit.minutes >= requested) return offer;
+    return {
+      ...offer,
+      focusLimitedUntil: limit.until,
+      decision: { ...offer.decision, unlock_minutes: limit.minutes },
+    };
+  }
   constructor(private readonly deps: CoordinatorDependencies) {}
   cancel(): void {
     const requestId = this.state.chat.pendingRequestId;
@@ -44,6 +84,7 @@ export class ConversationCoordinator {
       }
     }
     this.pending = null;
+    this.pendingAppId = null;
     this.deps.dispatch(chatActions.requestChanged(null));
   }
   private get state(): RootState {
@@ -79,7 +120,7 @@ export class ConversationCoordinator {
     )
       throw new Error("This offer has expired. Send a new request.");
     if (
-      focusProtects(state.focus, offer.appId, this.deps.now()) ||
+      focusReasons(state.focus, offer.appId, this.deps.now()).length > 0 ||
       Date.parse(state.grants.hardWaits[offer.appId] ?? "") > this.deps.now()
     )
       throw new Error(
@@ -116,6 +157,7 @@ export class ConversationCoordinator {
     const id = this.deps.id(),
       controller = new AbortController();
     this.pending = controller;
+    this.pendingAppId = app.id;
     this.deps.dispatch(chatActions.selected(app.id));
     this.deps.dispatch(chatActions.requestChanged(id));
     const revision = state.auth.consentRevision,
@@ -150,7 +192,10 @@ export class ConversationCoordinator {
     try {
       const key = await this.deps.native.getAPIKey();
       if (!key) throw new Error("Add your API key in Coach Settings.");
-      const commitments = await this.deps.native.getCommitments();
+      const [commitments, focus] = await Promise.all([
+        this.deps.native.getCommitments(),
+        this.readFocus(),
+      ]);
       if (
         controller.signal.aborted ||
         this.pending !== controller ||
@@ -220,7 +265,8 @@ export class ConversationCoordinator {
             .slice(-10),
           deal: deal ? { ...deal, canOverride: deal.pushbackCount >= 2 } : null,
           waitUntil: state.grants.hardWaits[app.id] ?? null,
-          focusProtected: focusProtects(state.focus, app.id, this.deps.now()),
+          focusProtected:
+            focusReasons(focus, app.id, this.deps.now()).length > 0,
           recentRemovalAttempts: state.activityLog.removalLedger.slice(-10),
         },
       });
@@ -239,7 +285,7 @@ export class ConversationCoordinator {
           advice: response,
         }),
       );
-      const offer: Intervention = {
+      let offer: Intervention = {
         id,
         appId: app.id,
         fingerprint,
@@ -254,22 +300,46 @@ export class ConversationCoordinator {
         overridingID: deal?.grantId ?? null,
         logId,
       };
-      if (["approve", "urgent", "frustration"].includes(response.decision)) {
-        this.deps.dispatch(grantsActions.offered(offer));
-        await this.activate(app.id, "open");
-        this.assistant(response.reply, app.id);
-      } else if (
-        ["pause", "deal", "choice", "override", "wait"].includes(
-          response.decision,
-        )
-      ) {
-        // New wait responses are voluntary offers; legacy hard waits stay separate.
-        this.deps.dispatch(grantsActions.offered(offer));
-        await this.deps.flush();
-        if (offer.status !== "checkIn") {
-          this.assistant(response.reply, app.id);
-          if (response.decision === "pause" && response.pause_seconds === 10)
-            await this.startDelay(app.id);
+      const immediate = ["approve", "urgent", "frustration"].includes(
+        response.decision,
+      );
+      const intervention = [
+        "pause",
+        "deal",
+        "choice",
+        "override",
+        "wait",
+      ].includes(response.decision);
+      if (immediate || intervention) {
+        const fitted = await this.fitFocus(offer);
+        if (controller.signal.aborted || this.pending !== controller)
+          throw new Error("Request cancelled.");
+        if (!fitted) {
+          this.deps.dispatch(
+            activityLogActions.outcomeRecorded({
+              id: logId,
+              outcome: "interrupted",
+            }),
+          );
+        } else {
+          offer = fitted;
+          this.deps.dispatch(grantsActions.offered(offer));
+          if (immediate && !offer.focusLimitedUntil) {
+            if (await this.activate(app.id, "open"))
+              this.assistant(response.reply, app.id);
+          } else {
+            await this.deps.flush();
+            if (offer.status !== "checkIn") {
+              // Local copy presents revised terms; model prose may quote the original duration.
+              if (!offer.focusLimitedUntil)
+                this.assistant(response.reply, app.id);
+              if (
+                response.decision === "pause" &&
+                response.pause_seconds === 10
+              )
+                await this.startDelay(app.id);
+            }
+          }
         }
       } else {
         this.assistant(response.reply, app.id);
@@ -279,7 +349,11 @@ export class ConversationCoordinator {
             outcome: response.decision === "deny" ? "denied" : "asked",
           }),
         );
-        if (deal) await this.deps.native.recordPushback(app.tokenBase64);
+        if (
+          deal &&
+          !focusReasons(this.state.focus, app.id, this.deps.now()).length
+        )
+          await this.deps.native.recordPushback(app.tokenBase64);
       }
       if (this.state.chat.draft === rawDraft)
         this.deps.dispatch(chatActions.draftChanged(""));
@@ -302,6 +376,7 @@ export class ConversationCoordinator {
     } finally {
       if (this.pending === controller) {
         this.pending = null;
+        this.pendingAppId = null;
         this.deps.dispatch(chatActions.requestChanged(null));
       }
     }
@@ -320,7 +395,7 @@ export class ConversationCoordinator {
       ...(answer ? { emotion: answer } : {}),
     };
     this.deps.dispatch(grantsActions.offerUpdated(revealed));
-    this.assistant(offer.decision.reply, appId);
+    if (!offer.focusLimitedUntil) this.assistant(offer.decision.reply, appId);
     await this.deps.flush();
     if (
       offer.decision.decision === "pause" &&
@@ -373,13 +448,13 @@ export class ConversationCoordinator {
   async activate(
     appId: string,
     mode: "open" | "deal" | "delay",
-  ): Promise<void> {
+  ): Promise<boolean> {
     const offer = this.state.grants.offers[appId];
     if (
       !offer ||
       ["activating", "interrupted", "checkIn"].includes(offer.status)
     )
-      return;
+      return false;
     this.assertCurrent(offer);
     if (
       mode === "delay" &&
@@ -403,7 +478,7 @@ export class ConversationCoordinator {
     )
       throw new Error("No deal offered.");
     const app = this.state.apps.items.find((item) => item.id === appId);
-    if (!app) return;
+    if (!app) return false;
     const relief = ["urgent", "frustration"].includes(offer.decision.decision);
     this.deps.dispatch(
       grantsActions.offerUpdated({ ...offer, status: "activating" }),
@@ -412,6 +487,13 @@ export class ConversationCoordinator {
     try {
       await this.deps.flush();
       this.assertCurrent(offer);
+      const fitted = await this.fitFocus(offer);
+      this.assertCurrent(offer);
+      if (!fitted) throw new Error("Focus starts before an unlock can fit.");
+      if (fitted !== offer) {
+        await this.reviseFocusOffer(fitted, mode);
+        return false;
+      }
       grant = await this.deps.native.createGrant(
         app.tokenBase64,
         offer.decision.unlock_minutes ?? 1,
@@ -441,7 +523,20 @@ export class ConversationCoordinator {
       void this.deps.native
         .syncPresentation()
         .catch(() => diagnostic("presentation.failed"));
+      return true;
     } catch (error) {
+      const code = (error as { code?: string } | null)?.code;
+      if (!grant && (code === "FOCUS_BOUNDARY" || code === "FOCUS_ACTIVE")) {
+        const fitted = await this.fitFocus(offer).catch(() => null);
+        if (
+          fitted &&
+          fitted !== offer &&
+          this.state.grants.offers[appId]?.id === offer.id
+        ) {
+          await this.reviseFocusOffer(fitted, mode);
+          return false;
+        }
+      }
       if (grant) {
         await this.deps.native.rollbackGrant(grant.grantId);
         this.deps.dispatch(grantsActions.publicationRolledBack(grant.grantId));
@@ -456,5 +551,18 @@ export class ConversationCoordinator {
       diagnostic("grant.failed");
       throw error;
     }
+  }
+
+  private async reviseFocusOffer(
+    offer: Intervention,
+    mode: "open" | "deal" | "delay",
+  ) {
+    this.deps.dispatch(
+      grantsActions.offerUpdated({
+        ...offer,
+        status: mode === "delay" ? "ready" : "offered",
+      }),
+    );
+    await this.deps.flush();
   }
 }

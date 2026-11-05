@@ -43,6 +43,7 @@
   "chatPromptWithoutApp": "¿Qué te gustaría hacer? Escribe el nombre de una app o elige una arriba.",
   "chatPromptWithApp": "¿Qué te gustaría hacer en {{app}}?",
   "chatApp": "App",
+  "chatEndAppUnlock": "Finalizar acceso a {{app}}",
   "chatYou": "Tú",
   "chatNoMatchingApps": "Ninguna app guardada coincide con tu búsqueda.",
   "chatNoSavedApps": "Guarda una app en Apps para pedir acceso aquí.",

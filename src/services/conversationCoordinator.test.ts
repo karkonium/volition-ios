@@ -38,6 +38,7 @@ function setup(response: CoachDecisionResponse, random = 1) {
   }));
   const native = {
     getAPIKey: async () => "key",
+    getFocus: async () => JSON.stringify({ revision: 0, periods: [] }),
     createGrant,
     rollbackGrant: jest.fn(async () => undefined),
     revokeGrant: jest.fn(async () => undefined),
@@ -290,10 +291,23 @@ test("an approval shortened by an upcoming routine needs explicit acceptance", a
   const startAt = new Date(1000000 + 185000).toISOString();
   s.native.getFocus = async () =>
     JSON.stringify({
-      revision: 1, periods: [], session: null, preferences: null, active: [],
-      upcoming: [{ id: "p", sourceId: "p", kind: "routine", name: "Study",
-        appIDs: ["a"], exceptedAppIDs: [], startsAt: startAt,
-        endsAt: new Date(1000000 + 3600000).toISOString() }],
+      revision: 1,
+      periods: [],
+      session: null,
+      preferences: null,
+      active: [],
+      upcoming: [
+        {
+          id: "p",
+          sourceId: "p",
+          kind: "routine",
+          name: "Study",
+          appIDs: ["a"],
+          exceptedAppIDs: [],
+          startsAt: startAt,
+          endsAt: new Date(1000000 + 3600000).toISOString(),
+        },
+      ],
     });
   await s.coordinator.send();
   expect(s.createGrant).not.toHaveBeenCalled();
@@ -303,5 +317,13 @@ test("an approval shortened by an upcoming routine needs explicit acceptance", a
   expect(s.createGrant).not.toHaveBeenCalled();
   expect(s.store.getState().grants.offers.a?.decision.unlock_minutes).toBe(2);
   await s.coordinator.activate("a", "open");
-  expect(s.createGrant).toHaveBeenCalledWith("token", 2, "config", null, null, false, 0);
+  expect(s.createGrant).toHaveBeenCalledWith(
+    "token",
+    2,
+    "config",
+    null,
+    null,
+    false,
+    0,
+  );
 });

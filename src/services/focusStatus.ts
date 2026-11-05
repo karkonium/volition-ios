@@ -61,7 +61,11 @@ export function nextFocusStart(
   );
 }
 
-export function focusAccessLimit(focus: FocusState, appId: string, now: number) {
+export function focusAccessLimit(
+  focus: FocusState,
+  appId: string,
+  now: number,
+) {
   if (focusReasons(focus, appId, now).length) return { minutes: 0 };
   const next = nextFocusStart(focus, appId, now);
   return next

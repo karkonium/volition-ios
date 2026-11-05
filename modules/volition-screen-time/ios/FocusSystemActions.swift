@@ -19,15 +19,13 @@ public nonisolated enum FocusSystemActions {
             }
             await endRevokedActivities(store: enforcement.store)
             return end
-        } catch ConversationAccessError.focusNeedsApps { throw Failure.configure }
-        catch { throw Failure.unavailable }
+        } catch ConversationAccessError.focusNeedsApps { throw Failure.configure } catch { throw Failure.unavailable }
     }
 
     public static func end() throws {
         let status = AuthorizationCenter.shared.authorizationStatus
         guard status == .approved || status == .approvedWithDataAccess else { throw Failure.permission }
-        do { try service.mutateFocus(FocusCommand(kind: .endSession)) }
-        catch { throw Failure.unavailable }
+        do { try service.mutateFocus(FocusCommand(kind: .endSession)) } catch { throw Failure.unavailable }
     }
 
     private static var service: ConversationEnforcement {

@@ -57,6 +57,7 @@ const createStyles = (theme: Theme) =>
     userByline: { color: theme.colors.textLink },
     body: {
       fontSize: theme.typography.sizes.md,
-      lineHeight: theme.typography.sizes.md * theme.typography.lineHeights.loose,
+      lineHeight:
+        theme.typography.sizes.md * theme.typography.lineHeights.loose,
     },
   }) satisfies Record<string, ResponsiveStyle>;

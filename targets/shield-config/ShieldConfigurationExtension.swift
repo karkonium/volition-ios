@@ -48,11 +48,14 @@ final class ShieldConfigurationExtension: ShieldConfigurationDataSource {
         let apps = ConversationGrantStore.applicable(to: token, in: snapshots)
         if !apps.isEmpty {
             let focus = FocusDisplayStore().load()?.occurrences(
-                at: .now, apps: Set(apps.map(\.id)), includeUpcoming: false).active
+                at: .now, apps: Set(apps.map(\.id)), includeUpcoming: false
+            ).active
             if let reason = focus?.first(where: { !$0.appIDs.subtracting($0.exceptedAppIDs).isEmpty }) {
-                return focusConfiguration(reason, count: focus?.filter {
-                    !$0.appIDs.subtracting($0.exceptedAppIDs).isEmpty
-                }.count ?? 1)
+                return focusConfiguration(
+                    reason,
+                    count: focus?.filter {
+                        !$0.appIDs.subtracting($0.exceptedAppIDs).isEmpty
+                    }.count ?? 1)
             }
             return configuration(
                 for: .conversation(

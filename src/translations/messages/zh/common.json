@@ -43,6 +43,7 @@
   "chatPromptWithoutApp": "你想做什么？在消息中说出应用名称，或从上方选择一个。",
   "chatPromptWithApp": "你想在 {{app}} 里做什么？",
   "chatApp": "应用",
+  "chatEndAppUnlock": "结束对 {{app}} 的解锁",
   "chatYou": "你",
   "chatNoMatchingApps": "没有符合搜索条件的已保存应用。",
   "chatNoSavedApps": "先在“应用”中保存一个应用，即可在这里请求访问。",

@@ -113,14 +113,15 @@ public final class VolitionScreenTimeModule: Module {
             }
             guard allowed else { throw Self.failure("An existing wait or permission prevents access") }
             let grant: ConversationGrantStore.Grant
-            do { grant = try Self.enforcement.approve(
-                token: decodedToken, minutes: minutes, fingerprint: fingerprint,
-                blockMinutes: breakMinutes, overridingDealID: overridingID.flatMap(UUID.init(uuidString:)),
-                immediateRelief: relief,
-                activationAllowed: {
-                    AppGroup.defaults.bool(forKey: "expoAIConsent")
-                        && AppGroup.defaults.integer(forKey: "expoConsentRevision") == consentRevision
-                })
+            do {
+                grant = try Self.enforcement.approve(
+                    token: decodedToken, minutes: minutes, fingerprint: fingerprint,
+                    blockMinutes: breakMinutes, overridingDealID: overridingID.flatMap(UUID.init(uuidString:)),
+                    immediateRelief: relief,
+                    activationAllowed: {
+                        AppGroup.defaults.bool(forKey: "expoAIConsent")
+                            && AppGroup.defaults.integer(forKey: "expoConsentRevision") == consentRevision
+                    })
             } catch let error as ConversationAccessError where error == .focusProtected || error == .focusBoundary {
                 throw FocusBridgeError(code: error == .focusProtected ? "FOCUS_ACTIVE" : "FOCUS_BOUNDARY")
             }
@@ -232,8 +233,7 @@ public final class VolitionScreenTimeModule: Module {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let command = try decoder.decode(FocusCommand.self, from: Data(json.utf8))
-            do { try Self.enforcement.mutateFocus(command) }
-            catch let error as ConversationAccessError {
+            do { try Self.enforcement.mutateFocus(command) } catch let error as ConversationAccessError {
                 switch error {
                 case .focusNeedsApps: throw FocusBridgeError(code: "FOCUS_APPS")
                 case .focusInvalid: throw FocusBridgeError(code: "FOCUS_INVALID")
@@ -245,8 +245,9 @@ public final class VolitionScreenTimeModule: Module {
         }
         AsyncFunction("getFocus") { () -> String in try Self.focusSnapshot() }
         AsyncFunction("repairFocusMonitoring") { () in
-            do { try Self.enforcement.repairFocusMonitoring() }
-            catch { throw FocusBridgeError(code: "FOCUS_REGISTRATION") }
+            do { try Self.enforcement.repairFocusMonitoring() } catch {
+                throw FocusBridgeError(code: "FOCUS_REGISTRATION")
+            }
         }
         View(FocusTimePickerView.self) {
             Events("onTimeChange")

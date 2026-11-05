@@ -43,14 +43,19 @@ export function ChatHeader({
               testID="conversationChooseAppButton"
               accessibilityRole="button"
               accessibilityLabel={
-                app ? t("requestAccessLabel", { app: app.name }) : t("chooseApp")
+                app
+                  ? t("requestAccessLabel", { app: app.name })
+                  : t("chooseApp")
               }
               onPress={onChooseApp}
             >
               {app ? (
                 <Flex style={styles.iconSlot}>
                   <Flex style={styles.compactIcon}>
-                    <VolitionAppIcon key={app.tokenBase64} tokenBase64={app.tokenBase64} />
+                    <VolitionAppIcon
+                      key={app.tokenBase64}
+                      tokenBase64={app.tokenBase64}
+                    />
                   </Flex>
                 </Flex>
               ) : (

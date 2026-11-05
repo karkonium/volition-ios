@@ -59,6 +59,15 @@ export function AppNavigator(): React.JSX.Element {
     };
   }, []);
   useEffect(() => {
+    const boundary = state.focus.nextRefreshAt;
+    if (!ready || !boundary || state.auth.authorization !== "approved") return;
+    const delay = Math.max(0, Date.parse(boundary) - Date.now());
+    const timer = setTimeout(() => {
+      void syncNative().catch(() => diagnostic("focus.boundary_sync_failed"));
+    }, delay + 100);
+    return () => clearTimeout(timer);
+  }, [ready, state.auth.authorization, state.focus.nextRefreshAt]);
+  useEffect(() => {
     if (!previewMode) return;
     const listener = Linking.addEventListener("url", ({ url }) => {
       const route = url.split("/").pop();
@@ -66,7 +75,8 @@ export function AppNavigator(): React.JSX.Element {
         navigation.isReady() &&
         ["Chat", "Apps", "Insights", "Focus", "Settings"].includes(route ?? "")
       )
-        navigation.navigate(route as keyof MainTabs);
+        if (route === "Focus") navigation.navigate("Focus");
+        else navigation.navigate(route as Exclude<keyof MainTabs, "Focus">);
     });
     return () => listener.remove();
   }, []);

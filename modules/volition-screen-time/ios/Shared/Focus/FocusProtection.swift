@@ -99,16 +99,21 @@ nonisolated struct FocusProtectionState: Codable, Equatable, Sendable {
         func add(_ occurrence: FocusOccurrence) {
             guard !occurrence.appIDs.isEmpty else { return }
             var occurrence = occurrence
-            occurrence.exceptedAppIDs = Set((exceptions ?? []).filter {
-                $0.occurrenceID == occurrence.id && $0.endsAt > now && occurrence.appIDs.contains($0.appID)
-            }.map(\.appID))
-            if occurrence.startsAt <= now && now < occurrence.endsAt { active.append(occurrence) }
-            else if includeUpcoming && occurrence.startsAt > now { upcoming.append(occurrence) }
+            occurrence.exceptedAppIDs = Set(
+                (exceptions ?? []).filter {
+                    $0.occurrenceID == occurrence.id && $0.endsAt > now && occurrence.appIDs.contains($0.appID)
+                }.map(\.appID))
+            if occurrence.startsAt <= now && now < occurrence.endsAt {
+                active.append(occurrence)
+            } else if includeUpcoming && occurrence.startsAt > now {
+                upcoming.append(occurrence)
+            }
         }
         if let session, session.isActive(at: now) {
-            add(.init(
-                id: session.id.uuidString, sourceId: session.id, kind: "session", name: nil,
-                appIDs: scope(session.appIDs, session.allApps), startsAt: session.start, endsAt: session.expiresAt))
+            add(
+                .init(
+                    id: session.id.uuidString, sourceId: session.id, kind: "session", name: nil,
+                    appIDs: scope(session.appIDs, session.allApps), startsAt: session.start, endsAt: session.expiresAt))
         }
         for period in periods where period.isEnabled {
             let ids = scope(period.appIDs, period.allApps)
@@ -118,16 +123,19 @@ nonisolated struct FocusProtectionState: Codable, Equatable, Sendable {
                     let interval = period.interval(startingOn: day, calendar: calendar),
                     interval.end > now, period.skippedUntil.map({ interval.start >= $0 }) ?? true
                 else { continue }
-                let key = "\(period.id.uuidString):\((period.revision ?? period.id).uuidString):\(Int(interval.start.timeIntervalSince1970))"
-                add(.init(
-                    id: key, sourceId: period.id, kind: "routine", name: period.name, appIDs: ids,
-                    startsAt: interval.start, endsAt: interval.end))
+                let key =
+                    "\(period.id.uuidString):\((period.revision ?? period.id).uuidString):\(Int(interval.start.timeIntervalSince1970))"
+                add(
+                    .init(
+                        id: key, sourceId: period.id, kind: "routine", name: period.name, appIDs: ids,
+                        startsAt: interval.start, endsAt: interval.end))
                 if interval.start > now { break }
             }
         }
         return (
             active.sorted { ($0.endsAt, $0.id) < ($1.endsAt, $1.id) },
-            upcoming.sorted { ($0.startsAt, $0.id) < ($1.startsAt, $1.id) })
+            upcoming.sorted { ($0.startsAt, $0.id) < ($1.startsAt, $1.id) }
+        )
     }
 
     func activityNames(at now: Date) -> Set<String> {

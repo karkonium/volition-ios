@@ -160,9 +160,12 @@ nonisolated struct ConversationGrantStore: Sendable {
                         recovery = configuration
                     } else {
                         recovery = RecoveryConfiguration(
-                            snapshots: try JSONDecoder().decode([RuleSnapshotDTO].self, from: mirror.payload), focus: nil)
+                            snapshots: try JSONDecoder().decode([RuleSnapshotDTO].self, from: mirror.payload),
+                            focus: nil)
                     }
-                } else { recovery = nil }
+                } else {
+                    recovery = nil
+                }
                 guard let snapshots = fallback ?? recovery?.snapshots else {
                     throw ConversationAccessError.storageUnavailable
                 }

@@ -55,13 +55,15 @@ export function ChatTranscript({
   const updatePosition = ({
     nativeEvent: { contentOffset, contentSize, layoutMeasurement },
   }: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const distance = contentSize.height - contentOffset.y - layoutMeasurement.height;
+    const distance =
+      contentSize.height - contentOffset.y - layoutMeasurement.height;
     followingLatest.current = distance <= latestThreshold;
     setShowJump(!followingLatest.current);
   };
 
   const followLatest = () => {
-    if (followingLatest.current) scroll.current?.scrollToEnd({ animated: false });
+    if (followingLatest.current)
+      scroll.current?.scrollToEnd({ animated: false });
   };
 
   return (
@@ -101,12 +103,20 @@ export function ChatTranscript({
         </View>
         {messages.length === 0 && <ChatEmptyState appName={appName} />}
         {messages.slice(-visibleCount).map((message) => (
-          <ConversationMessage key={message.id} role={message.role} text={message.text} />
+          <ConversationMessage
+            key={message.id}
+            role={message.role}
+            text={message.text}
+          />
         ))}
         {children}
         {error && (
           <Flex vertical style={styles.error}>
-            <Text weight="SemiBold" style={styles.errorTitle} accessibilityRole="alert">
+            <Text
+              weight="SemiBold"
+              style={styles.errorTitle}
+              accessibilityRole="alert"
+            >
               {t("chatRequestFailed")}
             </Text>
             <Text type="Small" selectable testID="conversationErrorLabel">
@@ -125,7 +135,11 @@ export function ChatTranscript({
           </Flex>
         )}
         {cancelled && messages.length > 0 && (
-          <Text type="Small" accessibilityLiveRegion="polite" testID="conversationCancelledNotice">
+          <Text
+            type="Small"
+            accessibilityLiveRegion="polite"
+            testID="conversationCancelledNotice"
+          >
             {t("chatCancelled")}
           </Text>
         )}
@@ -152,9 +166,15 @@ export function ChatTranscript({
 
 const createStyles = (theme: Theme) =>
   ({
-    width: { width: "100%", maxWidth: layout.pageMaxWidth, alignSelf: "center", minHeight: 0 },
+    width: {
+      width: "100%",
+      maxWidth: layout.pageMaxWidth,
+      alignSelf: "center",
+      minHeight: 0,
+    },
     scroll: { flex: 1 },
     content: {
+      flexGrow: 1,
       padding: theme.spacing.md,
       gap: theme.spacing.sm,
     },
@@ -169,5 +189,8 @@ const createStyles = (theme: Theme) =>
     },
     errorTitle: { color: theme.colors.error },
     jump: { alignSelf: "center" },
-    utilityButton: { minHeight: layout.minimumTouchSize, paddingVertical: theme.spacing.xs },
+    utilityButton: {
+      minHeight: layout.minimumTouchSize,
+      paddingVertical: theme.spacing.xs,
+    },
   }) satisfies Record<string, ResponsiveStyle>;

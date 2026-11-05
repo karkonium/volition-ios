@@ -72,7 +72,8 @@ const slice = createSlice({
       if (
         state.revision > next.revision ||
         (state.revision === next.revision &&
-          Date.parse(state.observedAt ?? "") > Date.parse(next.observedAt ?? ""))
+          Date.parse(state.observedAt ?? "") >
+            Date.parse(next.observedAt ?? ""))
       )
         return;
       return { ...next, monitoringUnavailable: state.monitoringUnavailable };

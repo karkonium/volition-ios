@@ -1,8 +1,4 @@
-import {
-  checkInDue,
-  recommendedPauseSeconds,
-  validateEmotion,
-} from "./policy";
+import { checkInDue, recommendedPauseSeconds, validateEmotion } from "./policy";
 import reducer from "../redux/grantsSlice";
 test("global check-in boundary is exactly 120 seconds", () => {
   expect(checkInDue(new Date(0).toISOString(), 119999)).toBe(false);

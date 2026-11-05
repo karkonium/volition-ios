@@ -97,7 +97,11 @@ export function AppPickerModal({
                 <Icon
                   name={selected ? "checkmark-circle" : "chevron-forward"}
                   size={theme.typography.sizes.lg}
-                  color={selected ? theme.colors.textLink : theme.colors.textSecondary}
+                  color={
+                    selected
+                      ? theme.colors.textLink
+                      : theme.colors.textSecondary
+                  }
                 />
               </Touchable>
             );

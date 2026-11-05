@@ -1,8 +1,19 @@
 import React, { useRef, useState } from "react";
-import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, View, useWindowDimensions } from "react-native";
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { useThemedStyles, type ResponsiveStyle, type Theme } from "@itsRares/ahhzo-elements";
+import {
+  useThemedStyles,
+  type ResponsiveStyle,
+  type Theme,
+} from "@itsRares/ahhzo-elements";
 import { ActiveGrantBanner } from "../../components/ActiveGrantBanner";
 import { perform } from "../../components/Screen";
 import { layout } from "../../layout/layout";
@@ -19,7 +30,12 @@ import { ChatHeader } from "./components/ChatHeader";
 import { ChatTranscript } from "./components/ChatTranscript";
 import { composerState } from "./components/composerState";
 
-const rateableOutcomes = new Set(["approved", "keptLocked", "earlyEnded", "expired"]);
+const rateableOutcomes = new Set([
+  "approved",
+  "keptLocked",
+  "earlyEnded",
+  "expired",
+]);
 
 /** App selection and independent grant banners stay outside the scrolling conversation. */
 export function ChatScreen(): React.JSX.Element {
@@ -39,7 +55,9 @@ export function ChatScreen(): React.JSX.Element {
     ),
   );
   const consent = useAppSelector((state) => state.auth.aiConsent);
-  const app = apps.find((item) => item.id === chat.selectedAppId && item.isEnabled);
+  const app = apps.find(
+    (item) => item.id === chat.selectedAppId && item.isEnabled,
+  );
   const pending = Boolean(chat.pendingRequestId);
   const [picker, setPicker] = useState(false);
   const [cancelled, setCancelled] = useState(false);
@@ -63,7 +81,9 @@ export function ChatScreen(): React.JSX.Element {
     <View
       ref={container}
       style={styles.root}
-      onLayout={() => container.current?.measureInWindow((_x, y) => setKeyboardOffset(y))}
+      onLayout={() =>
+        container.current?.measureInWindow((_x, y) => setKeyboardOffset(y))
+      }
     >
       <KeyboardAvoidingView
         style={styles.root}
@@ -72,7 +92,11 @@ export function ChatScreen(): React.JSX.Element {
       >
         <SafeAreaView
           style={styles.root}
-          edges={width >= 768 ? ["top", "left", "right", "bottom"] : ["top", "left", "right"]}
+          edges={
+            width >= 768
+              ? ["top", "left", "right", "bottom"]
+              : ["top", "left", "right"]
+          }
         >
           <ChatHeader
             app={app}
@@ -83,12 +107,18 @@ export function ChatScreen(): React.JSX.Element {
             }}
           />
           {activeGrants.length > 0 && (
-            <ScrollView style={styles.pinned} contentContainerStyle={styles.grants}>
+            <ScrollView
+              style={styles.pinned}
+              contentContainerStyle={styles.grants}
+            >
               {activeGrants.map((grant) => (
                 <ActiveGrantBanner
                   key={grant.grantId}
                   grant={grant}
-                  name={apps.find((item) => item.id === grant.appId)?.name ?? t("chatApp")}
+                  name={
+                    apps.find((item) => item.id === grant.appId)?.name ??
+                    t("chatApp")
+                  }
                   onEnd={() => perform(() => endGrant(grant.grantId))}
                 />
               ))}
@@ -101,9 +131,14 @@ export function ChatScreen(): React.JSX.Element {
             onLoadEarlier={() => dispatch(chatActions.loadEarlier())}
             error={chat.error}
             cancelled={cancelled}
-            onRetry={consent && composerState(chat.draft, pending).canSend ? send : undefined}
+            onRetry={
+              consent && composerState(chat.draft, pending).canSend
+                ? send
+                : undefined
+            }
           >
-            {app && offer &&
+            {app &&
+              offer &&
               (offer.status === "checkIn" ? (
                 <EmotionCheckInSheet key={offer.id} appId={offer.appId} />
               ) : offer.status === "delaying" || offer.status === "ready" ? (
@@ -142,5 +177,9 @@ const createStyles = (theme: Theme) =>
       flexGrow: 0,
       flexShrink: 1,
     },
-    grants: { gap: theme.spacing.xxs, paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.xs },
+    grants: {
+      gap: theme.spacing.xxs,
+      paddingHorizontal: theme.spacing.md,
+      paddingTop: theme.spacing.xs,
+    },
   }) satisfies Record<string, ResponsiveStyle>;

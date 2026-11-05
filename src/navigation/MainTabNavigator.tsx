@@ -7,7 +7,13 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useTheme, useThemedStyles, Text, Flex, type Theme } from "@itsRares/ahhzo-elements";
+import {
+  useTheme,
+  useThemedStyles,
+  Text,
+  Flex,
+  type Theme,
+} from "@itsRares/ahhzo-elements";
 import { ChatScreen } from "../screens/chat/ChatScreen";
 import { AppsScreen } from "../screens/apps/AppsScreen";
 import { AppEditorScreen } from "../screens/apps/AppEditorScreen";
@@ -80,69 +86,73 @@ export function MainTabNavigator(): React.JSX.Element {
   const { theme } = useTheme();
   const styles = useThemedStyles(createStyles);
   const tabs = (
-      <Tabs.Navigator
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarLabel: t(
-            (
-              {
-                Chat: "chat",
-                Apps: "apps",
-                Insights: "insights",
-                Focus: "focus",
-                Settings: "settings",
-              } as const
-            )[route.name],
-          ),
-          tabBarButtonTestID: `sidebarItem-${route.name.toLowerCase()}`,
-          tabBarPosition: sidebar ? "left" : "bottom",
-          tabBarVariant: sidebar ? "material" : "uikit",
-          tabBarHideOnKeyboard: true,
-          tabBarLabelStyle: { fontSize: sidebar ? 15 : 10, fontWeight: "500" },
-          tabBarItemStyle: {
-            borderRadius: 14,
-            marginHorizontal: sidebar ? 12 : 0,
-            marginVertical: sidebar ? 4 : 0,
-          },
-          tabBarActiveBackgroundColor: sidebar
-            ? theme.colors.secondary
-            : "transparent",
-          sceneStyle: { backgroundColor: theme.colors.background },
-          tabBarActiveTintColor: theme.colors.tabBarActiveTintColor,
-          tabBarInactiveTintColor: theme.colors.textSecondary,
-          tabBarStyle: {
-            display:
-              !sidebar &&
-              route.name === "Apps" &&
-              getFocusedRouteNameFromRoute(route) === "AppEditor"
-                ? "none"
-                : "flex",
-            backgroundColor: theme.colors.tabBarBackground,
-            borderColor: theme.colors.border,
-            borderTopWidth: sidebar ? 0 : 0.5,
-            elevation: 0,
-            ...(sidebar ? { width: 210, paddingTop: 60 } : { paddingTop: 7 }),
-          },
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name={icons[route.name]} color={color} size={size} />
-          ),
-        })}
-      >
-        <Tabs.Screen name="Chat" component={ChatScreen} />
-        <Tabs.Screen name="Apps" component={AppsNavigator} />
-        <Tabs.Screen name="Insights" component={InsightsScreen} />
-        <Tabs.Screen name="Focus" component={FocusScreen} />
-        <Tabs.Screen name="Settings" component={SettingsNavigator} />
-      </Tabs.Navigator>
+    <Tabs.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarLabel: t(
+          (
+            {
+              Chat: "chat",
+              Apps: "apps",
+              Insights: "insights",
+              Focus: "focus",
+              Settings: "settings",
+            } as const
+          )[route.name],
+        ),
+        tabBarButtonTestID: `sidebarItem-${route.name.toLowerCase()}`,
+        tabBarPosition: sidebar ? "left" : "bottom",
+        tabBarVariant: sidebar ? "material" : "uikit",
+        tabBarHideOnKeyboard: true,
+        tabBarLabelStyle: { fontSize: sidebar ? 15 : 10, fontWeight: "500" },
+        tabBarItemStyle: {
+          borderRadius: 14,
+          marginHorizontal: sidebar ? 12 : 0,
+          marginVertical: sidebar ? 4 : 0,
+        },
+        tabBarActiveBackgroundColor: sidebar
+          ? theme.colors.secondary
+          : "transparent",
+        sceneStyle: { backgroundColor: theme.colors.background },
+        tabBarActiveTintColor: theme.colors.tabBarActiveTintColor,
+        tabBarInactiveTintColor: theme.colors.textSecondary,
+        tabBarStyle: {
+          display:
+            !sidebar &&
+            route.name === "Apps" &&
+            getFocusedRouteNameFromRoute(route) === "AppEditor"
+              ? "none"
+              : "flex",
+          backgroundColor: theme.colors.tabBarBackground,
+          borderColor: theme.colors.border,
+          borderTopWidth: sidebar ? 0 : 0.5,
+          elevation: 0,
+          ...(sidebar ? { width: 210, paddingTop: 60 } : { paddingTop: 7 }),
+        },
+        tabBarIcon: ({ color, size }) => (
+          <Ionicons name={icons[route.name]} color={color} size={size} />
+        ),
+      })}
+    >
+      <Tabs.Screen name="Chat" component={ChatScreen} />
+      <Tabs.Screen name="Apps" component={AppsNavigator} />
+      <Tabs.Screen name="Insights" component={InsightsScreen} />
+      <Tabs.Screen name="Focus" component={FocusScreen} />
+      <Tabs.Screen name="Settings" component={SettingsNavigator} />
+    </Tabs.Navigator>
   );
   return previewMode ? (
     <Flex vertical flex={1}>
       <SafeAreaView edges={["top", "left", "right"]} style={styles.preview}>
-        <Text type="ExtraSmall" style={styles.previewText}>{t("preview")}</Text>
+        <Text type="ExtraSmall" style={styles.previewText}>
+          {t("preview")}
+        </Text>
       </SafeAreaView>
       <SafeAreaProvider>{tabs}</SafeAreaProvider>
     </Flex>
-  ) : tabs;
+  ) : (
+    tabs
+  );
 }
 
 const createStyles = (theme: Theme) => ({

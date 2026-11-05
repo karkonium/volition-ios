@@ -43,6 +43,7 @@
   "chatPromptWithoutApp": "What would you like to do? Name an app in your message or choose one above.",
   "chatPromptWithApp": "What would you like to do in {{app}}?",
   "chatApp": "App",
+  "chatEndAppUnlock": "End unlock for {{app}}",
   "chatYou": "You",
   "chatCharacterCount": "{{count}} / {{limit}}",
   "chatNoMatchingApps": "No saved apps match your search.",
