@@ -1,9 +1,9 @@
-import { VolitionAppIcon } from "../../components/VolitionAppIcon";
+import { AppRow } from "./components/AppRow";
+import { EmptyState } from "../../components/EmptyState/EmptyState";
 import React, { useState } from "react";
 import { Button, Text, Modal, TextField, Flex } from "@itsRares/ahhzo-elements";
 import { useNavigation, type NavigationProp } from "@react-navigation/native";
 import { Screen, perform } from "../../components/Screen";
-import { VolitionCard } from "../../components/VolitionCard";
 import { useNow } from "../../components/ActiveGrantBanner";
 import { useAppSelector, useAppDispatch } from "../../redux/store";
 import type { VolitionSavedApp } from "../../redux/appsSlice";
@@ -25,6 +25,13 @@ export function AppsScreen(): React.JSX.Element {
   const [minutes, setMinutes] = useState("5");
   return (
     <Screen title="Apps" subtitle="Your apps, with intention">
+      {state.apps.items.length === 0 && (
+        <EmptyState
+          icon="apps-outline"
+          title="Make room for intention"
+          description="Add an app you’d like to use more thoughtfully. You can always change or remove it."
+        />
+      )}
       {state.apps.items.map((app) => {
         const grant = state.grants.activeGrants.find(
           (item) => item.appId === app.id,
@@ -43,30 +50,21 @@ export function AppsScreen(): React.JSX.Element {
               ? `Active break · ${Math.ceil((Date.parse(deal.blockedUntil) - now) / 60000)}m`
               : "Shielded";
         return (
-          <VolitionCard key={app.id}>
-            <VolitionAppIcon tokenBase64={app.tokenBase64} />
-            <Text type="H3">{app.name}</Text>
-            <Text type="Small">{status}</Text>
-            <Text>{app.goal}</Text>
-            <Button
-              text="Edit"
-              variant="ghost"
-              onPress={() => {
-                setEditing(app);
-                setEditor(true);
-              }}
-            />
-            <Button
-              text="Remove app"
-              variant="ghost"
-              tone="danger"
-              onPress={() => {
-                setRemoving(app);
-                setStep(1);
-                setReason("");
-              }}
-            />
-          </VolitionCard>
+          <AppRow
+            key={app.id}
+            app={app}
+            status={status}
+            onEdit={() => {
+              setEditing(app);
+              setEditor(true);
+            }}
+            onRemove={() => {
+              setRemoving(app);
+              setStep(1);
+              setReason("");
+              setMinutes("5");
+            }}
+          />
         );
       })}
       <Button
@@ -85,13 +83,15 @@ export function AppsScreen(): React.JSX.Element {
       <Modal
         title="Remove app"
         isVisible={removing !== null}
+        scrollable
         onClose={() => setRemoving(null)}
       >
         <Flex vertical gap="md">
           {step === 1 ? (
             <>
               <Text>
-                What made this feel unhelpful? This feedback stays private.
+                What made this feel unhelpful? Sharing a reason is optional and
+                stays private.
               </Text>
               <TextField
                 placeholderLabel="Optional reason"
@@ -114,6 +114,13 @@ export function AppsScreen(): React.JSX.Element {
                 onChange={setMinutes}
                 keyboardType="number-pad"
               />
+              {(!Number.isInteger(Number(minutes)) ||
+                Number(minutes) < 1 ||
+                Number(minutes) > 60) && (
+                <Text accessibilityRole="alert">
+                  Enter a whole number from 1 to 60.
+                </Text>
+              )}
               <Button
                 text="Request temporary access"
                 onPress={() => {
