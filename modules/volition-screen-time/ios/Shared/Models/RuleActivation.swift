@@ -52,7 +52,8 @@ nonisolated extension RuleSnapshotDTO {
             currentBlockEnd = schedule.activeWindow(containing: now, calendar: calendar)?.end
         case .timeLimit, .openLimit:
             if let usage, isScheduledToday(at: now, calendar: calendar),
-               limitReached(given: usage, at: now) {
+                limitReached(given: usage, at: now)
+            {
                 currentBlockEnd = calendar.nextMidnight(after: now)
             } else {
                 currentBlockEnd = nil

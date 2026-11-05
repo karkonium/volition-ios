@@ -49,14 +49,15 @@ struct RuleDraft: Hashable {
         self.configuration = .schedule(
             ScheduleConfig(startMinutes: preset.startMinutes, endMinutes: preset.endMinutes))
     }
-    
+
     func validate() -> ValidationResult {
         if kind == .conversation {
             guard !conversationConfig.goal.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  conversationConfig.goal.count <= 2000 else { return .failure(reason: .conversationGoal) }
+                conversationConfig.goal.count <= 2000
+            else { return .failure(reason: .conversationGoal) }
             let selections = appLists.compactMap(\.selectionData).map { AppSelectionCodec.decode($0) }
             guard selections.contains(where: { !$0.applicationTokens.isEmpty }),
-                  selections.allSatisfy({ $0.categoryTokens.isEmpty && $0.webDomainTokens.isEmpty })
+                selections.allSatisfy({ $0.categoryTokens.isEmpty && $0.webDomainTokens.isEmpty })
             else { return .failure(reason: .individualApps) }
         }
         if self.configuration.kind == .schedule {
@@ -69,7 +70,7 @@ struct RuleDraft: Hashable {
         }
         return .success
     }
-    
+
     var hasValidConfiguration: Bool {
         validate() == .success
     }
@@ -91,7 +92,8 @@ struct RuleDraft: Hashable {
         }
         Diag.log(
             .rule, .event,
-            "commit rule-\(rule.id.logTag) \"\(name)\" \(rule.kindRaw) hard=\(hardMode) enabled=\(rule.isEnabled) lists=\(appLists.map(\.name).joined(separator: ", "))")
+            "commit rule-\(rule.id.logTag) \"\(name)\" \(rule.kindRaw) hard=\(hardMode) enabled=\(rule.isEnabled) lists=\(appLists.map(\.name).joined(separator: ", "))"
+        )
     }
 
     /// Creates and inserts a new rule from this draft. The rule is inserted

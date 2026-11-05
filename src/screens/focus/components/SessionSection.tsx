@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   Button,
   Flex,
@@ -31,21 +32,22 @@ export function SessionSection({
   onStart: () => void;
   onEnd: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   if (activeMinutes !== null)
     return (
       <VolitionCard accent>
         <Flex vertical gap="md">
           <Text type="Small" weight="SemiBold" style={styles.accent}>
-            FOCUS IN PROGRESS
+            {t("focusInProgress")}
           </Text>
           <Text type="H1">
-            {activeMinutes} {activeMinutes === 1 ? "minute" : "minutes"} left
+            {t("minutesLeft", { count: activeMinutes })}
           </Text>
           <Text type="Small">
-            Your focus session is active. You can end it whenever you need to.
+            {t("focusActiveHelp")}
           </Text>
-          <Button text="End Focus" variant="outline" onPress={onEnd} />
+          <Button text={t("endFocus")} variant="outline" onPress={onEnd} />
         </Flex>
       </VolitionCard>
     );
@@ -54,31 +56,31 @@ export function SessionSection({
       <Flex vertical gap="md">
         <Flex vertical gap="xs">
           <Flex vertical gap="xxs">
-            <Text type="H2">Start a session</Text>
+            <Text type="H2">{t("startSession")}</Text>
             <Text type="Small">
-              Choose how long you’d like some space to focus.
+              {t("startSessionHelp")}
             </Text>
           </Flex>
           <Flex wrap="wrap" gap="xs">
             {[15, 25, 50].map((minutes) => (
               <FocusChoice
                 key={minutes}
-                label={`${minutes} min`}
+                label={t("shortMinutes", { count: minutes })}
                 selected={duration === String(minutes)}
                 onPress={() => setDuration(String(minutes))}
               />
             ))}
           </Flex>
           <TextField
-            placeholderLabel="Custom duration (15–180 minutes)"
-            accessibilityLabel="Custom duration in minutes"
+            placeholderLabel={t("customDuration")}
+            accessibilityLabel={t("customDurationLabel")}
             value={duration}
             onChange={setDuration}
             keyboardType="number-pad"
           />
         </Flex>
         <AppSelection apps={apps} selected={selected} onChange={setSelected} />
-        <Button text="Start Focus" onPress={onStart} />
+        <Button text={t("startFocus")} onPress={onStart} />
       </Flex>
     </VolitionCard>
   );

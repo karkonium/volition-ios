@@ -32,7 +32,8 @@ extension BlockingRule {
         }
         if combined.applicationTokens.isEmpty
             && combined.categoryTokens.isEmpty
-            && combined.webDomainTokens.isEmpty {
+            && combined.webDomainTokens.isEmpty
+        {
             Diag.log(
                 .rule, .event,
                 "multi-list combined selection decoded empty (bogus bytes or no authorization here)")

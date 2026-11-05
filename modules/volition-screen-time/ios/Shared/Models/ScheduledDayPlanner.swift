@@ -23,8 +23,9 @@ nonisolated enum ScheduledDayPlanner {
         var offset = 0
         while result.count < count, offset < searchHorizonDays {
             if let day = calendar.date(byAdding: .day, value: offset, to: today),
-               let weekday = Weekday(rawValue: calendar.component(.weekday, from: day)),
-               days.contains(weekday) {
+                let weekday = Weekday(rawValue: calendar.component(.weekday, from: day)),
+                days.contains(weekday)
+            {
                 result.append(day)
             }
             offset += 1
@@ -41,8 +42,9 @@ nonisolated enum ScheduledDayPlanner {
         let base = calendar.startOfDay(for: day)
         for offset in 1...searchHorizonDays {
             if let candidate = calendar.date(byAdding: .day, value: offset, to: base),
-               let weekday = Weekday(rawValue: calendar.component(.weekday, from: candidate)),
-               days.contains(weekday) {
+                let weekday = Weekday(rawValue: calendar.component(.weekday, from: candidate)),
+                days.contains(weekday)
+            {
                 return candidate
             }
         }

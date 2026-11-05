@@ -21,10 +21,10 @@ extension OpenAppLockSchemaV1 {
         /// Denormalized count of selected apps/categories/domains for display.
         var selectionCount: Int
         var createdAt: Date
-        
+
         @Relationship(deleteRule: .nullify, inverse: \BlockingRule.appList)
         var rules: [BlockingRule] = []
-        
+
         init(
             id: UUID = UUID(),
             name: String,
@@ -38,7 +38,7 @@ extension OpenAppLockSchemaV1 {
             self.selectionCount = selectionCount
             self.createdAt = createdAt
         }
-        
+
         /// Whether any rule currently points at this list (guards deletion).
         static func isInUse(_ list: AppList, context: ModelContext) -> Bool {
             let listID = list.id
@@ -47,16 +47,16 @@ extension OpenAppLockSchemaV1 {
             )
             return ((try? context.fetchCount(descriptor)) ?? 0) > 0
         }
-        
+
         /// "4 Apps" / "1 App" label shared by the library, editor, and detail rows.
         var appCountLabel: String {
             selectionCount == 1 ? "1 App" : "\(selectionCount) Apps"
         }
-        
+
         var ruleCountLabel: String {
             rules.count == 1 ? "1 Rule" : "\(rules.count) Rules"
         }
-        
+
         var appAndRuleCountLabel: String {
             "\(appCountLabel) · \(ruleCountLabel)"
         }

@@ -11,22 +11,28 @@ final class FamilyActivityPickerPresenter: NSObject, UIAdaptivePresentationContr
     private weak var host: UIViewController?
     func present(promise: Promise) {
         guard pending == nil else { promise.reject("ERR_PICKER_BUSY", "An app picker is already open"); return }
-        guard var root = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
-            .flatMap(\.windows).first(where: \.isKeyWindow)?.rootViewController else {
+        guard
+            var root = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
+                .flatMap(\.windows).first(where: \.isKeyWindow)?.rootViewController
+        else {
             promise.reject("ERR_NO_ROOT", "No active window"); return
         }
         while let presented = root.presentedViewController { root = presented }
         pending = promise
-        let controller = UIHostingController(rootView: SingleAppPicker { [weak self] selection in
-            guard let self else { return }
-            do {
-                guard selection.categoryTokens.isEmpty, selection.webDomainTokens.isEmpty,
-                      selection.applicationTokens.count == 1, let token = selection.applicationTokens.first else { return }
-                let encoded = try JSONEncoder().encode(token).base64EncodedString()
-                self.pending?.resolve(["tokenBase64": encoded]); self.pending = nil
-                self.host?.dismiss(animated: true)
-            } catch { self.cancel() }
-        } onCancel: { [weak self] in self?.cancel() })
+        let controller = UIHostingController(
+            rootView: SingleAppPicker { [weak self] selection in
+                guard let self else { return }
+                do {
+                    guard selection.categoryTokens.isEmpty, selection.webDomainTokens.isEmpty,
+                        selection.applicationTokens.count == 1, let token = selection.applicationTokens.first
+                    else { return }
+                    let encoded = try JSONEncoder().encode(token).base64EncodedString()
+                    self.pending?.resolve(["tokenBase64": encoded]); self.pending = nil
+                    self.host?.dismiss(animated: true)
+                } catch { self.cancel() }
+            } onCancel: { [weak self] in
+                self?.cancel()
+            })
         host = controller
         root.present(controller, animated: true)
         controller.presentationController?.delegate = self

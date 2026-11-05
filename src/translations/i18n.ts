@@ -4,6 +4,7 @@ import i18n, { type LanguageDetectorAsyncModule } from "i18next";
 import { initReactI18next } from "react-i18next";
 import { languages, resolveLanguage, type Language } from "./locale";
 import { messages } from "./messages";
+import { VolitionScreenTime } from "../../modules/volition-screen-time";
 
 const STORAGE_KEY = "volition.language";
 const detector: LanguageDetectorAsyncModule = {
@@ -37,6 +38,12 @@ export const i18nReady = i18n
     supportedLngs: [...languages],
     interpolation: { escapeValue: false },
   });
+// Extensions run in separate processes and read this preference from the App Group.
+i18n.on("languageChanged", (language) => {
+  void VolitionScreenTime.setLanguage(resolveLanguage(language, [])).catch(
+    () => {},
+  );
+});
 export async function changeLanguage(language: Language): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, language);
   await i18n.changeLanguage(language);

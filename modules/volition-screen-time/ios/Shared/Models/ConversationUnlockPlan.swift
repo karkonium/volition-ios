@@ -21,9 +21,10 @@ nonisolated struct ConversationUnlockPlan: Codable, Equatable, Sendable {
 
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
-        try self.init(grantID: values.decode(UUID.self, forKey: .grantID),
-                      minutes: values.decode(Int.self, forKey: .minutes),
-                      start: values.decode(Date.self, forKey: .start))
+        try self.init(
+            grantID: values.decode(UUID.self, forKey: .grantID),
+            minutes: values.decode(Int.self, forKey: .minutes),
+            start: values.decode(Date.self, forKey: .start))
     }
 
     var expiresAt: Date { start.addingTimeInterval(Double(minutes * 60)) }

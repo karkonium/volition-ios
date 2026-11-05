@@ -13,16 +13,21 @@ nonisolated enum ConversationRequestNotification {
         }
         let pending = await center.pendingNotificationRequests()
         let delivered = await center.deliveredNotifications()
-        center.removePendingNotificationRequests(withIdentifiers: pending.map(\.identifier).filter { $0.hasPrefix("conversation-request-") })
-        center.removeDeliveredNotifications(withIdentifiers: delivered.map(\.request.identifier).filter { $0.hasPrefix("conversation-request-") })
+        center.removePendingNotificationRequests(
+            withIdentifiers: pending.map(\.identifier).filter { $0.hasPrefix("conversation-request-") })
+        center.removeDeliveredNotifications(
+            withIdentifiers: delivered.map(\.request.identifier).filter { $0.hasPrefix("conversation-request-") })
         let content = UNMutableNotificationContent()
         content.title = CopyKey.conversationChatHere.string
         content.body = CopyKey.conversationNotificationBody.string
         content.sound = .default
         if let url = request.url { content.setURL(url) }
         do {
-            try await center.add(UNNotificationRequest(identifier: request.notificationIdentifier, content: content, trigger: nil))
+            try await center.add(
+                UNNotificationRequest(identifier: request.notificationIdentifier, content: content, trigger: nil))
             Diag.log(.session, "conversation notification scheduled request=\(request.id.logTag)")
-        } catch { Diag.error(.session, "conversation notification scheduling failed; manual opening remains available") }
+        } catch {
+            Diag.error(.session, "conversation notification scheduling failed; manual opening remains available")
+        }
     }
 }

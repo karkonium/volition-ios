@@ -36,7 +36,7 @@ nonisolated final class UsageLedger: UsageReading, @unchecked Sendable {
         for ruleID: UUID, onDayContaining date: Date, calendar: Calendar = .current
     ) -> RuleUsageDTO {
         guard let data = defaults.data(forKey: key(ruleID, date, calendar)),
-              let usage = try? JSONDecoder().decode(RuleUsageDTO.self, from: data)
+            let usage = try? JSONDecoder().decode(RuleUsageDTO.self, from: data)
         else { return RuleUsageDTO() }
         return usage
     }

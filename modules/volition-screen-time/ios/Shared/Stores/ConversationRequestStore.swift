@@ -18,8 +18,9 @@ nonisolated struct ConversationShieldRequest: Codable, Equatable, Sendable {
     }
     static func appID(from url: URL) -> UUID? {
         guard url.scheme == "openapplock", url.host == "conversation", url.path.isEmpty,
-              let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let value = parts.queryItems?.first(where: { $0.name == "app" })?.value else { return nil }
+            let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+            let value = parts.queryItems?.first(where: { $0.name == "app" })?.value
+        else { return nil }
         return UUID(uuidString: value)
     }
 }
@@ -37,7 +38,9 @@ nonisolated struct ConversationRequestStore: @unchecked Sendable {
     func begin(token: ApplicationToken, appID: UUID, at date: Date = .now) -> ConversationShieldRequest {
         let request = ConversationShieldRequest(id: UUID(), token: token, appID: appID, date: date)
         if let data = try? JSONEncoder().encode(request) {
-            let staleAcknowledgements = defaults.dictionaryRepresentation().keys.filter { $0.hasPrefix(acknowledgementPrefix) }
+            let staleAcknowledgements = defaults.dictionaryRepresentation().keys.filter {
+                $0.hasPrefix(acknowledgementPrefix)
+            }
             defaults.set(data, forKey: requestKey)
             // Never sweep an acknowledgement created after this publication.
             for key in staleAcknowledgements { defaults.removeObject(forKey: key) }
@@ -46,9 +49,10 @@ nonisolated struct ConversationRequestStore: @unchecked Sendable {
     }
     func pending(at now: Date = .now) -> ConversationShieldRequest? {
         guard let data = defaults.data(forKey: requestKey),
-              let request = try? JSONDecoder().decode(ConversationShieldRequest.self, from: data),
-              !defaults.bool(forKey: acknowledgementPrefix + request.id.uuidString),
-              (0..<300).contains(now.timeIntervalSince(request.date)) else { return nil }
+            let request = try? JSONDecoder().decode(ConversationShieldRequest.self, from: data),
+            !defaults.bool(forKey: acknowledgementPrefix + request.id.uuidString),
+            (0..<300).contains(now.timeIntervalSince(request.date))
+        else { return nil }
         return request
     }
     func acknowledge(_ request: ConversationShieldRequest) {

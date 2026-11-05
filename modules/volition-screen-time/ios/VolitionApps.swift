@@ -23,13 +23,15 @@ enum VolitionApps {
 
     static func selectedApp(in selection: FamilyActivitySelection) throws -> ApplicationToken {
         guard selection.applicationTokens.count == 1, selection.categoryTokens.isEmpty,
-              selection.webDomainTokens.isEmpty, let token = selection.applicationTokens.first
+            selection.webDomainTokens.isEmpty, let token = selection.applicationTokens.first
         else { throw ValidationError.singleApp }
         return token
     }
 
-    static func save(name: String, intention: String, selection: FamilyActivitySelection,
-                     editing: BlockingRule? = nil, profile: ConversationUsageProfile? = nil, in context: ModelContext) throws -> BlockingRule {
+    static func save(
+        name: String, intention: String, selection: FamilyActivitySelection,
+        editing: BlockingRule? = nil, profile: ConversationUsageProfile? = nil, in context: ModelContext
+    ) throws -> BlockingRule {
         _ = try selectedApp(in: selection)
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         var intention = intention.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -37,10 +39,13 @@ enum VolitionApps {
         if intention.isEmpty, profile != nil { intention = CopyKey.profileDefaultGoal.string }
         guard !intention.isEmpty, intention.count <= 2000 else { throw ValidationError.intention }
         let rules = try context.fetch(FetchDescriptor<BlockingRule>())
-        guard !rules.contains(where: {
-            $0.id != editing?.id && $0.kind == .conversation && $0.isEnabled &&
-            !AppSelectionCodec.decode($0.combinedSelectionData).applicationTokens.isDisjoint(with: selection.applicationTokens)
-        }) else { throw ValidationError.duplicate }
+        guard
+            !rules.contains(where: {
+                $0.id != editing?.id && $0.kind == .conversation && $0.isEnabled
+                    && !AppSelectionCodec.decode($0.combinedSelectionData).applicationTokens.isDisjoint(
+                        with: selection.applicationTokens)
+            })
+        else { throw ValidationError.duplicate }
         let rule = editing ?? BlockingRule(name: name, configuration: .conversation(.init(goal: intention)))
         if editing == nil { context.insert(rule) }
         let list = AppList(name: name, selectionData: AppSelectionCodec.encode(selection), selectionCount: 1)
@@ -57,9 +62,10 @@ enum VolitionApps {
                 var history = try store.load()
                 history.usageProfiles[rule.id] = profile
                 try store.save(history)
-            } else { try context.save() }
-        }
-        catch { context.rollback(); throw error }
+            } else {
+                try context.save()
+            }
+        } catch { context.rollback(); throw error }
         return rule
     }
 
@@ -75,16 +81,21 @@ enum VolitionApps {
             let selection = AppSelectionCodec.decode(rule.combinedSelectionData)
             let tokens = selection.applicationTokens.subtracting(seen)
             seen.formUnion(tokens)
-            if tokens.count == 1 && tokens == selection.applicationTokens && selection.categoryTokens.isEmpty && selection.webDomainTokens.isEmpty { continue }
+            if tokens.count == 1 && tokens == selection.applicationTokens && selection.categoryTokens.isEmpty
+                && selection.webDomainTokens.isEmpty
+            {
+                continue
+            }
             rule.isEnabled = false
             for (index, token) in tokens.enumerated() {
                 var individual = FamilyActivitySelection(); individual.applicationTokens = [token]
-                let replacement = BlockingRule(name: "\(rule.name) \(index + 1)", configuration: .conversation(.init(goal: rule.conversationGoal)))
-                let list = AppList(name: replacement.name, selectionData: AppSelectionCodec.encode(individual), selectionCount: 1)
+                let replacement = BlockingRule(
+                    name: "\(rule.name) \(index + 1)", configuration: .conversation(.init(goal: rule.conversationGoal)))
+                let list = AppList(
+                    name: replacement.name, selectionData: AppSelectionCodec.encode(individual), selectionCount: 1)
                 context.insert(replacement); context.insert(list); replacement.appLists = [list]
             }
         }
-        do { if context.hasChanges { try context.save() } }
-        catch { context.rollback(); throw error }
+        do { if context.hasChanges { try context.save() } } catch { context.rollback(); throw error }
     }
 }

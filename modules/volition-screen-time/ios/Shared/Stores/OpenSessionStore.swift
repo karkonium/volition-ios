@@ -31,7 +31,7 @@ nonisolated final class OpenSessionStore: OpenSessionReading, @unchecked Sendabl
         guard let expiry = expiries[ruleID.uuidString] else { return false }
         return Date(timeIntervalSince1970: expiry) > now
     }
-    
+
     func getPreviousExpiry(for ruleID: UUID) -> Date? {
         guard let expiry = previousExpiries[ruleID.uuidString] else { return nil }
         return Date(timeIntervalSince1970: expiry)
@@ -48,31 +48,31 @@ nonisolated final class OpenSessionStore: OpenSessionReading, @unchecked Sendabl
     func endSession(for ruleID: UUID) {
         var expiryMap = expiries
         expiryMap[ruleID.uuidString] = nil
-        
+
         var prevExpiryMap = previousExpiries
         prevExpiryMap[ruleID.uuidString] = Date.now.timeIntervalSince1970
-        
+
         defaults.set(expiryMap, forKey: Self.openSessionExpiryKey)
         defaults.set(prevExpiryMap, forKey: Self.previousExpiryKey)
     }
-    
+
     func expireAllActiveSessions() {
         var expiryMap = expiries
         var prevExpiryMap = previousExpiries
-        
+
         for (key, _) in expiryMap {
             prevExpiryMap[key] = Date.now.timeIntervalSince1970
         }
         expiryMap.removeAll()
-        
+
         defaults.set(expiryMap, forKey: Self.openSessionExpiryKey)
         defaults.set(prevExpiryMap, forKey: Self.previousExpiryKey)
     }
-    
+
     private var expiries: [String: TimeInterval] {
         defaults.dictionary(forKey: Self.openSessionExpiryKey) as? [String: TimeInterval] ?? [:]
     }
-    
+
     private var previousExpiries: [String: TimeInterval] {
         defaults.dictionary(forKey: Self.previousExpiryKey) as? [String: TimeInterval] ?? [:]
     }

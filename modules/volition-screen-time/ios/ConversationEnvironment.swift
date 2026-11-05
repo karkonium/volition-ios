@@ -15,16 +15,20 @@ nonisolated struct ConversationEnvironment: Sendable {
 
     static let bundled: ConversationEnvironment = {
         #if !DEBUG
-        return try! ConversationEnvironment(contents: "")
+            return try! ConversationEnvironment(contents: "")
         #else
-        do {
-            let url = Bundle.main.url(forResource: "Conversation", withExtension: "env")
-            return try ConversationEnvironment(contents: try url.map { try String(contentsOf: $0, encoding: .utf8) } ?? "")
-        } catch {
-            let fallback = try! ConversationEnvironment(contents: "")
-            if fallback.logsEnabled { Diag.error(.conversation, "///CONVO-LOG config.invalid source=bundled-env; check local file and rebuild") }
-            return fallback
-        }
+            do {
+                let url = Bundle.main.url(forResource: "Conversation", withExtension: "env")
+                return try ConversationEnvironment(
+                    contents: try url.map { try String(contentsOf: $0, encoding: .utf8) } ?? "")
+            } catch {
+                let fallback = try! ConversationEnvironment(contents: "")
+                if fallback.logsEnabled {
+                    Diag.error(
+                        .conversation, "///CONVO-LOG config.invalid source=bundled-env; check local file and rebuild")
+                }
+                return fallback
+            }
         #endif
     }()
 
@@ -55,9 +59,9 @@ nonisolated struct ConversationEnvironment: Sendable {
             logsEnabled = flag == "1" || flag == "true"
         } else {
             #if DEBUG
-            logsEnabled = true
+                logsEnabled = true
             #else
-            logsEnabled = false
+                logsEnabled = false
             #endif
         }
     }

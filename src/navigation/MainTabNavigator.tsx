@@ -96,7 +96,17 @@ export function MainTabNavigator(): React.JSX.Element {
       <Tabs.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarLabel: t(({ Chat: "chat", Apps: "apps", Insights: "insights", Focus: "focus", Settings: "settings" } as const)[route.name]),
+          tabBarLabel: t(
+            (
+              {
+                Chat: "chat",
+                Apps: "apps",
+                Insights: "insights",
+                Focus: "focus",
+                Settings: "settings",
+              } as const
+            )[route.name],
+          ),
           tabBarButtonTestID: `sidebarItem-${route.name.toLowerCase()}`,
           tabBarPosition: sidebar ? "left" : "bottom",
           tabBarVariant: sidebar ? "material" : "uikit",

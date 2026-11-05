@@ -1,6 +1,10 @@
 import Constants from "expo-constants";
 import { previewMode } from "../../modules/volition-screen-time";
-import { isTelemetryScreen, telemetryPreferences } from "./telemetryPolicy";
+import {
+  crashReportAction,
+  isTelemetryScreen,
+  telemetryPreferences,
+} from "./telemetryPolicy";
 
 export const firebaseConfigured =
   Constants.expoConfig?.extra?.firebaseConfigured === true && !previewMode;

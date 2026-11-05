@@ -1,6 +1,7 @@
 import { AppRow } from "./components/AppRow";
 import { EmptyState } from "../../components/EmptyState/EmptyState";
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Text, Modal, TextField, Flex } from "@itsRares/ahhzo-elements";
 import { useNavigation, type NavigationProp } from "@react-navigation/native";
 import { Screen, perform } from "../../components/Screen";
@@ -14,6 +15,7 @@ import type { AppsStack, MainTabs } from "../../navigation/types";
 import type { CompositeNavigationProp } from "@react-navigation/native";
 import type { StackNavigationProp } from "@react-navigation/stack";
 export function AppsScreen(): React.JSX.Element {
+  const { t } = useTranslation();
   const state = useAppSelector((state) => state);
   const dispatch = useAppDispatch();
   const navigation =
@@ -29,12 +31,12 @@ export function AppsScreen(): React.JSX.Element {
   const [step, setStep] = useState(1);
   const [minutes, setMinutes] = useState("5");
   return (
-    <Screen title="Apps" subtitle="Your apps, with intention">
+    <Screen title={t("apps")} subtitle={t("appsSubtitle")}>
       {state.apps.items.length === 0 && (
         <EmptyState
           icon="apps-outline"
-          title="Make room for intention"
-          description="Add an app you’d like to use more thoughtfully. You can always change or remove it."
+          title={t("appsEmptyTitle")}
+          description={t("appsEmptyBody")}
         />
       )}
       {state.apps.items.map((app) => {
@@ -48,12 +50,21 @@ export function AppsScreen(): React.JSX.Element {
             Date.parse(item.blockedUntil) > now,
         );
         const status = focusProtects(state.focus, app.id, now)
-          ? "Focus protected"
+          ? t("focusProtected")
           : grant
-            ? `Temporarily open · ${Math.max(0, Math.ceil((Date.parse(grant.expiresAt) - now) / 60000))}m`
+            ? t("temporarilyOpen", {
+                count: Math.max(
+                  0,
+                  Math.ceil((Date.parse(grant.expiresAt) - now) / 60000),
+                ),
+              })
             : deal
-              ? `Active break · ${Math.ceil((Date.parse(deal.blockedUntil) - now) / 60000)}m`
-              : "Shielded";
+              ? t("activeBreak", {
+                  count: Math.ceil(
+                    (Date.parse(deal.blockedUntil) - now) / 60000,
+                  ),
+                })
+              : t("shielded");
         return (
           <AppRow
             key={app.id}
@@ -72,14 +83,14 @@ export function AppsScreen(): React.JSX.Element {
         );
       })}
       <Button
-        text="Add app"
+        text={t("addApp")}
         testID="addVolitionAppButton"
         onPress={() => {
           navigation.navigate("AppEditor", {});
         }}
       />
       <Modal
-        title="Remove app"
+        title={t("removeApp")}
         isVisible={removing !== null}
         scrollable
         onClose={() => setRemoving(null)}
@@ -87,27 +98,21 @@ export function AppsScreen(): React.JSX.Element {
         <Flex vertical gap="md">
           {step === 1 ? (
             <>
-              <Text>
-                What made this feel unhelpful? Sharing a reason is optional and
-                stays private.
-              </Text>
+              <Text>{t("removeReasonPrompt")}</Text>
               <TextField
-                placeholderLabel="Optional reason"
+                placeholderLabel={t("optionalReason")}
                 value={reason}
                 onChange={setReason}
                 maxLength={2000}
                 multiline
               />
-              <Button text="Continue" onPress={() => setStep(2)} />
+              <Button text={t("continue")} onPress={() => setStep(2)} />
             </>
           ) : (
             <>
-              <Text>
-                Would a little access help instead? You can ask the coach, or
-                remove this app now.
-              </Text>
+              <Text>{t("removeAlternative")}</Text>
               <TextField
-                placeholderLabel="Minutes (1–60)"
+                placeholderLabel={t("minutesRange")}
                 value={minutes}
                 onChange={setMinutes}
                 keyboardType="number-pad"
@@ -115,12 +120,10 @@ export function AppsScreen(): React.JSX.Element {
               {(!Number.isInteger(Number(minutes)) ||
                 Number(minutes) < 1 ||
                 Number(minutes) > 60) && (
-                <Text accessibilityRole="alert">
-                  Enter a whole number from 1 to 60.
-                </Text>
+                <Text accessibilityRole="alert">{t("minutesValidation")}</Text>
               )}
               <Button
-                text="Request temporary access"
+                text={t("requestTemporary")}
                 onPress={() => {
                   if (!removing) return;
                   const count = Number(minutes);
@@ -130,7 +133,7 @@ export function AppsScreen(): React.JSX.Element {
                   dispatch(
                     chatActions.boundRequest({
                       appId: removing.id,
-                      draft: `I'd like ${count} minutes of access. ${reason}`,
+                      draft: t("removalDraft", { count, reason }),
                     }),
                   );
                   setRemoving(null);
@@ -138,7 +141,7 @@ export function AppsScreen(): React.JSX.Element {
                 }}
               />
               <Button
-                text="Remove app now"
+                text={t("removeNow")}
                 tone="danger"
                 variant="outline"
                 onPress={() =>
@@ -153,7 +156,7 @@ export function AppsScreen(): React.JSX.Element {
             </>
           )}
           <Button
-            text="Keep app"
+            text={t("keepApp")}
             variant="ghost"
             onPress={() => {
               if (removing) recordRemoval(removing, reason, "kept");

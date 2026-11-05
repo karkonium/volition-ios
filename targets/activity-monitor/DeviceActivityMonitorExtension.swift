@@ -40,7 +40,7 @@ final class DeviceActivityMonitorExtension: DeviceActivityMonitor {
             shields: ManagedSettingsShieldController()
         )
     }
-    
+
     private var openSessionStore: OpenSessionStore {
         OpenSessionStore()
     }
@@ -61,7 +61,8 @@ final class DeviceActivityMonitorExtension: DeviceActivityMonitor {
     private func endExpiredLiveActivity(_ name: String) {
         guard let id = ConversationUnlockPlan.grantID(from: name) else { return }
         Task {
-            for activity in Activity<ConversationUnlockActivityAttributes>.activities where activity.attributes.grantID == id && activity.content.state.expiresAt <= Date() {
+            for activity in Activity<ConversationUnlockActivityAttributes>.activities
+            where activity.attributes.grantID == id && activity.content.state.expiresAt <= Date() {
                 await activity.end(nil, dismissalPolicy: .immediate)
             }
         }
@@ -69,8 +70,11 @@ final class DeviceActivityMonitorExtension: DeviceActivityMonitor {
 
     private func endRevokedLiveActivities() {
         Task {
-            guard let activeIDs = try? ConversationGrantStore().transaction({ Set($0.activeGrants.map(\.plan.grantID)) }) else { return }
-            for activity in Activity<ConversationUnlockActivityAttributes>.activities where !activeIDs.contains(activity.attributes.grantID) {
+            guard
+                let activeIDs = try? ConversationGrantStore().transaction({ Set($0.activeGrants.map(\.plan.grantID)) })
+            else { return }
+            for activity in Activity<ConversationUnlockActivityAttributes>.activities
+            where !activeIDs.contains(activity.attributes.grantID) {
                 await activity.end(nil, dismissalPolicy: .immediate)
             }
         }
@@ -79,7 +83,8 @@ final class DeviceActivityMonitorExtension: DeviceActivityMonitor {
     override func intervalDidStart(for activity: DeviceActivityName) {
         super.intervalDidStart(for: activity)
         if activity.rawValue.hasPrefix("focus-") {
-            ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController()).reconcileStored()
+            ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController())
+                .reconcileStored()
             endRevokedLiveActivities()
             return
         }
@@ -103,14 +108,15 @@ final class DeviceActivityMonitorExtension: DeviceActivityMonitor {
             .expire(activity: activity.rawValue)
         endExpiredLiveActivity(activity.rawValue)
         #if DEBUG
-        ConversationTimerProbe.handle(activity: activity.rawValue, kind: "warning")
+            ConversationTimerProbe.handle(activity: activity.rawValue, kind: "warning")
         #endif
     }
 
     override func intervalDidEnd(for activity: DeviceActivityName) {
         super.intervalDidEnd(for: activity)
         if activity.rawValue.hasPrefix("focus-") {
-            ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController()).reconcileStored()
+            ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController())
+                .reconcileStored()
             endRevokedLiveActivities()
             if activity.rawValue.hasPrefix("focus-session-") { DeviceActivityCenter().stopMonitoring([activity]) }
             return
@@ -119,7 +125,7 @@ final class DeviceActivityMonitorExtension: DeviceActivityMonitor {
             .expire(activity: activity.rawValue)
         endExpiredLiveActivity(activity.rawValue)
         #if DEBUG
-        ConversationTimerProbe.handle(activity: activity.rawValue, kind: "interval-end")
+            ConversationTimerProbe.handle(activity: activity.rawValue, kind: "interval-end")
         #endif
         Diag.log(.monitor, .event, "intervalDidEnd \(activity.rawValue)")
         if let ruleID = MonitoringPlan.ruleID(fromSessionActivityName: activity.rawValue) {
@@ -236,7 +242,7 @@ final class DeviceActivityMonitorExtension: DeviceActivityMonitor {
             return
         }
         guard let ruleID = MonitoringPlan.ruleID(fromDailyActivityName: activity.rawValue),
-              let minutes = MonitoringPlan.minutes(fromEventName: event.rawValue)
+            let minutes = MonitoringPlan.minutes(fromEventName: event.rawValue)
         else { return }
         enforcement.handleUsageMinutes(
             minutes, ruleID: ruleID,

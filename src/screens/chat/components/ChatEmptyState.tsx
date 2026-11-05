@@ -1,5 +1,6 @@
 import type { ResponsiveStyle, Theme } from "@itsRares/ahhzo-elements";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Image } from "react-native";
 import { Flex, Text, useThemedStyles } from "@itsRares/ahhzo-elements";
 export function ChatEmptyState({
@@ -7,6 +8,7 @@ export function ChatEmptyState({
 }: {
   appName?: string;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   return (
     <Flex vertical style={styles.content}>
@@ -16,14 +18,13 @@ export function ChatEmptyState({
         accessibilityLabel="Volition"
       />
       <Text type="H2" style={styles.title}>
-        A little intention.{"\n"}A better next step.
+        {t("chatEmptyTitle")}
       </Text>
       <Text style={styles.body}>
-        What brings you to {appName ?? "your app"}? Tell your coach what you
-        have in mind.
+        {t("chatEmptyBody", { app: appName ?? t("yourApp") })}
       </Text>
       <Text type="Small" style={styles.caption}>
-        A quick task. A little downtime. It all counts.
+        {t("chatEmptyCaption")}
       </Text>
     </Flex>
   );

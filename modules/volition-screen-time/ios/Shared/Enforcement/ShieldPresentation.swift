@@ -18,10 +18,14 @@ nonisolated struct ShieldPresentation: Equatable {
     /// Requests show guidance for the same OS route used by the action handler.
     /// Never claims that a notification was delivered or access was approved.
     static func conversation(route: ConversationShieldRoute, requestPending: Bool) -> ShieldPresentation {
-        .init(title: (requestPending ? CopyKey.conversationContinueInVolition : .conversationBlockedStatus).string,
-              subtitle: route == .direct ? CopyKey.conversationDirectRequestInstructions.string :
-                (requestPending ? CopyKey.conversationNotificationInstructions.string : CopyKey.conversationRequestInstructions.string),
-              secondaryButton: CopyKey.conversationRequestAccess.string)
+        .init(
+            title: (requestPending ? CopyKey.conversationContinueInVolition : .conversationBlockedStatus).string,
+            subtitle: route == .direct
+                ? CopyKey.conversationDirectRequestInstructions.string
+                : (requestPending
+                    ? CopyKey.conversationNotificationInstructions.string
+                    : CopyKey.conversationRequestInstructions.string),
+            secondaryButton: CopyKey.conversationRequestAccess.string)
     }
 
     static let blockedTitle = CopyKey.shieldBlockedTitle.string
@@ -55,7 +59,7 @@ nonisolated struct ShieldPresentation: Equatable {
                 : CopyKey.shieldOpenButtonMany.string(remaining)
         )
     }
-    
+
     static func openLimitJustBlocked(sessionMinutes: Int) -> ShieldPresentation {
         return ShieldPresentation(
             title: openLimitJustBlockedTitle,

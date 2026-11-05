@@ -1,1 +1,6 @@
-{"name":"volition-screen-time","version":"1.0.0","main":"index.ts","private":true}
+{
+  "name": "volition-screen-time",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "private": true
+}

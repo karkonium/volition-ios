@@ -25,8 +25,12 @@ nonisolated struct ConversationShieldRequestHandler: Sendable {
     let route: ConversationShieldRoute
     let notify: @Sendable (ConversationShieldRequest) async -> Void
 
-    init(store: ConversationRequestStore = .init(), route: ConversationShieldRoute = .current,
-         notify: @escaping @Sendable (ConversationShieldRequest) async -> Void = { await ConversationRequestNotification.send($0) }) {
+    init(
+        store: ConversationRequestStore = .init(), route: ConversationShieldRoute = .current,
+        notify: @escaping @Sendable (ConversationShieldRequest) async -> Void = {
+            await ConversationRequestNotification.send($0)
+        }
+    ) {
         self.store = store
         self.route = route
         self.notify = notify
@@ -35,7 +39,10 @@ nonisolated struct ConversationShieldRequestHandler: Sendable {
     func request(token: ApplicationToken, appID: UUID, completionHandler: @escaping (ShieldActionResponse) -> Void) {
         let started = Date()
         let completion = ConversationShieldCompletion {
-            Diag.log(.session, "conversation shield route=\(route == .direct ? "direct" : "notification") elapsed_ms=\(Int(Date().timeIntervalSince(started) * 1000))")
+            Diag.log(
+                .session,
+                "conversation shield route=\(route == .direct ? "direct" : "notification") elapsed_ms=\(Int(Date().timeIntervalSince(started) * 1000))"
+            )
             completionHandler(route.response)
         }
         completion.armTimeout()

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Flex } from "@itsRares/ahhzo-elements";
 import { Screen } from "../../components/Screen";
 import { useAppSelector } from "../../redux/store";
@@ -8,13 +9,14 @@ import { InsightsOverview } from "./InsightsOverview";
 import { InsightsApps } from "./InsightsApps";
 
 export function InsightsScreen(): React.JSX.Element {
+  const { t } = useTranslation();
   const [period, setPeriod] = useState<InsightsPeriod>("week");
   const history = useAppSelector((state) => state.grants.accessHistory);
   const apps = useAppSelector((state) => state.apps.items);
   const now = new Date(useNow());
   const data = buildInsights(history, period, now);
   return (
-    <Screen title="Insights" subtitle="A little perspective on your access.">
+    <Screen title={t("insights")} subtitle={t("insightsSubtitle")}>
       <Flex vertical gap="lg">
         <InsightsOverview
           data={data}

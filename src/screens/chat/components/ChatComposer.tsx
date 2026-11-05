@@ -1,6 +1,7 @@
 import { layout } from "../../../layout/layout";
 import type { ResponsiveStyle, Theme } from "@itsRares/ahhzo-elements";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   Button,
   Flex,
@@ -26,6 +27,7 @@ export function ChatComposer({
   onSend,
   onCancel,
 }: ChatComposerProps): React.JSX.Element {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useThemedStyles(createStyles);
   return (
@@ -33,10 +35,10 @@ export function ChatComposer({
       {pending && (
         <Flex alignItems="center" justifyContent="space-between">
           <Text type="Small" accessibilityLiveRegion="polite">
-            Your coach is thinking…
+            {t("coachThinking")}
           </Text>
           <Button
-            text="Cancel request"
+            text={t("cancelRequest")}
             variant="ghost"
             layout="inline"
             onPress={onCancel}
@@ -45,8 +47,8 @@ export function ChatComposer({
       )}
       <Flex gap="xs" alignItems="flex-end">
         <TextField
-          placeholderLabel="What would you like to do?"
-          accessibilityLabel="Message your coach"
+          placeholderLabel={t("composerPlaceholder")}
+          accessibilityLabel={t("messageCoach")}
           value={draft}
           onChange={onChange}
           multiline
@@ -64,7 +66,7 @@ export function ChatComposer({
             hasApp ? theme.colors.accent : theme.colors.textSecondary
           }
           iconColor={theme.colors.buttonPrimaryText}
-          accessibilityLabel="Send"
+          accessibilityLabel={t("send")}
           testID="conversationSendButton"
           disabled={!draft.trim() || pending}
           onPress={onSend}

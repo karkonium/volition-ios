@@ -56,14 +56,16 @@ nonisolated struct ConversationHistory: Codable, Equatable, Sendable {
     }
     func recommendedPauseSeconds(for appID: UUID, now: Date) -> Int {
         let started = reflections.filter {
-            $0.appID == appID && $0.openedWithoutIntervention != true && !$0.isDeal && $0.deadline != nil && $0.createdAt <= now && now.timeIntervalSince($0.createdAt) < 86400
+            $0.appID == appID && $0.openedWithoutIntervention != true && !$0.isDeal && $0.deadline != nil
+                && $0.createdAt <= now && now.timeIntervalSince($0.createdAt) < 86400
         }.count
         return 10 + min(5, started) * 10
     }
     func recentPauseAttempts(for appID: UUID, now: Date) -> Int {
         reflections.filter {
-            $0.appID == appID && $0.openedWithoutIntervention != true && !$0.isDeal && !$0.isChoice &&
-            ($0.deadline != nil || $0.skipped) && $0.createdAt <= now && now.timeIntervalSince($0.createdAt) < 86400
+            $0.appID == appID && $0.openedWithoutIntervention != true && !$0.isDeal && !$0.isChoice
+                && ($0.deadline != nil || $0.skipped) && $0.createdAt <= now
+                && now.timeIntervalSince($0.createdAt) < 86400
         }.count
     }
     var lastGrantID: UUID?
@@ -88,14 +90,20 @@ final class ConversationHistoryStore: ConversationHistoryStoring {
 
     func load() throws -> ConversationHistory {
         guard let archive = try context.fetch(FetchDescriptor<ConversationArchive>()).first,
-              !archive.payload.isEmpty else { return ConversationHistory() }
+            !archive.payload.isEmpty
+        else { return ConversationHistory() }
         if let metadata = try? JSONDecoder().decode(Metadata.self, from: archive.payload), metadata.format == 5 {
             var history = metadata.history
             for record in try context.fetch(FetchDescriptor<ConversationRecord>(sortBy: [SortDescriptor(\.position)])) {
                 switch record.category {
-                case "message": history.messages.append(try JSONDecoder().decode(ConversationMessage.self, from: record.payload))
-                case "access": history.accessEvents.append(try JSONDecoder().decode(ConversationAccessEvent.self, from: record.payload))
-                case "activity": history.activityLog.append(try JSONDecoder().decode(ConversationActivityEntry.self, from: record.payload))
+                case "message":
+                    history.messages.append(try JSONDecoder().decode(ConversationMessage.self, from: record.payload))
+                case "access":
+                    history.accessEvents.append(
+                        try JSONDecoder().decode(ConversationAccessEvent.self, from: record.payload))
+                case "activity":
+                    history.activityLog.append(
+                        try JSONDecoder().decode(ConversationActivityEntry.self, from: record.payload))
                 default: throw CocoaError(.coderReadCorrupt)
                 }
             }
@@ -116,8 +124,11 @@ final class ConversationHistoryStore: ConversationHistoryStoring {
         let data = try encoder.encode(Metadata(history: metadata))
         do {
             let archive: ConversationArchive
-            if let existing = try context.fetch(FetchDescriptor<ConversationArchive>()).first { archive = existing }
-            else { archive = ConversationArchive(); context.insert(archive) }
+            if let existing = try context.fetch(FetchDescriptor<ConversationArchive>()).first {
+                archive = existing
+            } else {
+                archive = ConversationArchive(); context.insert(archive)
+            }
             let records = try context.fetch(FetchDescriptor<ConversationRecord>())
             let existing = Dictionary(uniqueKeysWithValues: records.map { ($0.id, $0) })
             var retained = Set<String>()
@@ -129,11 +140,16 @@ final class ConversationHistoryStore: ConversationHistoryStoring {
                     if let record = existing[id] {
                         if record.payload != payload { record.payload = payload }
                         if record.position != position { record.position = position }
-                    } else { context.insert(ConversationRecord(id: id, category: category, position: position, payload: payload)) }
+                    } else {
+                        context.insert(
+                            ConversationRecord(id: id, category: category, position: position, payload: payload))
+                    }
                 }
             }
             try upsert(history.messages, category: "message") { value, _ in value.id.uuidString }
-            try upsert(history.accessEvents, category: "access") { value, index in value.grantID?.uuidString ?? String(index) }
+            try upsert(history.accessEvents, category: "access") { value, index in
+                value.grantID?.uuidString ?? String(index)
+            }
             try upsert(history.activityLog, category: "activity") { value, _ in value.id.uuidString }
             for record in records where !retained.contains(record.id) { context.delete(record) }
             if archive.payload != data { archive.payload = data }

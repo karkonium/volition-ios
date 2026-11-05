@@ -18,7 +18,7 @@ enum OpenAppLockSchemaMigrationPlan: SchemaMigrationPlan {
         OpenAppLockSchemaV2.self,
         OpenAppLockSchemaV3.self,
         OpenAppLockSchemaV4.self,
-        OpenAppLockSchemaV5.self
+        OpenAppLockSchemaV5.self,
     ]
 
     static let migrateV4toV5 = MigrationStage.lightweight(
@@ -63,7 +63,7 @@ nonisolated enum MigrationHelpers {
         let minimumRuleDurationMinutes = 15
 
         var changed: Set<UUID> = Set()
-        
+
         let rules = try context.fetch(FetchDescriptor<OpenAppLockSchemaV1.BlockingRule>())
         for rule in rules where rule.kind == .schedule {
             if rule.startMinutes > latestAllowedStartMinutes {
@@ -71,35 +71,40 @@ nonisolated enum MigrationHelpers {
                 rule.startMinutes = latestAllowedStartMinutes
                 rule.endMinutes = rule.endMinutes - diff
                 changed.insert(rule.id)
-                Diag.log(.migration, "moved startMinutes to \(latestAllowedStartMinutes) minutes for rule-\(rule.id.logTag)")
+                Diag.log(
+                    .migration, "moved startMinutes to \(latestAllowedStartMinutes) minutes for rule-\(rule.id.logTag)")
             }
-            
+
             if rule.endMinutes > rule.startMinutes,
-               rule.endMinutes - rule.startMinutes < minimumRuleDurationMinutes {
+                rule.endMinutes - rule.startMinutes < minimumRuleDurationMinutes
+            {
                 rule.endMinutes = rule.startMinutes + minimumRuleDurationMinutes
-                
+
                 if rule.endMinutes == 24 * 60 {
                     rule.endMinutes = 0
                 }
-                
+
                 changed.insert(rule.id)
-                Diag.log(.migration, "moved endMinutes to \(minimumRuleDurationMinutes) minutes after startMinutes for rule-\(rule.id.logTag)")
-                
+                Diag.log(
+                    .migration,
+                    "moved endMinutes to \(minimumRuleDurationMinutes) minutes after startMinutes for rule-\(rule.id.logTag)"
+                )
+
             }
-            
+
             if rule.startMinutes % 5 != 0 {
                 rule.startMinutes = rule.startMinutes - rule.startMinutes % 5
                 changed.insert(rule.id)
                 Diag.log(.migration, "clamped startMinutes for rule-\(rule.id.logTag)")
             }
-            
+
             if rule.endMinutes % 5 != 0 {
                 rule.endMinutes = rule.endMinutes - rule.endMinutes % 5
                 changed.insert(rule.id)
                 Diag.log(.migration, "clamped endMinutes for rule-\(rule.id.logTag)")
             }
         }
-        
+
         try context.save()
 
         return changed
@@ -115,15 +120,15 @@ nonisolated enum MigrationHelpers {
             rule.appLists = [rule.appList!]
             promoted += 1
         }
-        
+
         // All rules have lists stored in appLists at this point
         for rule in rules where rule.appList != nil {
             rule.appList = nil
         }
-        
+
         // May log 0 if SwiftData already repointed the data via lightweight migration
         Diag.log(.migration, "promoted \(promoted) additional rules' legacy appList to appLists")
-        
+
         try context.save()
     }
 }

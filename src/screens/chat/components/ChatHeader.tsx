@@ -1,6 +1,7 @@
 import { layout } from "../../../layout/layout";
 import type { ResponsiveStyle, Theme } from "@itsRares/ahhzo-elements";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Keyboard } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -23,6 +24,7 @@ export function ChatHeader({
   attention: number;
   onChooseApp: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = useThemedStyles(createStyles);
@@ -38,7 +40,7 @@ export function ChatHeader({
         gap="xs"
       >
         <Text type="H2" accessibilityRole="header">
-          Chat
+          {t("chat")}
         </Text>
         <Flex gap="xs" alignItems="center">
           <Icon
@@ -47,7 +49,7 @@ export function ChatHeader({
             size={theme.sizes.sm}
             color={theme.colors.textSecondary}
           />
-          <Text type="Small">A moment of intention</Text>
+          <Text type="Small">{t("chatMoment")}</Text>
         </Flex>
       </Flex>
       <AttentionRegion trigger={attention}>
@@ -57,7 +59,7 @@ export function ChatHeader({
           testID="conversationChooseAppButton"
           accessibilityRole="button"
           accessibilityLabel={
-            app ? `Request access for ${app.name}. Change app` : "Choose an app"
+            app ? t("requestAccessLabel", { app: app.name }) : t("chooseApp")
           }
           onPress={() => {
             Keyboard.dismiss();
@@ -66,8 +68,8 @@ export function ChatHeader({
         >
           <VolitionAppIcon tokenBase64={app?.tokenBase64 ?? ""} />
           <Flex vertical flex={1} gap="xxs">
-            <Text type="ExtraSmall">REQUEST ACCESS FOR</Text>
-            <Text weight="SemiBold">{app?.name ?? "Choose an app"}</Text>
+            <Text type="ExtraSmall">{t("requestAccessFor")}</Text>
+            <Text weight="SemiBold">{app?.name ?? t("chooseApp")}</Text>
           </Flex>
           <Icon
             name="chevron-down"
@@ -79,7 +81,7 @@ export function ChatHeader({
       </AttentionRegion>
       {attention > 0 && (
         <Text type="Small" testID="conversationAppSelectionHint">
-          Choose the app you mean. Your draft is saved.
+          {t("chooseAppHint")}
         </Text>
       )}
     </Flex>

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Flex, Text } from "@itsRares/ahhzo-elements";
 import { FocusChoice } from "./FocusChoice";
 
@@ -11,16 +12,16 @@ export function AppSelection({
   selected: string[];
   onChange: (ids: string[]) => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <Flex vertical gap="xxs">
-      <Text type="H4">Protected apps</Text>
+      <Text type="H4">{t("protectedApps")}</Text>
       <Text type="Small">
-        Choose specific saved apps, or leave all apps selected to protect every
-        app.
+        {t("protectedAppsHelp")}
       </Text>
       <Flex wrap="wrap" gap="xs">
         <FocusChoice
-          label="All apps"
+          label={t("allApps")}
           selected={!selected.length}
           onPress={() => onChange([])}
         />
@@ -41,7 +42,7 @@ export function AppSelection({
         ))}
       </Flex>
       {!apps.length && (
-        <Text type="Small">Save apps in Apps to choose them individually.</Text>
+        <Text type="Small">{t("saveAppsFirst")}</Text>
       )}
     </Flex>
   );

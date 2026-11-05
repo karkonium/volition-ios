@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AccessibilityInfo, Pressable, View } from "react-native";
 import * as Crypto from "expo-crypto";
 import {
@@ -46,6 +47,7 @@ export function AppEditorForm({
   existing?: VolitionSavedApp;
   onSaved: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   const { theme } = useTheme();
   const [token, setToken] = useState(existing?.tokenBase64 ?? "");
@@ -60,13 +62,11 @@ export function AppEditorForm({
   return (
     <Flex vertical gap="md">
       <View style={styles.stepCard}>
-        <Text type="H4">1. Choose one app</Text>
-        <Text type="Small">
-          Choose the app you’d like to use more intentionally.
-        </Text>
+        <Text type="H4">{t("editorChooseTitle")}</Text>
+        <Text type="Small">{t("editorChooseHelp")}</Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={token ? "Change selected app" : "Choose app"}
+          accessibilityLabel={token ? t("changeSelectedApp") : t("chooseApp")}
           testID="pickVolitionAppButton"
           style={styles.preview}
           onPress={() =>
@@ -88,11 +88,9 @@ export function AppEditorForm({
           <VolitionAppIcon key={token} tokenBase64={token} />
           <Flex vertical style={styles.previewText}>
             <Text weight="SemiBold">
-              {token ? name.trim() || "App selected" : "Choose an app"}
+              {token ? name.trim() || t("appSelected") : t("chooseApp")}
             </Text>
-            <Text type="Small">
-              {token ? "Tap to change" : "Select one app"}
-            </Text>
+            <Text type="Small">{token ? t("tapChange") : t("selectOne")}</Text>
           </Flex>
           <Icon
             name="chevron-forward"
@@ -104,11 +102,11 @@ export function AppEditorForm({
         </Pressable>
       </View>
       <View style={styles.stepCard}>
-        <Text type="H4">2. Give it a name</Text>
+        <Text type="H4">{t("editorNameTitle")}</Text>
         <AttentionRegion trigger={missing}>
           <TextField
             ref={nameField}
-            placeholderLabel="App name"
+            placeholderLabel={t("appName")}
             inputStyle={styles.input}
             value={name}
             onChange={(text) => {
@@ -121,35 +119,38 @@ export function AppEditorForm({
           />
         </AttentionRegion>
         <Text type="Small" testID="volitionAppNameHelp">
-          Use the app’s actual name, for example SoundCloud.
+          {t("appNameHelp")}
         </Text>
         {missing > 0 && (
           <Text accessibilityRole="alert" style={styles.error}>
-            Please give this app a name.
+            {t("nameRequired")}
           </Text>
         )}
       </View>
       <View style={styles.stepCard}>
-        <Text type="H4">3. Set your intention</Text>
-        <Text type="Small">
-          Think about when you want to use it, work you need to do, or how you’d
-          like to scroll.
-        </Text>
+        <Text type="H4">{t("editorIntentionTitle")}</Text>
+        <Text type="Small">{t("editorIntentionHelp")}</Text>
         <ProfileQuestion
-          title="What do you want this app for?"
-          options={purposesOptions}
+          title={t("purposeQuestion")}
+          options={purposesOptions.map((option) => ({
+            ...option,
+            label: t(option.value),
+          }))}
           values={purposes}
           onChange={setPurposes}
           testID="profilePurposes"
         />
         <ProfileQuestion
-          title="What would you like to change?"
-          options={changeOptions}
+          title={t("changeQuestion")}
+          options={changeOptions.map((option) => ({
+            ...option,
+            label: t(option.value),
+          }))}
           values={changes}
           onChange={setChanges}
         />
         <View style={styles.session}>
-          <Text weight="SemiBold">What kind of sessions work for you?</Text>
+          <Text weight="SemiBold">{t("sessionQuestion")}</Text>
           <Flex vertical>
             {sessionStyles.map((option) => (
               <Pressable
@@ -166,17 +167,15 @@ export function AppEditorForm({
                 >
                   {style === option.value ? "●" : "○"}
                 </Text>
-                <Text>{option.label}</Text>
+                <Text>{t(option.value)}</Text>
               </Pressable>
             ))}
           </Flex>
         </View>
-        <Text weight="SemiBold">Anything else?</Text>
-        <Text type="Small">
-          Optional notes can help your coach understand your intention.
-        </Text>
+        <Text weight="SemiBold">{t("extraQuestion")}</Text>
+        <Text type="Small">{t("extraHelp")}</Text>
         <TextField
-          placeholderLabel="Add a note"
+          placeholderLabel={t("addNote")}
           inputStyle={styles.input}
           value={notes}
           onChange={setNotes}
@@ -187,7 +186,7 @@ export function AppEditorForm({
         />
       </View>
       <Button
-        text="Save app"
+        text={t("saveApp")}
         testID="saveVolitionAppButton"
         loading={busy}
         disabled={!token || busy}
@@ -195,9 +194,7 @@ export function AppEditorForm({
           if (!name.trim()) {
             setMissing((value) => value + 1);
             nameField.current?.focus();
-            AccessibilityInfo.announceForAccessibility(
-              "Please give this app a name.",
-            );
+            AccessibilityInfo.announceForAccessibility(t("nameRequired"));
             return;
           }
           perform(async () => {

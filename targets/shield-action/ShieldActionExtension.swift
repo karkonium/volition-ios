@@ -18,7 +18,7 @@ import ManagedSettings
 /// re-shields.
 final class ShieldActionExtension: ShieldActionDelegate {
     // MARK: Overrides
-    
+
     override func handle(
         action: ShieldAction, for application: ApplicationToken,
         completionHandler: @escaping (ShieldActionResponse) -> Void
@@ -26,7 +26,8 @@ final class ShieldActionExtension: ShieldActionDelegate {
         guard action == .secondaryButtonPressed else { completionHandler(.close); return }
         let snapshots = RuleSnapshotUserDefaultsStore().load()
         if let app = ConversationGrantStore.applicable(to: application, in: snapshots).first {
-            ConversationShieldRequestHandler().request(token: application, appID: app.id, completionHandler: completionHandler)
+            ConversationShieldRequestHandler().request(
+                token: application, appID: app.id, completionHandler: completionHandler)
         } else {
             completionHandler(handleOpenPress(applicationToken: application))
         }
@@ -51,7 +52,7 @@ final class ShieldActionExtension: ShieldActionDelegate {
                 containingCategory: categoryToken, in: lookupEnvironment.snapshots,
                 usage: lookupEnvironment.usage, hasActiveOpenSession: lookupEnvironment.hasActiveOpenSession,
                 at: lookupEnvironment.now)
-            
+
             if let snapshot = snapshot {
                 completionHandler(grantOpen(ruleID: snapshot.id))
             } else {
@@ -61,16 +62,16 @@ final class ShieldActionExtension: ShieldActionDelegate {
             completionHandler(.close)
         }
     }
-    
+
     // MARK: Open limit handler
 
     private func handleOpenPress(applicationToken: ApplicationToken) -> ShieldActionResponse {
         let lookupEnvironment = LookupEnvironment.construct()
         let snapshot = ShieldLookup.openLimitSnapshot(
-                containingApplication: applicationToken, in: lookupEnvironment.snapshots,
-                usage: lookupEnvironment.usage, hasActiveOpenSession: lookupEnvironment.hasActiveOpenSession,
-                at: lookupEnvironment.now)
-        
+            containingApplication: applicationToken, in: lookupEnvironment.snapshots,
+            usage: lookupEnvironment.usage, hasActiveOpenSession: lookupEnvironment.hasActiveOpenSession,
+            at: lookupEnvironment.now)
+
         if let snapshot = snapshot {
             return grantOpen(ruleID: snapshot.id)
         }
@@ -84,7 +85,7 @@ final class ShieldActionExtension: ShieldActionDelegate {
         let usage: (UUID) -> RuleUsageDTO
         let hasActiveOpenSession: (UUID) -> Bool
         let now: Date
-        
+
         static func construct() -> LookupEnvironment {
             let ledger = UsageLedger()
             let sessions = OpenSessionStore()
@@ -98,7 +99,7 @@ final class ShieldActionExtension: ShieldActionDelegate {
             return lookupEnvironment
         }
     }
-    
+
     private func grantOpen(ruleID: UUID) -> ShieldActionResponse {
         Diag.log(.session, .event, "shieldAction Open pressed rule-\(ruleID.logTag)")
         let enforcement = LimitEnforcement(
@@ -132,7 +133,7 @@ final class ShieldActionExtension: ShieldActionDelegate {
                 byAdding: .minute, value: MonitoringPlan.openSessionMinutes + 1, to: now)
         else { return }
         let schedule = DeviceActivityFactory.nonRepeatingSchedule(from: now, to: end, calendar: calendar)
-        
+
         let deviceActivityName = DeviceActivityName(MonitoringPlan.sessionActivityName(for: ruleID))
         DeviceActivityCenter().stopMonitoring([deviceActivityName])
         try? DeviceActivityCenter().startMonitoring(

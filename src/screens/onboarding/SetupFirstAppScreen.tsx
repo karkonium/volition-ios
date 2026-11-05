@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Screen } from "../../components/Screen";
 import { AppEditorForm } from "../apps/AppEditorForm";
 export function SetupFirstAppScreen({
@@ -6,8 +7,9 @@ export function SetupFirstAppScreen({
 }: {
   onSaved: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
-    <Screen title="Save your first app">
+    <Screen title={t("firstApp")}>
       <AppEditorForm onSaved={onSaved} />
     </Screen>
   );

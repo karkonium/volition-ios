@@ -182,7 +182,8 @@ nonisolated final class RuleScheduler: @unchecked Sendable {
     /// on kind, budget, and selection to detect the configuration changes that
     /// should restart the activity (e.g. an app-list swap).
     func openLimitRulePlannedActivity(for snapshot: RuleSnapshotDTO, selectionData: Data) -> PlannedActivity {
-        let fingerprint = "\(snapshot.kindRaw)|\(snapshot.dailyLimitMinutes)|"
+        let fingerprint =
+            "\(snapshot.kindRaw)|\(snapshot.dailyLimitMinutes)|"
             + Self.selectionFingerprint(selectionData)
         return PlannedActivity(
             name: MonitoringPlan.dailyActivityName(for: snapshot.id),
@@ -281,11 +282,14 @@ nonisolated final class RuleScheduler: @unchecked Sendable {
                 }
                 Diag.log(
                     .scheduler, .event,
-                    "dailyActivity restart \(plan.name): events=\(events) fp \(Self.shortFingerprint(fingerprints[plan.name]))->\(Self.shortFingerprint(plan.fingerprint)) (may lose up to the current hour of accrual)")
+                    "dailyActivity restart \(plan.name): events=\(events) fp \(Self.shortFingerprint(fingerprints[plan.name]))->\(Self.shortFingerprint(plan.fingerprint)) (may lose up to the current hour of accrual)"
+                )
             }
             attemptWithFallback(name: plan.name) {
                 try start(plan.payload, named: plan.name)
-            } onSuccess: { fingerprints[plan.name] = plan.fingerprint }
+            } onSuccess: {
+                fingerprints[plan.name] = plan.fingerprint
+            }
         }
 
         let desiredActivityNames = Set(plans.map(\.name))
@@ -296,7 +300,9 @@ nonisolated final class RuleScheduler: @unchecked Sendable {
                 && !desiredActivityNames.contains($0)
         }
         if !staleActivityNames.isEmpty {
-            Diag.log(.scheduler, "stop \(staleActivityNames.count) stale activities: \(staleActivityNames.joined(separator: ","))")
+            Diag.log(
+                .scheduler,
+                "stop \(staleActivityNames.count) stale activities: \(staleActivityNames.joined(separator: ","))")
             monitor.stopMonitoring(names: staleActivityNames)
             for name in staleActivityNames {
                 fingerprints[name] = nil

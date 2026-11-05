@@ -33,12 +33,12 @@ enum LimitWarningDecision {
             return nil
         }
         guard preferences.timeLimitEndingEnabled,
-              let snapshot,
-              snapshot.isEnabled,
-              snapshot.kind == .timeLimit,
-              !snapshot.isPaused(at: now),
-              snapshot.isScheduledToday(at: now, calendar: calendar),
-              !snapshot.limitReached(given: usage, at: now)
+            let snapshot,
+            snapshot.isEnabled,
+            snapshot.kind == .timeLimit,
+            !snapshot.isPaused(at: now),
+            snapshot.isScheduledToday(at: now, calendar: calendar),
+            !snapshot.limitReached(given: usage, at: now)
         else { return nil }
 
         return (

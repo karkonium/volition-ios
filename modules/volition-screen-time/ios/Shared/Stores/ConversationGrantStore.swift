@@ -45,9 +45,11 @@ nonisolated struct ConversationGrantStore: Sendable {
     }
     let fileURL: URL?
 
-    init(fileURL: URL? = FileManager.default.containerURL(
-        forSecurityApplicationGroupIdentifier: AppGroup.identifier)?
-        .appendingPathComponent("conversation-access.json")) {
+    init(
+        fileURL: URL? = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: AppGroup.identifier)?
+            .appendingPathComponent("conversation-access.json")
+    ) {
         self.fileURL = fileURL
     }
 
@@ -63,7 +65,8 @@ nonisolated struct ConversationGrantStore: Sendable {
                 }
                 let value = try operation(&state)
                 try saveMirror(state.snapshots)
-                try JSONEncoder().encode(state).write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+                try JSONEncoder().encode(state).write(
+                    to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
                 return value
             }
         }
@@ -82,7 +85,8 @@ nonisolated struct ConversationGrantStore: Sendable {
         guard let mirrorURL else { throw ConversationAccessError.storageUnavailable }
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
         let payload = try encoder.encode(snapshots)
-        let mirror = ConfigurationMirror(payload: payload,
+        let mirror = ConfigurationMirror(
+            payload: payload,
             checksum: SHA256.hash(data: payload).map { String(format: "%02x", $0) }.joined())
         let data = try encoder.encode(mirror)
         if (try? Data(contentsOf: mirrorURL)) != data {
@@ -99,13 +103,15 @@ nonisolated struct ConversationGrantStore: Sendable {
         NSFileCoordinator().coordinate(writingItemAt: fileURL, options: .forMerging, error: &coordinationError) { url in
             result = Result {
                 // A concurrent process may already have repaired the file.
-                if let data = try? Data(contentsOf: url), let state = try? JSONDecoder().decode(State.self, from: data) {
+                if let data = try? Data(contentsOf: url), let state = try? JSONDecoder().decode(State.self, from: data)
+                {
                     _ = state
                     return
                 }
                 let snapshots: [RuleSnapshotDTO]
-                if let fallback { snapshots = fallback }
-                else {
+                if let fallback {
+                    snapshots = fallback
+                } else {
                     let mirror = try JSONDecoder().decode(ConfigurationMirror.self, from: Data(contentsOf: mirrorURL))
                     let checksum = SHA256.hash(data: mirror.payload).map { String(format: "%02x", $0) }.joined()
                     guard checksum == mirror.checksum else { throw ConversationAccessError.storageUnavailable }
@@ -113,16 +119,19 @@ nonisolated struct ConversationGrantStore: Sendable {
                 }
                 for snapshot in snapshots where snapshot.isEnabled && snapshot.kind == .conversation {
                     guard let data = snapshot.selectionData,
-                          let selection = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data),
-                          !selection.applicationTokens.isEmpty else { throw ConversationAccessError.storageUnavailable }
+                        let selection = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data),
+                        !selection.applicationTokens.isEmpty
+                    else { throw ConversationAccessError.storageUnavailable }
                 }
                 if FileManager.default.fileExists(atPath: url.path) {
-                    try FileManager.default.copyItem(at: url, to: url.appendingPathExtension("corrupt-" + UUID().uuidString))
+                    try FileManager.default.copyItem(
+                        at: url, to: url.appendingPathExtension("corrupt-" + UUID().uuidString))
                 }
                 restore(snapshots)
                 var state = State(); state.snapshots = snapshots; state.recoveredAt = .now
                 try saveMirror(snapshots)
-                try JSONEncoder().encode(state).write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+                try JSONEncoder().encode(state).write(
+                    to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             }
         }
         if let coordinationError { throw coordinationError }
@@ -136,7 +145,8 @@ nonisolated struct ConversationGrantStore: Sendable {
 
     static func isValid(_ grant: Grant, in snapshots: [RuleSnapshotDTO]) -> Bool {
         if let scoped = grant.configurationFingerprint {
-            return !applicable(to: grant.token, in: snapshots).isEmpty && scoped == configurationFingerprint(for: grant.token, in: snapshots)
+            return !applicable(to: grant.token, in: snapshots).isEmpty
+                && scoped == configurationFingerprint(for: grant.token, in: snapshots)
         }
         return grant.fingerprint == fingerprint(snapshots)
     }
@@ -157,7 +167,7 @@ nonisolated struct ConversationGrantStore: Sendable {
                     normalized.selectionData = try encoder.encode([
                         "apps": sortedTokens(selection.applicationTokens),
                         "categories": sortedTokens(selection.categoryTokens),
-                        "domains": sortedTokens(selection.webDomainTokens)
+                        "domains": sortedTokens(selection.webDomainTokens),
                     ])
                     normalized.dayNumbers.sort()
                     return normalized
@@ -168,24 +178,30 @@ nonisolated struct ConversationGrantStore: Sendable {
     }
 
     static func applicable(to token: ApplicationToken, in snapshots: [RuleSnapshotDTO]) -> [RuleSnapshotDTO] {
-        snapshots.filter { $0.kind == .conversation && $0.isEnabled &&
-            AppSelectionCodec.decode($0.selectionData).applicationTokens.contains(token) }
+        snapshots.filter {
+            $0.kind == .conversation && $0.isEnabled
+                && AppSelectionCodec.decode($0.selectionData).applicationTokens.contains(token)
+        }
     }
 
     func setPending(_ token: ApplicationToken, at now: Date = .now) throws {
-        try transaction { state in state.pendingToken = token; state.pendingAt = now }
+        try transaction { state in
+            state.pendingToken = token; state.pendingAt = now
+        }
     }
 
     func consumePending(at now: Date = .now) throws -> ApplicationToken? {
         try transaction { state in
             defer { state.pendingToken = nil; state.pendingAt = nil }
             guard let date = state.pendingAt, now.timeIntervalSince(date) >= 0,
-                  now.timeIntervalSince(date) < 300 else { return nil }
+                now.timeIntervalSince(date) < 300
+            else { return nil }
             return state.pendingToken
         }
     }
 }
 
 nonisolated enum ConversationAccessError: Error, Equatable {
-    case storageUnavailable, alreadyUnlocked, staleRequest, noApplicableRule, monitoringUnavailable, shieldReleaseFailed, waiting, focusProtected
+    case storageUnavailable, alreadyUnlocked, staleRequest, noApplicableRule, monitoringUnavailable,
+        shieldReleaseFailed, waiting, focusProtected
 }

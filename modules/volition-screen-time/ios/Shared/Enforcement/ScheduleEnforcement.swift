@@ -24,7 +24,8 @@ struct ScheduleEnforcement {
         }
         let ruleTag = ruleID.logTag
         if snapshot.isEnabled, !snapshot.isPaused(at: now),
-           snapshot.schedule.isActive(at: now, calendar: calendar) {
+            snapshot.schedule.isActive(at: now, calendar: calendar)
+        {
             Diag.log(.scheduler, .event, "schedule rule-\(ruleTag): window active -> shield")
             shields.applyShield(
                 ruleID: snapshot.id,
@@ -34,7 +35,8 @@ struct ScheduleEnforcement {
         } else {
             Diag.log(
                 .scheduler,
-                "schedule rule-\(ruleTag): window inactive -> clear (enabled=\(snapshot.isEnabled) paused=\(snapshot.isPaused(at: now)))")
+                "schedule rule-\(ruleTag): window inactive -> clear (enabled=\(snapshot.isEnabled) paused=\(snapshot.isPaused(at: now)))"
+            )
             shields.clearShield(ruleID: snapshot.id)
         }
     }

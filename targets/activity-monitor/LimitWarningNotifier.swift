@@ -39,7 +39,7 @@ struct LimitWarningNotifier {
         if let url = URL.fromRuleID(ruleID) {
             notification.setURL(url)
         }
-        
+
         // A nil trigger delivers immediately.
         center.add(
             UNNotificationRequest(

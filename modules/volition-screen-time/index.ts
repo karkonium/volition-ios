@@ -43,6 +43,7 @@ export interface ScreenTimeBridge {
     consentRevision: number,
   ): Promise<ActiveGrant>;
   setAIConsent(allowed: boolean, revision: number): Promise<void>;
+  setLanguage(language: string): Promise<void>;
   rollbackGrant(id: string): Promise<void>;
   revokeGrant(id: string): Promise<void>;
   getActiveGrants(): Promise<ActiveGrant[]>;
@@ -74,6 +75,7 @@ export const VolitionScreenTime: ScreenTimeBridge = previewMode
       reconcileShields: async () => unavailable(),
       createGrant: async () => unavailable(),
       setAIConsent: async () => unavailable(),
+      setLanguage: async () => undefined,
       rollbackGrant: async () => unavailable(),
       revokeGrant: async () => unavailable(),
       getActiveGrants: async () => [],

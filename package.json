@@ -10,7 +10,11 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "test": "jest --runInBand",
-    "postinstall": "node Scripts/patch-expo-headers.cjs && python3 Scripts/link-native-sources.py"
+    "postinstall": "node Scripts/patch-expo-headers.cjs && python3 Scripts/link-native-sources.py",
+    "format": "prettier --write . && npm run format:swift",
+    "format:check": "prettier --check . && npm run format:swift:check",
+    "format:swift": "node Scripts/format-swift.cjs",
+    "format:swift:check": "node Scripts/format-swift.cjs --check"
   },
   "dependencies": {
     "@bacons/apple-targets": "^5.0.0",

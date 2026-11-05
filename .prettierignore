@@ -1,0 +1,14 @@
+# Generated files, dependencies, and lockfiles are managed by their tools.
+node_modules/
+ios/
+android/
+.expo/
+coverage/
+build/
+DerivedData/
+package-lock.json
+# Documentation is maintained separately.
+**/*.md
+# Native extension copies are symlinks to module-owned sources.
+targets/*/Shared/
+targets/*/ActivityShared/

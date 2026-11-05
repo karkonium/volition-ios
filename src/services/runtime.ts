@@ -36,7 +36,11 @@ export const coordinator = new ConversationCoordinator({
         pause_seconds: 10,
         block_minutes: 30,
       })
-    : (request) => requestCoachDecision({ ...request, language: resolveLanguage(i18n.resolvedLanguage ?? null, []) }),
+    : (request) =>
+        requestCoachDecision({
+          ...request,
+          language: resolveLanguage(i18n.resolvedLanguage ?? null, []),
+        }),
   foreground: () => AppState.currentState === "active",
   now: Date.now,
   id: Crypto.randomUUID,

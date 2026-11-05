@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import * as Crypto from "expo-crypto";
 import { Button, Flex, Text } from "@itsRares/ahhzo-elements";
 import { Screen, perform } from "../../components/Screen";
@@ -16,6 +17,7 @@ import { PeriodCard } from "./components/PeriodCard";
 import { PeriodEditor } from "./components/PeriodEditor";
 
 export function FocusScreen(): React.JSX.Element {
+  const { t } = useTranslation();
   const state = useAppSelector((state) => state);
   const now = useNow();
   const [duration, setDuration] = useState("25");
@@ -27,7 +29,7 @@ export function FocusScreen(): React.JSX.Element {
     : 0;
   const activeMinutes = remaining > 0 ? Math.ceil(remaining / 60000) : null;
   return (
-    <Screen title="Focus" subtitle="Make room for what matters.">
+    <Screen title={t("focus")} subtitle={t("focusSubtitle")}>
       <SessionSection
         activeMinutes={activeMinutes}
         duration={duration}
@@ -42,7 +44,7 @@ export function FocusScreen(): React.JSX.Element {
           perform(async () => {
             const minutes = Number(duration);
             if (!Number.isInteger(minutes) || minutes < 15 || minutes > 180)
-              throw new Error("Choose 15–180 minutes.");
+              throw new Error(t("focusDurationError"));
             await updateFocus({
               ...state.focus,
               session: {
@@ -56,14 +58,14 @@ export function FocusScreen(): React.JSX.Element {
         }
       />
       <Flex vertical gap="xs">
-        <Text type="H2">Recurring periods</Text>
-        <Text type="Small">Set a regular time to protect your attention.</Text>
+        <Text type="H2">{t("recurringPeriods")}</Text>
+        <Text type="Small">{t("recurringHelp")}</Text>
       </Flex>
       {state.focus.periods.length === 0 ? (
         <EmptyState
           icon="calendar-outline"
-          title="Make space in your week"
-          description="Add a recurring period for work, rest, or anything that deserves your attention."
+          title={t("focusEmptyTitle")}
+          description={t("focusEmptyBody")}
         />
       ) : (
         state.focus.periods.map((period) => (
@@ -98,7 +100,7 @@ export function FocusScreen(): React.JSX.Element {
         ))
       )}
       <Button
-        text="Add recurring period"
+        text={t("addRecurring")}
         variant="outline"
         onPress={() => setDraft(createPeriodDraft())}
       />
