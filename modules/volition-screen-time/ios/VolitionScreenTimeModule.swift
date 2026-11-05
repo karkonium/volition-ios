@@ -26,20 +26,25 @@ public final class VolitionScreenTimeModule: Module {
         guard let data = Data(base64Encoded: encoded) else { throw failure("Invalid app selection") }
         return try JSONDecoder().decode(ApplicationToken.self, from: data)
     }
-    private static func grantRecord(_ grant: ConversationGrantStore.Grant, snapshots: [RuleSnapshotDTO]) -> [String: Any] {
-        ["grantId": grant.plan.grantID.uuidString.lowercased(),
-         "appId": ConversationGrantStore.applicable(to: grant.token, in: snapshots).first?.id.uuidString.lowercased() ?? "",
-         "tokenBase64": (try? JSONEncoder().encode(grant.token).base64EncodedString()) ?? "",
-         "minutes": grant.plan.minutes,
-         "expiresAt": ISO8601DateFormatter().string(from: grant.plan.expiresAt)]
+    private static func grantRecord(_ grant: ConversationGrantStore.Grant, snapshots: [RuleSnapshotDTO]) -> [String:
+        Any]
+    {
+        [
+            "grantId": grant.plan.grantID.uuidString.lowercased(),
+            "appId": ConversationGrantStore.applicable(to: grant.token, in: snapshots).first?.id.uuidString.lowercased()
+                ?? "",
+            "tokenBase64": (try? JSONEncoder().encode(grant.token).base64EncodedString()) ?? "",
+            "minutes": grant.plan.minutes,
+            "expiresAt": ISO8601DateFormatter().string(from: grant.plan.expiresAt),
+        ]
     }
     private static func authorizationStatus() -> String {
-            switch AuthorizationCenter.shared.authorizationStatus {
-            case .approved, .approvedWithDataAccess: return "approved"
-            case .denied: return "denied"
-            case .notDetermined: return "notDetermined"
-            @unknown default: return "unknown"
-            }
+        switch AuthorizationCenter.shared.authorizationStatus {
+        case .approved, .approvedWithDataAccess: return "approved"
+        case .denied: return "denied"
+        case .notDetermined: return "notDetermined"
+        @unknown default: return "unknown"
+        }
     }
     public func definition() -> ModuleDefinition {
         Name("VolitionScreenTime")
@@ -55,11 +60,14 @@ public final class VolitionScreenTimeModule: Module {
         }
         AsyncFunction("reconcileShields") { (apps: [SavedAppRecord]) -> String in
             let snapshots = try apps.map { app -> RuleSnapshotDTO in
-                guard let id = UUID(uuidString: app.id), !app.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                      app.name.count <= 600, !app.goal.isEmpty, app.goal.count <= 2000 else { throw Self.failure("Invalid saved app") }
+                guard let id = UUID(uuidString: app.id),
+                    !app.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                    app.name.count <= 600, !app.goal.isEmpty, app.goal.count <= 2000
+                else { throw Self.failure("Invalid saved app") }
                 var selection = FamilyActivitySelection()
                 selection.applicationTokens = [try Self.token(app.tokenBase64)]
-                return RuleSnapshotDTO(id: id, name: app.name, kindRaw: RuleKind.conversation.rawValue,
+                return RuleSnapshotDTO(
+                    id: id, name: app.name, kindRaw: RuleKind.conversation.rawValue,
                     isEnabled: app.isEnabled, hardMode: false, selectionModeRaw: SelectionMode.block.rawValue,
                     selectionData: AppSelectionCodec.encode(selection), dayNumbers: [], startMinutes: 0, endMinutes: 0,
                     dailyLimitMinutes: 0, maxOpens: 0, conversationGoal: app.goal)
@@ -74,7 +82,11 @@ public final class VolitionScreenTimeModule: Module {
             RuleScheduler(monitor: DeviceActivityCenterMonitor()).sync(snapshots: snapshots)
             return ConversationGrantStore.fingerprint(snapshots)
         }
-        AsyncFunction("createGrant") { (encoded: String, minutes: Int, fingerprint: String, breakMinutes: Int?, overridingID: String?, relief: Bool, consentRevision: Int) -> [String: Any] in
+        AsyncFunction("createGrant") {
+            (
+                encoded: String, minutes: Int, fingerprint: String, breakMinutes: Int?, overridingID: String?,
+                relief: Bool, consentRevision: Int
+            ) -> [String: Any] in
             let active = await MainActor.run { UIApplication.shared.applicationState == .active }
             guard active else { throw Self.failure("Open Volition to unlock") }
             let decodedToken = try Self.token(encoded)
@@ -86,12 +98,20 @@ public final class VolitionScreenTimeModule: Module {
                 return Self.authorizationStatus() == "approved" && (wait.map { $0 <= Date() } ?? true)
             }
             guard allowed else { throw Self.failure("An existing wait or permission prevents access") }
-            let grant = try Self.enforcement.approve(token: decodedToken, minutes: minutes, fingerprint: fingerprint,
-                blockMinutes: breakMinutes, overridingDealID: overridingID.flatMap(UUID.init(uuidString:)), immediateRelief: relief, activationAllowed: {
-                    AppGroup.defaults.bool(forKey: "expoAIConsent") && AppGroup.defaults.integer(forKey: "expoConsentRevision") == consentRevision
+            let grant = try Self.enforcement.approve(
+                token: decodedToken, minutes: minutes, fingerprint: fingerprint,
+                blockMinutes: breakMinutes, overridingDealID: overridingID.flatMap(UUID.init(uuidString:)),
+                immediateRelief: relief,
+                activationAllowed: {
+                    AppGroup.defaults.bool(forKey: "expoAIConsent")
+                        && AppGroup.defaults.integer(forKey: "expoConsentRevision") == consentRevision
                 })
             let snapshots = try ConversationGrantStore().transaction { $0.snapshots }
             return Self.grantRecord(grant, snapshots: snapshots)
+        }
+        AsyncFunction("setLanguage") { (language: String) in
+            guard ["en", "es", "zh"].contains(language) else { return }
+            AppGroup.defaults.set(language, forKey: "volitionLanguage")
         }
         AsyncFunction("setAIConsent") { (allowed: Bool, revision: Int) in
             try ConversationGrantStore().transaction { _ in
@@ -118,12 +138,17 @@ public final class VolitionScreenTimeModule: Module {
         AsyncFunction("getCommitments") { () -> [[String: Any]] in
             try ConversationGrantStore().transaction { state in
                 state.dealCommitments.map { deal in
-                    ["grantId": deal.grantID.uuidString.lowercased(),
-                     "appId": ConversationGrantStore.applicable(to: deal.token, in: state.snapshots).first?.id.uuidString.lowercased() ?? "",
-                     "blockedUntil": ISO8601DateFormatter().string(from: deal.blockedUntil),
-                     "pushbackCount": deal.pushbackCount ?? 0,
-                     "overriddenAt": deal.overriddenAt.map { ISO8601DateFormatter().string(from: $0) as Any } ?? NSNull(),
-                     "minimumReplacementBreakMinutes": ConversationEnforcement.minimumReplacementBreakMinutes(for: deal, at: .now)]
+                    [
+                        "grantId": deal.grantID.uuidString.lowercased(),
+                        "appId": ConversationGrantStore.applicable(to: deal.token, in: state.snapshots).first?.id
+                            .uuidString.lowercased() ?? "",
+                        "blockedUntil": ISO8601DateFormatter().string(from: deal.blockedUntil),
+                        "pushbackCount": deal.pushbackCount ?? 0,
+                        "overriddenAt": deal.overriddenAt.map { ISO8601DateFormatter().string(from: $0) as Any }
+                            ?? NSNull(),
+                        "minimumReplacementBreakMinutes": ConversationEnforcement.minimumReplacementBreakMinutes(
+                            for: deal, at: .now),
+                    ]
                 }
             }
         }
@@ -147,25 +172,35 @@ public final class VolitionScreenTimeModule: Module {
             await ConversationSessionPresentation.shared.sync(unlocks, store: store)
         }
         AsyncFunction("setAPIKey") { (key: String) in
-            let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
-                kSecAttrService as String: "volition.openai", kSecAttrAccount as String: "api-key"]
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: "volition.openai", kSecAttrAccount as String: "api-key",
+            ]
             let deletion = SecItemDelete(query as CFDictionary)
-            guard deletion == errSecSuccess || deletion == errSecItemNotFound else { throw Self.failure("Credential storage unavailable") }
+            guard deletion == errSecSuccess || deletion == errSecItemNotFound else {
+                throw Self.failure("Credential storage unavailable")
+            }
             if !key.isEmpty {
                 var item = query
                 item[kSecValueData as String] = Data(key.utf8)
                 item[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-                guard SecItemAdd(item as CFDictionary, nil) == errSecSuccess else { throw Self.failure("Credential storage unavailable") }
+                guard SecItemAdd(item as CFDictionary, nil) == errSecSuccess else {
+                    throw Self.failure("Credential storage unavailable")
+                }
             }
         }
         AsyncFunction("getAPIKey") { () -> String? in
-            let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: "volition.openai", kSecAttrAccount as String: "api-key",
-                kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
+                kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+            ]
             var result: CFTypeRef?
             let status = SecItemCopyMatching(query as CFDictionary, &result)
             if status == errSecItemNotFound { return nil }
-            guard status == errSecSuccess, let data = result as? Data else { throw Self.failure("Credential storage unavailable") }
+            guard status == errSecSuccess, let data = result as? Data else {
+                throw Self.failure("Credential storage unavailable")
+            }
             return String(data: data, encoding: .utf8)
         }
         AsyncFunction("exportLegacyState") { () -> String in

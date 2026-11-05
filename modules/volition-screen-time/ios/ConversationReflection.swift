@@ -8,7 +8,9 @@ import Foundation
 /// This step never accepts terms or opens an app. Ten seconds starts after reveal.
 /// Claiming activation is persisted before I/O; relaunch never replays a claim.
 nonisolated struct ConversationReflection: Codable, Equatable, Identifiable, Sendable {
-    enum State: String, Codable, Sendable { case offered, counting, activating, completed, cancelled, declined, failed, interrupted }
+    enum State: String, Codable, Sendable {
+        case offered, counting, activating, completed, cancelled, declined, failed, interrupted
+    }
     enum Emotion: String, Codable, CaseIterable, Sendable {
         case boredom, stress, anxiety, loneliness, avoidance, relaxation, other, skip
         var copy: CopyKey {
@@ -53,10 +55,14 @@ nonisolated struct ConversationReflection: Codable, Equatable, Identifiable, Sen
     var usageProfile: ConversationUsageProfile?
     var isPending: Bool { state == .offered || state == .counting }
     var validUntil: Date { (deadline ?? createdAt).addingTimeInterval(30 * 60) }
-    func isReady(at now: Date) -> Bool { !isDeal && !isChoice && state == .counting && deadline.map { $0 <= now } == true && now < validUntil }
+    func isReady(at now: Date) -> Bool {
+        !isDeal && !isChoice && state == .counting && deadline.map { $0 <= now } == true && now < validUntil
+    }
 
-    init(appID: UUID, appName: String, reason: String, reply: String, unlockMinutes: Int,
-         seconds: Int, fingerprint: String, activityID: UUID, now: Date = .now) {
+    init(
+        appID: UUID, appName: String, reason: String, reply: String, unlockMinutes: Int,
+        seconds: Int, fingerprint: String, activityID: UUID, now: Date = .now
+    ) {
         self.appID = appID; self.appName = appName; self.reason = reason; self.reply = reply
         self.unlockMinutes = unlockMinutes; self.seconds = seconds; self.fingerprint = fingerprint
         self.activityID = activityID; self.createdAt = now
@@ -80,5 +86,11 @@ nonisolated struct ConversationReflection: Codable, Equatable, Identifiable, Sen
         var checkInRequested: Bool? = nil
         var openedWithoutIntervention: Bool? = nil
     }
-    var context: Context { .init(appID: appID, date: createdAt, state: state, emotion: emotion, customEmotion: customEmotion, seconds: seconds, skipped: skipped, blockMinutes: blockMinutes, unlockMinutes: unlockMinutes, offersChoice: offersChoice, checkInRequested: checkInRequested, openedWithoutIntervention: openedWithoutIntervention) }
+    var context: Context {
+        .init(
+            appID: appID, date: createdAt, state: state, emotion: emotion, customEmotion: customEmotion,
+            seconds: seconds, skipped: skipped, blockMinutes: blockMinutes, unlockMinutes: unlockMinutes,
+            offersChoice: offersChoice, checkInRequested: checkInRequested,
+            openedWithoutIntervention: openedWithoutIntervention)
+    }
 }

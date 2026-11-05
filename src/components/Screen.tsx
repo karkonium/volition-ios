@@ -1,14 +1,24 @@
-import React, { type PropsWithChildren } from "react";
+import React, { type PropsWithChildren, type ReactNode } from "react";
 import { Alert } from "react-native";
 import { Page, Header, Flex } from "@itsRares/ahhzo-elements";
 export function Screen({
   title,
   subtitle,
   children,
-}: PropsWithChildren<{ title: string; subtitle?: string }>): React.JSX.Element {
+  action,
+}: PropsWithChildren<{
+  title: string;
+  subtitle?: string;
+  action?: ReactNode;
+}>): React.JSX.Element {
   return (
-    <Page>
-      <Header title={title} subtitle={subtitle} />
+    <Page tabHidden bottomInset={false}>
+      <Flex alignItems="center" gap="sm">
+        <Flex flex={1}>
+          <Header title={title} subtitle={subtitle} />
+        </Flex>
+        {action}
+      </Flex>
       <Flex vertical gap="md">
         {children}
       </Flex>

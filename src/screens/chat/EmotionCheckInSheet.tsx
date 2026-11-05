@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Text, TextField, Flex } from "@itsRares/ahhzo-elements";
 import { VolitionCard } from "../../components/VolitionCard";
 import { perform } from "../../components/Screen";
@@ -8,17 +9,18 @@ export function EmotionCheckInSheet({
 }: {
   appId: string;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const [custom, setCustom] = useState("");
   return (
     <VolitionCard>
       <Flex vertical gap="sm">
-        <Text type="H3">How are you feeling?</Text>
-        <Text type="Small">Optional. Skip whenever you like.</Text>
+        <Text type="H3">{t("feelQuestion")}</Text>
+        <Text type="Small">{t("feelOptional")}</Text>
         <Flex wrap="wrap" gap="sm">
           {["Bored", "Tired", "Stressed", "Restless", "Good"].map((emotion) => (
             <Button
               key={emotion}
-              text={emotion}
+              text={t(emotion.toLowerCase())}
               variant="outline"
               testID={`reflectionEmotion-${emotion.toLowerCase()}`}
               onPress={() =>
@@ -28,20 +30,20 @@ export function EmotionCheckInSheet({
           ))}
         </Flex>
         <TextField
-          placeholderLabel="Your own words"
+          placeholderLabel={t("ownWords")}
           value={custom}
           onChange={setCustom}
           maxLength={160}
         />
         <Button
-          text="Use my words"
+          text={t("useWords")}
           disabled={!custom.trim()}
           onPress={() =>
             perform(() => coordinator.answerCheckIn(appId, custom))
           }
         />
         <Button
-          text="Not sure / Skip"
+          text={t("skip")}
           variant="ghost"
           testID="skipReflectionButton"
           onPress={() => perform(() => coordinator.answerCheckIn(appId, null))}

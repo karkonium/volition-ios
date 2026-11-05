@@ -12,3 +12,8 @@ export type SettingsStack = {
   ActivityLog: undefined;
   Diagnostics: undefined;
 };
+
+export type AppsStack = {
+  AppsHome: undefined;
+  AppEditor: { appId?: string };
+};

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Text } from "@itsRares/ahhzo-elements";
 import { Screen, perform } from "../../components/Screen";
 import { useAppSelector } from "../../redux/store";
@@ -8,26 +9,18 @@ export function AIConsentScreen({
 }: {
   onContinue: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const consent = useAppSelector((state) => state.auth.aiConsent);
   return (
-    <Screen title="Your coach, your choice">
-      <Text>
-        To respond, OpenAI receives your messages, app names, intentions and
-        notes, recent allocated access sessions, active grants, waits,
-        agreements optional recent check-ins and recent app-removal feedback.
-        This is not measured app usage.
-      </Text>
-      <Text>
-        Your history is stored on this device. Each request sends the coaching
-        context described above. You can withdraw sharing at any time in Privacy
-        & Data, which cancels pending responses and offers.
-      </Text>
+    <Screen title={t("consentTitle")}>
+      <Text>{t("consentBody")}</Text>
+      <Text>{t("consentPrivacy")}</Text>
       <Button
-        text={consent ? "AI sharing: On" : "AI sharing: Off"}
+        text={consent ? t("sharingOn") : t("sharingOff")}
         variant="outline"
         onPress={() => perform(() => setConsent(!consent))}
       />
-      <Button text="Continue" onPress={onContinue} />
+      <Button text={t("continue")} onPress={onContinue} />
     </Screen>
   );
 }

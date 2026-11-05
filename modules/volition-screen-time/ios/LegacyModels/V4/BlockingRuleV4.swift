@@ -87,16 +87,16 @@ extension OpenAppLockSchemaV4 {
             get {
                 switch kind {
                 case .schedule:
-                        .schedule(
-                            ScheduleConfig(
-                                startMinutes: startMinutes,
-                                endMinutes: endMinutes,
-                                selectionMode: selectionMode))
+                    .schedule(
+                        ScheduleConfig(
+                            startMinutes: startMinutes,
+                            endMinutes: endMinutes,
+                            selectionMode: selectionMode))
                 case .timeLimit:
-                        .timeLimit(TimeLimitConfig(dailyLimitMinutes: dailyLimitMinutes))
+                    .timeLimit(TimeLimitConfig(dailyLimitMinutes: dailyLimitMinutes))
                 case .conversation: .conversation(ConversationConfig(goal: conversationGoal))
                 case .openLimit:
-                        .openLimit(OpenLimitConfig(maxOpens: maxOpens))
+                    .openLimit(OpenLimitConfig(maxOpens: maxOpens))
                 }
             }
             set { applyConfiguration(newValue) }

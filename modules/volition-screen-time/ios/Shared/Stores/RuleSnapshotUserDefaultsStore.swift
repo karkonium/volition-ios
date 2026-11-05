@@ -23,7 +23,7 @@ nonisolated final class RuleSnapshotUserDefaultsStore: @unchecked Sendable {
 
     func load() -> [RuleSnapshotDTO] {
         guard let data = defaults.data(forKey: Self.key),
-              let snapshots = try? JSONDecoder().decode([RuleSnapshotDTO].self, from: data)
+            let snapshots = try? JSONDecoder().decode([RuleSnapshotDTO].self, from: data)
         else { return [] }
         return snapshots
     }

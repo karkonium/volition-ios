@@ -1,29 +1,32 @@
-import { AttentionRegion } from "../../components/AttentionRegion";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
+import { layout } from "../../layout/layout";
+import type { ResponsiveStyle, Theme } from "@itsRares/ahhzo-elements";
 import React, { useRef, useState, useEffect } from "react";
-import { ScrollView } from "react-native";
 import {
-  Page,
-  Header,
-  Button,
-  Flex,
-  Text,
-  TextField,
-  useThemedStyles,
-} from "@itsRares/ahhzo-elements";
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from "react-native";
+import { Button, Flex, Text, useThemedStyles } from "@itsRares/ahhzo-elements";
+import { ChatHeader } from "./components/ChatHeader";
+import { ChatEmptyState } from "./components/ChatEmptyState";
+import { ChatComposer } from "./components/ChatComposer";
+import { ConversationMessage } from "./components/ConversationMessage";
 import { useAppSelector, useAppDispatch } from "../../redux/store";
 import { chatActions } from "../../redux/chatSlice";
 import { coordinator, endGrant } from "../../services/runtime";
 import { perform } from "../../components/Screen";
-import { VolitionCard } from "../../components/VolitionCard";
 import { ActiveGrantBanner } from "../../components/ActiveGrantBanner";
 import { AppPickerModal } from "./AppPickerModal";
 import { EmotionCheckInSheet } from "./EmotionCheckInSheet";
 import { DelayCountdownCard } from "./DelayCountdownCard";
 import { InterventionChoiceCard } from "./InterventionChoiceCard";
 import { OutcomeFeedbackCard } from "./OutcomeFeedbackCard";
+
+/** App selection and independent grant banners stay outside the scrolling conversation. */
 export function ChatScreen(): React.JSX.Element {
-  const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const state = useAppSelector((state) => state);
   const dispatch = useAppDispatch();
   const [picker, setPicker] = useState(false);
@@ -42,21 +45,7 @@ export function ChatScreen(): React.JSX.Element {
           entry.outcome,
         ),
     );
-  const styles = useThemedStyles((theme) => ({
-    root: { flex: 1, backgroundColor: theme.colors.background },
-    pinned: {
-      maxHeight: 220,
-      flexGrow: 0,
-      paddingTop: insets.top,
-      paddingHorizontal: theme.spacing.md,
-    },
-    composer: {
-      padding: theme.spacing.md,
-      paddingBottom: insets.bottom + theme.spacing.sm,
-      backgroundColor: theme.colors.background,
-    },
-    user: { color: theme.colors.textSecondary },
-  }));
+  const styles = useThemedStyles(createStyles);
   useEffect(() => {
     if (nearBottom) transcript.current?.scrollToEnd({ animated: true });
   }, [state.chat.messages.length, offer?.status, feedback?.id, nearBottom]);
@@ -67,9 +56,17 @@ export function ChatScreen(): React.JSX.Element {
     }
   }, [feedback?.id]);
   return (
-    <Flex vertical style={styles.root}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ChatHeader
+        app={app}
+        attention={state.chat.selectionAttention}
+        onChooseApp={() => setPicker(true)}
+      />
       {state.grants.activeGrants.length > 0 && (
-        <ScrollView style={styles.pinned}>
+        <ScrollView style={[styles.width, styles.pinned]}>
           {state.grants.activeGrants.map((grant) => (
             <ActiveGrantBanner
               key={grant.grantId}
@@ -83,53 +80,45 @@ export function ChatScreen(): React.JSX.Element {
           ))}
         </ScrollView>
       )}
-      <Page
-        scrollRef={transcript}
-        safeAreaEdges={
-          state.grants.activeGrants.length
-            ? ["left", "right"]
-            : ["top", "left", "right"]
+      <ScrollView
+        ref={transcript}
+        style={styles.width}
+        contentContainerStyle={styles.transcript}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        testID="conversationTranscript"
+        scrollEventThrottle={100}
+        onScroll={({
+          nativeEvent: { contentOffset, contentSize, layoutMeasurement },
+        }) =>
+          setNearBottom(
+            contentSize.height - contentOffset.y - layoutMeasurement.height <
+              100,
+          )
         }
+        onContentSizeChange={() => {
+          if (nearBottom) transcript.current?.scrollToEnd({ animated: true });
+        }}
       >
-        <Header title="Chat" subtitle="A moment of intention" />
-        <AttentionRegion trigger={state.chat.selectionAttention}>
-          <Button
-            text={app?.name ?? "Choose an app"}
-            variant="outline"
-            testID="conversationChooseAppButton"
-            onPress={() => setPicker(true)}
-          />
-        </AttentionRegion>
-        {state.chat.selectionAttention > 0 && (
-          <Text testID="conversationAppSelectionHint">
-            Choose the app you mean. Your draft is saved.
-          </Text>
+        {state.chat.messages.length === 0 && (
+          <ChatEmptyState appName={app?.name} />
         )}
         {state.chat.messages.length > state.chat.visibleCount && (
           <Button
-            text="Earlier messages"
+            text={t("earlierMessages")}
             variant="ghost"
             onPress={() => dispatch(chatActions.loadEarlier())}
           />
         )}
-        <Flex
-          vertical
-          gap="sm"
-          testID="conversationTranscript"
-          onLayout={() => {
-            if (nearBottom) transcript.current?.scrollToEnd({ animated: true });
-          }}
-          onTouchStart={() => setNearBottom(false)}
-        >
+        <Flex vertical gap="md">
           {state.chat.messages
             .slice(-state.chat.visibleCount)
             .map((message) => (
-              <VolitionCard key={message.id}>
-                <Text type="Small" style={styles.user}>
-                  {message.role === "user" ? "You" : "Volition"}
-                </Text>
-                <Text>{message.text}</Text>
-              </VolitionCard>
+              <ConversationMessage
+                key={message.id}
+                role={message.role}
+                text={message.text}
+              />
             ))}
           {offer &&
             (offer.status === "checkIn" ? (
@@ -140,49 +129,59 @@ export function ChatScreen(): React.JSX.Element {
               <InterventionChoiceCard offer={offer} />
             ))}
           {feedback && <OutcomeFeedbackCard entry={feedback} />}
+          {state.chat.error && (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {state.chat.error}
+            </Text>
+          )}
         </Flex>
-        {state.chat.error && <Text>{state.chat.error}</Text>}
-        {!nearBottom && (
-          <Button
-            text="Jump to latest"
-            variant="ghost"
-            testID="conversationJumpLatest"
-            onPress={() => {
-              setNearBottom(true);
-              transcript.current?.scrollToEnd({ animated: true });
-            }}
-          />
-        )}
-      </Page>
-      <Flex vertical gap="sm" style={styles.composer}>
-        <TextField
-          placeholderLabel="What would you like to do?"
-          value={state.chat.draft}
-          onChange={(text) => dispatch(chatActions.draftChanged(text))}
-          multiline
-          testID="conversationMessageField"
+      </ScrollView>
+      {!nearBottom && state.chat.messages.length > 0 && (
+        <Button
+          text={t("jumpLatest")}
+          variant="ghost"
+          testID="conversationJumpLatest"
+          onPress={() => {
+            setNearBottom(true);
+            transcript.current?.scrollToEnd({ animated: true });
+          }}
         />
-        {state.chat.pendingRequestId ? (
-          <Button
-            text="Cancel request"
-            variant="ghost"
-            onPress={() => coordinator.cancel()}
-          />
-        ) : (
-          <Button
-            text="Send"
-            testID="conversationSendButton"
-            disabled={!state.chat.draft.trim()}
-            onPress={() =>
-              perform(async () => {
-                await coordinator.send();
-                setNearBottom(true);
-              })
-            }
-          />
-        )}
-      </Flex>
+      )}
+      <ChatComposer
+        draft={state.chat.draft}
+        pending={Boolean(state.chat.pendingRequestId)}
+        hasApp={Boolean(app)}
+        onChange={(text) => dispatch(chatActions.draftChanged(text))}
+        onCancel={() => coordinator.cancel()}
+        onSend={() => {
+          Keyboard.dismiss();
+          setNearBottom(true);
+          perform(() => coordinator.send());
+        }}
+      />
       <AppPickerModal visible={picker} onClose={() => setPicker(false)} />
-    </Flex>
+    </KeyboardAvoidingView>
   );
 }
+
+const createStyles = (theme: Theme) =>
+  ({
+    root: { flex: 1, backgroundColor: theme.colors.background },
+    width: {
+      width: "100%",
+      maxWidth: layout.pageMaxWidth,
+      alignSelf: "center",
+    },
+    pinned: {
+      maxHeight: 160,
+      flexGrow: 0,
+      paddingHorizontal: theme.spacing.lg,
+    },
+    transcript: {
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.xs,
+      paddingBottom: theme.spacing.lg,
+      flexGrow: 1,
+    },
+    error: { color: theme.colors.error },
+  }) satisfies Record<string, ResponsiveStyle>;

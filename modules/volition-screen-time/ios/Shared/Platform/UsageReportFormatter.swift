@@ -50,7 +50,8 @@ nonisolated enum UsageReportFormatter {
             secondsByName[app.name, default: 0] += app.seconds
         }
         let total = todayTotal(seconds: secondsByName.values.reduce(0, +))
-        let rows = secondsByName
+        let rows =
+            secondsByName
             .filter { $0.value > 0 }
             .map { AppUsageRow(name: $0.key, seconds: $0.value) }
             .sorted(by: AppUsageRow.heaviestUsageFirst)

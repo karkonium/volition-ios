@@ -82,7 +82,7 @@ extension RuleSchedule {
         let date = calendar.date(byAdding: .minute, value: minutes, to: ref)!
         return date.formatted(.dateTime.hour().minute())
     }
-    
+
     var timeRangeLabel: String {
         "\(Self.formattedTime(forMinutes: startMinutes)) - \(Self.formattedTime(forMinutes: endMinutes))"
     }

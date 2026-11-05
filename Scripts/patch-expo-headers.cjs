@@ -78,7 +78,10 @@ source = source.replace(
   "typedef SRWebSocket * _Nonnull (^SRWebSocketProvider)(NSURLRequest * _Nonnull request);",
 );
 fs.writeFileSync(websocket, source);
-const http = path.join(reactRoot, 'Libraries/Network/RCTHTTPRequestHandler.h');
-source = fs.readFileSync(http, 'utf8');
-source = source.replace('typedef NSURLSessionConfiguration * (^NSURLSessionConfigurationProvider)(void);', 'typedef NSURLSessionConfiguration * _Nonnull (^NSURLSessionConfigurationProvider)(void);');
+const http = path.join(reactRoot, "Libraries/Network/RCTHTTPRequestHandler.h");
+source = fs.readFileSync(http, "utf8");
+source = source.replace(
+  "typedef NSURLSessionConfiguration * (^NSURLSessionConfigurationProvider)(void);",
+  "typedef NSURLSessionConfiguration * _Nonnull (^NSURLSessionConfigurationProvider)(void);",
+);
 fs.writeFileSync(http, source);

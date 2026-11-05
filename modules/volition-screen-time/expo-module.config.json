@@ -1,1 +1,1 @@
-{"platforms":["apple"],"apple":{"modules":["VolitionScreenTimeModule"]}}
+{ "platforms": ["apple"], "apple": { "modules": ["VolitionScreenTimeModule"] } }

@@ -320,15 +320,14 @@ nonisolated enum CopyKey: String, CaseIterable {
     case ruleDetailNoAppsPlaceholder = "ruleDetail.noAppsPlaceholder"
     case ruleDetailAppListSummaryFormat = "ruleDetail.appListSummaryFormat"
 
-
     // MARK: - RuleDraft
     case ruleDraftValidationFailedStartEndTimesTooCloseMessage = "ruleDraft.validationStartEndTimesTooCloseMessage"
-    case ruleDraftValidationFailedStartTimeTooCloseToMidnightMessage = "ruleDraft.validationStartEndTimesTooCloseToMidnightMessage"
+    case ruleDraftValidationFailedStartTimeTooCloseToMidnightMessage =
+        "ruleDraft.validationStartEndTimesTooCloseToMidnightMessage"
 
     // MARK: - SettingsView
     case settingsLogsRowLabel = "settings.logsRowLabel"
     case settingsNavigationTitle = "settings.navigationTitle"
-
 
     // MARK: - DiagnosticLogsView
     case diagnosticsNoLogsMessage = "diagnostics.noLogsMessage"
@@ -353,7 +352,6 @@ nonisolated enum CopyKey: String, CaseIterable {
     // MARK: - Nav shell: MainSidebarView + AppSection
     case navAppTitle = "nav.appTitle"
     case navSettingsSectionTitle = "nav.settingsSectionTitle"
-
 
     // MARK: - RuleStatus
     case statusDisabled = "status.disabled"
@@ -439,7 +437,6 @@ nonisolated enum CopyKey: String, CaseIterable {
     case selectionModeBlock = "selectionMode.block"
     case selectionModeAllowOnly = "selectionMode.allowOnly"
 
-
     // MARK: - ScreenTimeAccessRequiredView
     case screenTimeAccessTitle = "screenTimeAccess.title"
     case screenTimeAccessDescription = "screenTimeAccess.description"
@@ -507,7 +504,11 @@ nonisolated enum CopyKey: String, CaseIterable {
     /// isolated from Xcode's build-time string extraction, which only ever writes
     /// literal `Text("…")` strings to the default `Localizable` table. The catalog
     /// is embedded in every target, so `.main` resolves per process.
-    var resource: LocalizedStringResource { LocalizedStringResource(String.LocalizationValue(rawValue), table: "Copy") }
+    var resource: LocalizedStringResource {
+        let language = AppGroup.defaults.string(forKey: "volitionLanguage")
+        let locale = language.map { Locale(identifier: $0) } ?? .current
+        return LocalizedStringResource(String.LocalizationValue(rawValue), table: "Copy", locale: locale)
+    }
 
     /// Resolved String for non-SwiftUI producers (shields, notifications, logic).
     var string: String { String(localized: resource) }

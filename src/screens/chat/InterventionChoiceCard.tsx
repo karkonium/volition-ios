@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Flex, Text } from "@itsRares/ahhzo-elements";
 import type { Intervention } from "../../redux/grantsSlice";
 import { VolitionCard } from "../../components/VolitionCard";
@@ -9,13 +10,14 @@ export function InterventionChoiceCard({
 }: {
   offer: Intervention;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const { decision } = offer;
   const choice = decision.decision === "choice";
   const deal = ["deal", "override"].includes(decision.decision);
   if (offer.status === "interrupted")
     return (
       <VolitionCard>
-        <Text>This request was interrupted. Send a new request.</Text>
+        <Text>{t("interrupted")}</Text>
       </VolitionCard>
     );
   return (
@@ -23,18 +25,21 @@ export function InterventionChoiceCard({
       <Flex vertical gap="sm">
         <Text type="H3">
           {offer.status === "activating"
-            ? "Checking access…"
+            ? t("checkingAccess")
             : choice
-              ? "Choose what helps"
+              ? t("chooseWhatHelps")
               : deal
-                ? "An agreement"
-                : "A pause before access"}
+                ? t("agreement")
+                : t("pauseBefore")}
         </Text>
         {offer.status !== "activating" && (
           <>
             {(choice || !deal) && (
               <Button
-                text={`Delay ${decision.pause_seconds ?? (decision.wait_minutes ?? 1) * 60} seconds`}
+                text={t("delayFor", {
+                  count:
+                    decision.pause_seconds ?? (decision.wait_minutes ?? 1) * 60,
+                })}
                 testID="startReflectionButton"
                 onPress={() =>
                   perform(() => coordinator.startDelay(offer.appId))
@@ -43,7 +48,10 @@ export function InterventionChoiceCard({
             )}{" "}
             {(choice || deal) && (
               <Button
-                text={`${choice ? "Deal" : "Accept"}: ${decision.unlock_minutes} minutes now, then ${decision.block_minutes} minutes away`}
+                text={t(choice ? "dealTerms" : "acceptTerms", {
+                  access: decision.unlock_minutes,
+                  rest: decision.block_minutes,
+                })}
                 onPress={() =>
                   perform(() => coordinator.activate(offer.appId, "deal"))
                 }
@@ -51,7 +59,7 @@ export function InterventionChoiceCard({
             )}{" "}
             {choice && (
               <Button
-                text={`Open now for ${decision.unlock_minutes} minutes`}
+                text={t("openNow", { count: decision.unlock_minutes })}
                 variant="ghost"
                 onPress={() =>
                   perform(() => coordinator.activate(offer.appId, "open"))
@@ -59,7 +67,7 @@ export function InterventionChoiceCard({
               />
             )}
             <Button
-              text={deal ? "Decline / Keep locked" : "Keep locked"}
+              text={deal ? t("declineKeep") : t("keepLocked")}
               variant="outline"
               onPress={() => perform(() => coordinator.keepLocked(offer.appId))}
             />

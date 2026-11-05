@@ -11,6 +11,7 @@ import { useTheme, Button, Text } from "@itsRares/ahhzo-elements";
 import { useAppDispatch, useAppSelector } from "../redux/store";
 import { authActions } from "../redux/authSlice";
 import { initializeRuntime, syncNative } from "../services/runtime";
+import { trackScreen } from "../services/telemetry";
 import { diagnostic } from "../services/diagnostics";
 import { Screen, perform } from "../components/Screen";
 import { WelcomeScreen } from "../screens/onboarding/WelcomeScreen";
@@ -95,6 +96,8 @@ export function AppNavigator(): React.JSX.Element {
   return (
     <NavigationContainer
       ref={navigation}
+      onReady={() => trackScreen(navigation.getCurrentRoute()?.name)}
+      onStateChange={() => trackScreen(navigation.getCurrentRoute()?.name)}
       theme={{
         ...(scheme === "dark" ? DarkTheme : DefaultTheme),
         colors: {

@@ -8,6 +8,8 @@ import {
 } from "../../modules/volition-screen-time";
 import { ConversationCoordinator } from "./conversationCoordinator";
 import { requestCoachDecision } from "./openaiClient";
+import i18n from "../translations/i18n";
+import { resolveLanguage } from "../translations/locale";
 import {
   appsActions,
   type VolitionSavedApp,
@@ -34,7 +36,11 @@ export const coordinator = new ConversationCoordinator({
         pause_seconds: 10,
         block_minutes: 30,
       })
-    : requestCoachDecision,
+    : (request) =>
+        requestCoachDecision({
+          ...request,
+          language: resolveLanguage(i18n.resolvedLanguage ?? null, []),
+        }),
   foreground: () => AppState.currentState === "active",
   now: Date.now,
   id: Crypto.randomUUID,

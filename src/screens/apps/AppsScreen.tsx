@@ -1,30 +1,44 @@
-import { VolitionAppIcon } from "../../components/VolitionAppIcon";
+import { AppRow } from "./components/AppRow";
+import { EmptyState } from "../../components/EmptyState/EmptyState";
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Text, Modal, TextField, Flex } from "@itsRares/ahhzo-elements";
 import { useNavigation, type NavigationProp } from "@react-navigation/native";
 import { Screen, perform } from "../../components/Screen";
-import { VolitionCard } from "../../components/VolitionCard";
 import { useNow } from "../../components/ActiveGrantBanner";
 import { useAppSelector, useAppDispatch } from "../../redux/store";
 import type { VolitionSavedApp } from "../../redux/appsSlice";
 import { chatActions } from "../../redux/chatSlice";
 import { removeApp, recordRemoval } from "../../services/runtime";
 import { focusProtects } from "../../services/policy";
-import { AppEditorModal } from "./AppEditorModal";
-import type { MainTabs } from "../../navigation/types";
+import type { AppsStack, MainTabs } from "../../navigation/types";
+import type { CompositeNavigationProp } from "@react-navigation/native";
+import type { StackNavigationProp } from "@react-navigation/stack";
 export function AppsScreen(): React.JSX.Element {
+  const { t } = useTranslation();
   const state = useAppSelector((state) => state);
   const dispatch = useAppDispatch();
-  const navigation = useNavigation<NavigationProp<MainTabs>>();
+  const navigation =
+    useNavigation<
+      CompositeNavigationProp<
+        StackNavigationProp<AppsStack, "AppsHome">,
+        NavigationProp<MainTabs>
+      >
+    >();
   const now = useNow();
-  const [editing, setEditing] = useState<VolitionSavedApp | undefined>();
-  const [editor, setEditor] = useState(false);
   const [removing, setRemoving] = useState<VolitionSavedApp | null>(null);
   const [reason, setReason] = useState("");
   const [step, setStep] = useState(1);
   const [minutes, setMinutes] = useState("5");
   return (
-    <Screen title="Apps" subtitle="Your apps, with intention">
+    <Screen title={t("apps")} subtitle={t("appsSubtitle")}>
+      {state.apps.items.length === 0 && (
+        <EmptyState
+          icon="apps-outline"
+          title={t("appsEmptyTitle")}
+          description={t("appsEmptyBody")}
+        />
+      )}
       {state.apps.items.map((app) => {
         const grant = state.grants.activeGrants.find(
           (item) => item.appId === app.id,
@@ -36,86 +50,80 @@ export function AppsScreen(): React.JSX.Element {
             Date.parse(item.blockedUntil) > now,
         );
         const status = focusProtects(state.focus, app.id, now)
-          ? "Focus protected"
+          ? t("focusProtected")
           : grant
-            ? `Temporarily open · ${Math.max(0, Math.ceil((Date.parse(grant.expiresAt) - now) / 60000))}m`
+            ? t("temporarilyOpen", {
+                count: Math.max(
+                  0,
+                  Math.ceil((Date.parse(grant.expiresAt) - now) / 60000),
+                ),
+              })
             : deal
-              ? `Active break · ${Math.ceil((Date.parse(deal.blockedUntil) - now) / 60000)}m`
-              : "Shielded";
+              ? t("activeBreak", {
+                  count: Math.ceil(
+                    (Date.parse(deal.blockedUntil) - now) / 60000,
+                  ),
+                })
+              : t("shielded");
         return (
-          <VolitionCard key={app.id}>
-            <VolitionAppIcon tokenBase64={app.tokenBase64} />
-            <Text type="H3">{app.name}</Text>
-            <Text type="Small">{status}</Text>
-            <Text>{app.goal}</Text>
-            <Button
-              text="Edit"
-              variant="ghost"
-              onPress={() => {
-                setEditing(app);
-                setEditor(true);
-              }}
-            />
-            <Button
-              text="Remove app"
-              variant="ghost"
-              tone="danger"
-              onPress={() => {
-                setRemoving(app);
-                setStep(1);
-                setReason("");
-              }}
-            />
-          </VolitionCard>
+          <AppRow
+            key={app.id}
+            app={app}
+            status={status}
+            onEdit={() => {
+              navigation.navigate("AppEditor", { appId: app.id });
+            }}
+            onRemove={() => {
+              setRemoving(app);
+              setStep(1);
+              setReason("");
+              setMinutes("5");
+            }}
+          />
         );
       })}
       <Button
-        text="Add app"
+        text={t("addApp")}
         testID="addVolitionAppButton"
         onPress={() => {
-          setEditing(undefined);
-          setEditor(true);
+          navigation.navigate("AppEditor", {});
         }}
       />
-      <AppEditorModal
-        visible={editor}
-        existing={editing}
-        onClose={() => setEditor(false)}
-      />
       <Modal
-        title="Remove app"
+        title={t("removeApp")}
         isVisible={removing !== null}
+        scrollable
         onClose={() => setRemoving(null)}
       >
         <Flex vertical gap="md">
           {step === 1 ? (
             <>
-              <Text>
-                What made this feel unhelpful? This feedback stays private.
-              </Text>
+              <Text>{t("removeReasonPrompt")}</Text>
               <TextField
-                placeholderLabel="Optional reason"
+                placeholderLabel={t("optionalReason")}
                 value={reason}
                 onChange={setReason}
                 maxLength={2000}
                 multiline
               />
-              <Button text="Continue" onPress={() => setStep(2)} />
+              <Button text={t("continue")} onPress={() => setStep(2)} />
             </>
           ) : (
             <>
-              <Text>
-                Would a little access help instead? You can ask the coach, or
-                remove this app now.
-              </Text>
+              <Text>{t("removeAlternative")}</Text>
               <TextField
-                placeholderLabel="Minutes (1–60)"
+                placeholderLabel={t("minutesRange")}
                 value={minutes}
                 onChange={setMinutes}
                 keyboardType="number-pad"
               />
+              {(!Number.isInteger(Number(minutes)) ||
+                Number(minutes) < 1 ||
+                Number(minutes) > 60) && (
+                <Text accessibilityRole="alert">{t("minutesValidation")}</Text>
+              )}
               <Button
-                text="Request temporary access"
+                text={t("requestTemporary")}
                 onPress={() => {
                   if (!removing) return;
                   const count = Number(minutes);
@@ -125,7 +133,7 @@ export function AppsScreen(): React.JSX.Element {
                   dispatch(
                     chatActions.boundRequest({
                       appId: removing.id,
-                      draft: `I'd like ${count} minutes of access. ${reason}`,
+                      draft: t("removalDraft", { count, reason }),
                     }),
                   );
                   setRemoving(null);
@@ -133,7 +141,7 @@ export function AppsScreen(): React.JSX.Element {
                 }}
               />
               <Button
-                text="Remove app now"
+                text={t("removeNow")}
                 tone="danger"
                 variant="outline"
                 onPress={() =>
@@ -148,7 +156,7 @@ export function AppsScreen(): React.JSX.Element {
             </>
           )}
           <Button
-            text="Keep app"
+            text={t("keepApp")}
             variant="ghost"
             onPress={() => {
               if (removing) recordRemoval(removing, reason, "kept");

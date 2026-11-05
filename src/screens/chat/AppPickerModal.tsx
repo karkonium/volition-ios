@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Modal, Button, TextField, Flex } from "@itsRares/ahhzo-elements";
 import { useAppSelector, useAppDispatch } from "../../redux/store";
 import { chatActions } from "../../redux/chatSlice";
@@ -9,14 +10,15 @@ export function AppPickerModal({
   visible: boolean;
   onClose: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const apps = useAppSelector((state) => state.apps.items);
   const dispatch = useAppDispatch();
   return (
-    <Modal title="Choose an app" isVisible={visible} onClose={onClose}>
+    <Modal title={t("chooseApp")} isVisible={visible} onClose={onClose}>
       <Flex vertical gap="sm">
         <TextField
-          placeholderLabel="Search saved apps"
+          placeholderLabel={t("searchSavedApps")}
           value={search}
           onChange={setSearch}
         />

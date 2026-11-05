@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Text, Button, Flex } from "@itsRares/ahhzo-elements";
 import { VolitionCard } from "../../components/VolitionCard";
 import { useAppDispatch } from "../../redux/store";
@@ -12,16 +13,17 @@ export function OutcomeFeedbackCard({
 }: {
   entry: ActivityLogEntry;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   return (
     <VolitionCard>
-      <Text type="Small">How did that feel? Private and optional.</Text>
+      <Text type="Small">{t("feedbackQuestion")}</Text>
       <Flex wrap="wrap" gap="sm">
         {(["helpful", "neutral", "annoying"] as OutcomeFeedback[]).map(
           (feedback) => (
             <Button
               key={feedback}
-              text={feedback[0]!.toUpperCase() + feedback.slice(1)}
+              text={t(feedback)}
               variant="ghost"
               onPress={() =>
                 dispatch(activityLogActions.rated({ id: entry.id, feedback }))

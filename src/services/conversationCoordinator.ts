@@ -29,11 +29,20 @@ export interface CoordinatorDependencies {
 }
 /// Model decisions remain offers until an explicit foreground action passes
 /// consent, configuration, Focus, wait and native transaction validation.
+/// Cancellation invalidates the in-flight offer; late native publication rolls
+/// back that grant and late failures cannot replace a newer request's error.
 export class ConversationCoordinator {
   private pending: AbortController | null = null;
   constructor(private readonly deps: CoordinatorDependencies) {}
   cancel(): void {
+    const requestId = this.state.chat.pendingRequestId;
     this.pending?.abort();
+    if (requestId) {
+      for (const offer of Object.values(this.state.grants.offers)) {
+        if (offer.id === requestId)
+          this.deps.dispatch(grantsActions.offerRemoved(offer.appId));
+      }
+    }
     this.pending = null;
     this.deps.dispatch(chatActions.requestChanged(null));
   }
@@ -126,12 +135,6 @@ export class ConversationCoordinator {
     const recent = state.grants.accessHistory.filter(
       (item) => Date.parse(item.date) > this.deps.now() - 3600000,
     );
-    const deal = state.grants.commitments.find(
-      (item) =>
-        item.appId === app.id &&
-        !item.overriddenAt &&
-        Date.parse(item.blockedUntil) > this.deps.now(),
-    );
     const logId = this.deps.id();
     this.deps.dispatch(
       activityLogActions.added({
@@ -147,6 +150,21 @@ export class ConversationCoordinator {
     try {
       const key = await this.deps.native.getAPIKey();
       if (!key) throw new Error("Add your API key in Coach Settings.");
+      const commitments = await this.deps.native.getCommitments();
+      if (
+        controller.signal.aborted ||
+        this.pending !== controller ||
+        !this.state.auth.aiConsent ||
+        this.state.auth.consentRevision !== revision
+      )
+        throw new Error("Request cancelled.");
+      this.deps.dispatch(grantsActions.commitmentsSynced(commitments));
+      const deal = commitments.find(
+        (item) =>
+          item.appId === app.id &&
+          !item.overriddenAt &&
+          Date.parse(item.blockedUntil) > this.deps.now(),
+      );
       const response = await this.deps.request({
         apiKey: key,
         signal: controller.signal,
@@ -184,7 +202,7 @@ export class ConversationCoordinator {
                 ? "delay"
                 : "deal",
           recommendedPauseSeconds: recommendedPauseSeconds(
-            state.grants,
+            this.state.grants,
             app.id,
             this.deps.now(),
           ),
@@ -258,7 +276,7 @@ export class ConversationCoordinator {
         this.deps.dispatch(
           activityLogActions.outcomeRecorded({
             id: logId,
-            outcome: response.decision === "deny" ? "denied" : "wait",
+            outcome: response.decision === "deny" ? "denied" : "asked",
           }),
         );
         if (deal) await this.deps.native.recordPushback(app.tokenBase64);
@@ -272,7 +290,7 @@ export class ConversationCoordinator {
           outcome: "interrupted",
         }),
       );
-      if (!controller.signal.aborted)
+      if (!controller.signal.aborted && this.pending === controller)
         this.deps.dispatch(
           chatActions.failed(
             error instanceof Error
@@ -390,9 +408,9 @@ export class ConversationCoordinator {
     this.deps.dispatch(
       grantsActions.offerUpdated({ ...offer, status: "activating" }),
     );
-    await this.deps.flush();
     let grant: ActiveGrant | undefined;
     try {
+      await this.deps.flush();
       this.assertCurrent(offer);
       grant = await this.deps.native.createGrant(
         app.tokenBase64,

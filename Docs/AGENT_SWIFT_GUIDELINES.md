@@ -123,11 +123,11 @@ Target **80%+** coverage (unit + integration + critical-flow E2E).
 swift test --enable-code-coverage
 ```
 
-> **Project note:** this is an **Xcode project, not a SwiftPM package** — build
-> and run tests through the **Xcode MCP** tools (`BuildProject`, `RunAllTests`,
-> `RunSomeTests`), not `swift test`. When Xcode MCP is unavailable, use `xcodebuild` instead. The scheme destination
-> must be an iOS **simulator** or runs hang. UI flows are XCUITest
-> (`OpenAppLockUITests`) driven by the launch-argument harness in AGENTS.md.
+> **Project note:** Expo prebuild generates `ios/Volition.xcworkspace`, scheme
+> `Volition`. Use `npm run typecheck`, `npm test` and the generated workspace's
+> `xcodebuild` command in AGENTS.md. The user removed the old native project and
+> native test folders. Real Screen Time acceptance requires an authorized phone;
+> synthetic development previews do not prove enforcement.
 
 ### Workflow
 

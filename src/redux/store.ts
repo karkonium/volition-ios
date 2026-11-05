@@ -1,3 +1,4 @@
+import { previewMode } from "../../modules/volition-screen-time";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -29,7 +30,11 @@ const reducer = combineReducers({
 });
 export const store = configureStore({
   reducer: persistReducer<ReturnType<typeof reducer>>(
-    { key: "volition-v1", version: 1, storage: AsyncStorage },
+    {
+      key: previewMode ? "volition-preview-v1" : "volition-v1",
+      version: 1,
+      storage: AsyncStorage,
+    },
     reducer,
   ),
   middleware: (getDefault) =>

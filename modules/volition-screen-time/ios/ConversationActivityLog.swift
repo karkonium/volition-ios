@@ -7,10 +7,18 @@ nonisolated struct ConversationActivityEntry: Codable, Equatable, Identifiable, 
     enum ExperienceRating: String, Codable, CaseIterable, Sendable {
         case helpful, neutral, annoying
         var copy: CopyKey {
-            switch self { case .helpful: .feedbackHelpful; case .neutral: .feedbackNeutral; case .annoying: .feedbackAnnoying }
+            switch self {
+            case .helpful: .feedbackHelpful;
+            case .neutral: .feedbackNeutral;
+            case .annoying: .feedbackAnnoying
+            }
         }
         var symbol: String {
-            switch self { case .helpful: "hand.thumbsup"; case .neutral: "minus.circle"; case .annoying: "hand.thumbsdown" }
+            switch self {
+            case .helpful: "hand.thumbsup";
+            case .neutral: "minus.circle";
+            case .annoying: "hand.thumbsdown"
+            }
         }
     }
     var canRateExperience: Bool {
@@ -100,9 +108,11 @@ nonisolated struct ConversationActivityEntry: Codable, Equatable, Identifiable, 
         completedAt = event.date
     }
 
-    init(date: Date = .now, appID: UUID? = nil, appName: String? = nil, message: String,
-         outcome: Outcome = .pending, modelDecision: ConversationDecision.Decision? = nil,
-         coachResponse: String? = nil, systemResponse: String? = nil) {
+    init(
+        date: Date = .now, appID: UUID? = nil, appName: String? = nil, message: String,
+        outcome: Outcome = .pending, modelDecision: ConversationDecision.Decision? = nil,
+        coachResponse: String? = nil, systemResponse: String? = nil
+    ) {
         self.date = date; self.appID = appID; self.appName = appName; self.message = message
         self.outcome = outcome; self.modelDecision = modelDecision
         self.coachResponse = coachResponse; self.systemResponse = systemResponse
@@ -113,7 +123,9 @@ nonisolated enum ConversationActivityExport {
     private static let exportLock = NSLock()
     nonisolated(unsafe) private static var epoch = 0
     static var currentEpoch: Int { exportLock.lock(); defer { exportLock.unlock() }; return epoch }
-    static func eraseFiles(directory: URL = FileManager.default.temporaryDirectory.appendingPathComponent("VolitionActivityExports")) throws {
+    static func eraseFiles(
+        directory: URL = FileManager.default.temporaryDirectory.appendingPathComponent("VolitionActivityExports")
+    ) throws {
         exportLock.lock(); defer { exportLock.unlock() }
         epoch += 1
         if FileManager.default.fileExists(atPath: directory.path) { try FileManager.default.removeItem(at: directory) }
@@ -122,13 +134,16 @@ nonisolated enum ConversationActivityExport {
     static func jsonLines(_ entries: [ConversationActivityEntry]) throws -> String {
         let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
-        return try entries.map { String(decoding: try encoder.encode($0), as: UTF8.self) }.joined(separator: "\n") + (entries.isEmpty ? "" : "\n")
+        return try entries.map { String(decoding: try encoder.encode($0), as: UTF8.self) }.joined(separator: "\n")
+            + (entries.isEmpty ? "" : "\n")
     }
     static func text(_ entries: [ConversationActivityEntry]) -> String {
         let iso = ISO8601DateFormatter()
         return entries.map { entry in
-            var lines = ["\(iso.string(from: entry.date)) | \(entry.appName ?? "No app selected") | \(entry.outcome.title)",
-                "Message: \(entry.message)"]
+            var lines = [
+                "\(iso.string(from: entry.date)) | \(entry.appName ?? "No app selected") | \(entry.outcome.title)",
+                "Message: \(entry.message)",
+            ]
             if let reply = entry.coachResponse { lines.append("Coach: \(reply)") }
             if let response = entry.systemResponse { lines.append("System: \(response)") }
             if let decision = entry.modelDecision { lines.append("Model decision: \(decision.rawValue)") }
@@ -146,9 +161,11 @@ nonisolated enum ConversationActivityExport {
             return lines.joined(separator: "\n")
         }.joined(separator: "\n\n")
     }
-    static func file(_ entries: [ConversationActivityEntry], format: Format,
-                     directory: URL = FileManager.default.temporaryDirectory.appendingPathComponent("VolitionActivityExports"),
-                     expectedEpoch: Int? = nil) throws -> URL {
+    static func file(
+        _ entries: [ConversationActivityEntry], format: Format,
+        directory: URL = FileManager.default.temporaryDirectory.appendingPathComponent("VolitionActivityExports"),
+        expectedEpoch: Int? = nil
+    ) throws -> URL {
         exportLock.lock(); defer { exportLock.unlock() }
         if let expectedEpoch, expectedEpoch != epoch { throw CancellationError() }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

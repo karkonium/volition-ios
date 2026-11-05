@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Linking } from "react-native";
 import { Button, Text } from "@itsRares/ahhzo-elements";
 import { Screen, perform } from "../../components/Screen";
@@ -10,15 +11,13 @@ export function ScreenTimeGateScreen({
 }: {
   onApproved: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   return (
-    <Screen title="Allow Screen Time">
-      <Text>
-        Volition uses Apple’s Screen Time permission to shield only apps you
-        choose. Your app selection stays on your device.
-      </Text>
+    <Screen title={t("screenTimeTitle")}>
+      <Text>{t("screenTimeBody")}</Text>
       <Button
-        text="Allow Screen Time"
+        text={t("screenTimeTitle")}
         onPress={() =>
           perform(async () => {
             const status = await VolitionScreenTime.requestAuthorization();
@@ -28,7 +27,7 @@ export function ScreenTimeGateScreen({
         }
       />
       <Button
-        text="Open Settings"
+        text={t("openSettings")}
         variant="ghost"
         onPress={() => perform(() => Linking.openSettings())}
       />

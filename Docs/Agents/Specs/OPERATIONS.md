@@ -133,3 +133,40 @@ disable prediction/accessibility to hide these messages. Focus/draft/picker/tab
 and reply-following UI tests pass. The previously supplied predictive-keyboard
 constraint/frame warnings did not reproduce in these runs; device observation is
 still needed if they recur. Extension build versions must match the host app.
+
+## Firebase diagnostics
+
+Firebase Analytics and Crashlytics are optional and independently controlled in
+Privacy & data; both default off, including for existing installs. Analytics uses
+fixed screen names only, with automatic screen reporting and advertising ID support
+disabled. Do not add chat text, app names, intentions, keys or other user-provided
+values to Firebase events, crash keys or logs. Automatic JavaScript exception
+reporting is disabled because exception messages may contain private content;
+native crash reports can still contain process and device information. Preview
+builds never opt into either service. Crashlytics stays in manual-report mode: on launch it sends cached native crash
+reports only when the persisted preference is enabled; opted-out reports are
+discarded. This sacrifices Crashlytics session/crash-free metrics.
+
+For an iOS Firebase-enabled build, register `com.a5karki.volition` in a Firebase
+project with Analytics and Crashlytics enabled, then place its
+`GoogleService-Info.plist` at the project root or set
+`VOLITION_GOOGLE_SERVICES_PLIST` to its path before clean prebuild. The file is
+ignored by Git. Rebuild the native app after changing configuration. With no file,
+the native Firebase initialization and symbol-upload phase are omitted and the UI
+reports diagnostics unavailable. A Firebase-enabled archive uploads dSYMs through
+the Crashlytics build phase; verify symbolication and a test crash in a non-dev-client
+build on a real device and confirm events in DebugView. Expo Go and the dev-client
+crash overlay cannot validate native crash reporting. No Android application is
+currently configured; a future Android port needs its own Firebase registration,
+`google-services.json`, Android Expo config and device verification.
+
+
+## Source formatting
+
+Run `npm run format` to format the maintained JavaScript, TypeScript, JSON, YAML,
+Swift and Python sources. `npm run format:check` checks the same files and runs
+in CI. Install Xcode command-line tools for `swift-format` and `uv` for the
+pinned Ruff formatter (`uvx` downloads it on first use). Generated native
+projects, dependencies, human-authored Markdown, lockfiles and symlinked extension
+copies are excluded. The Swift formatter is restricted to source-owned files and
+its rewriting rules are disabled.

@@ -46,11 +46,13 @@ final class ShieldConfigurationExtension: ShieldConfigurationDataSource {
     ) -> ShieldConfiguration {
         let snapshots = RuleSnapshotUserDefaultsStore().load()
         if !ConversationGrantStore.applicable(to: token, in: snapshots).isEmpty {
-            return configuration(for: .conversation(route: .current, requestPending: ConversationRequestStore().pending()?.token == token))
+            return configuration(
+                for: .conversation(
+                    route: .current, requestPending: ConversationRequestStore().pending()?.token == token))
         }
         let ledger = UsageLedger()
         let sessions = OpenSessionStore()
-        
+
         let now = Date.now
         guard
             let snapshot = ShieldLookup.openLimitSnapshot(
@@ -61,19 +63,21 @@ final class ShieldConfigurationExtension: ShieldConfigurationDataSource {
         else {
             return configuration(for: .blocked)
         }
-        
+
         let previousExpiry = sessions.getPreviousExpiry(for: snapshot.id)
         let usage = ledger.usage(for: snapshot.id, onDayContaining: now)
-        
+
         if let previousExpiry = previousExpiry {
             let difference = Date.now.distance(to: previousExpiry)
-            if difference > TimeInterval(-MonitoringPlan.openSessionJustBlockedDelaySeconds) && usage.opensUsed < snapshot.maxOpens {
+            if difference > TimeInterval(-MonitoringPlan.openSessionJustBlockedDelaySeconds)
+                && usage.opensUsed < snapshot.maxOpens
+            {
                 return configuration(
                     for: .openLimitJustBlocked(sessionMinutes: MonitoringPlan.openSessionMinutes)
                 )
             }
         }
-        
+
         return configuration(
             for: .openLimit(
                 opensUsed: usage.opensUsed,

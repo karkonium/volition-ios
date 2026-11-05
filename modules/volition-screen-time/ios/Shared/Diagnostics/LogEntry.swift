@@ -58,12 +58,13 @@ nonisolated enum LogSource: String, Sendable {
 nonisolated enum LogTimestamp {
     static let prefixLength = 24
 
-    private static let formatter = Mutex<ISO8601DateFormatter>({
-        let value = ISO8601DateFormatter()
-        value.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        value.timeZone = .gmt
-        return value
-    }())
+    private static let formatter = Mutex<ISO8601DateFormatter>(
+        {
+            let value = ISO8601DateFormatter()
+            value.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            value.timeZone = .gmt
+            return value
+        }())
 
     static func string(from date: Date) -> String { formatter.withLock { $0.string(from: date) } }
 

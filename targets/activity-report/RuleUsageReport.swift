@@ -27,7 +27,8 @@ nonisolated struct RuleUsageReport: DeviceActivityReportScene {
         for await segment in data.flatMap(\.activitySegments) {
             for await category in segment.categories {
                 for await app in category.applications {
-                    let name = app.application.localizedDisplayName
+                    let name =
+                        app.application.localizedDisplayName
                         ?? app.application.bundleIdentifier
                         ?? CopyKey.usageReportUnknownAppName.string
                     apps.append((name, app.totalActivityDuration))

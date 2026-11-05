@@ -21,7 +21,9 @@ actor ConversationSessionPresentation {
     func end(_ id: UUID) async {
         endedIDs.insert(id)
         ConversationUnlockNotifications.cancel(grantIDs: [id])
-        let activityIDs = Activity<ConversationUnlockActivityAttributes>.activities.filter { $0.attributes.grantID == id }.map(\.id)
+        let activityIDs = Activity<ConversationUnlockActivityAttributes>.activities.filter {
+            $0.attributes.grantID == id
+        }.map(\.id)
         for activityID in activityIDs {
             await Self.endActivity(activityID)
         }
@@ -39,18 +41,30 @@ actor ConversationSessionPresentation {
         let delivered = await center.deliveredNotifications()
         guard revision == version else { return }
         let allowed = Set(desired.flatMap { ConversationReminderPlan.identifiers(for: $0.plan.grantID) })
-        center.removePendingNotificationRequests(withIdentifiers: pending.map(\.identifier).filter { $0.hasPrefix("unlock-reminder-") && !allowed.contains($0) })
-        center.removeDeliveredNotifications(withIdentifiers: delivered.map(\.request.identifier).filter { $0.hasPrefix("unlock-reminder-") && !allowed.contains($0) })
+        center.removePendingNotificationRequests(
+            withIdentifiers: pending.map(\.identifier).filter {
+                $0.hasPrefix("unlock-reminder-") && !allowed.contains($0)
+            })
+        center.removeDeliveredNotifications(
+            withIdentifiers: delivered.map(\.request.identifier).filter {
+                $0.hasPrefix("unlock-reminder-") && !allowed.contains($0)
+            })
         let existing = Set(pending.map(\.identifier) + delivered.map(\.request.identifier))
         let canNotify = [.authorized, .provisional, .ephemeral].contains(settings.authorizationStatus)
         for unlock in desired {
             guard revision == version, active(unlock.plan.grantID, in: store) else { continue }
             if canNotify {
-                for alert in ConversationReminderPlan.alerts(for: unlock.plan, now: .now) where !existing.contains(alert.identifier) {
+                for alert in ConversationReminderPlan.alerts(for: unlock.plan, now: .now)
+                where !existing.contains(alert.identifier) {
                     guard revision == version, active(unlock.plan.grantID, in: store) else { break }
-                    do { try await center.add(ConversationUnlockNotifications.request(alert, appName: unlock.appName, appID: unlock.appID, now: .now)) }
-                    catch { ConversationDiagnostics.live.log("reminder.schedule_failed") }
-                    if !active(unlock.plan.grantID, in: store) { ConversationUnlockNotifications.cancel(grantIDs: [unlock.plan.grantID]) }
+                    do {
+                        try await center.add(
+                            ConversationUnlockNotifications.request(
+                                alert, appName: unlock.appName, appID: unlock.appID, now: .now))
+                    } catch { ConversationDiagnostics.live.log("reminder.schedule_failed") }
+                    if !active(unlock.plan.grantID, in: store) {
+                        ConversationUnlockNotifications.cancel(grantIDs: [unlock.plan.grantID])
+                    }
                 }
             }
         }
@@ -64,23 +78,36 @@ actor ConversationSessionPresentation {
         guard revision == version, ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         for unlock in desired where active(unlock.plan.grantID, in: store) {
             guard revision == version else { return }
-            guard !Activity<ConversationUnlockActivityAttributes>.activities.contains(where: { $0.attributes.grantID == unlock.plan.grantID }) else { continue }
-            let attributes = ConversationUnlockActivityAttributes(grantID: unlock.plan.grantID, appName: unlock.appName, appID: unlock.appID)
+            guard
+                !Activity<ConversationUnlockActivityAttributes>.activities.contains(where: {
+                    $0.attributes.grantID == unlock.plan.grantID
+                })
+            else { continue }
+            let attributes = ConversationUnlockActivityAttributes(
+                grantID: unlock.plan.grantID, appName: unlock.appName, appID: unlock.appID)
             do {
-                let activity = try Activity.request(attributes: attributes,
-                    content: ActivityContent(state: .init(start: unlock.plan.start, expiresAt: unlock.plan.expiresAt), staleDate: unlock.plan.expiresAt), pushType: nil)
+                let activity = try Activity.request(
+                    attributes: attributes,
+                    content: ActivityContent(
+                        state: .init(start: unlock.plan.start, expiresAt: unlock.plan.expiresAt),
+                        staleDate: unlock.plan.expiresAt), pushType: nil)
                 if !active(unlock.plan.grantID, in: store) { await Self.endActivity(activity.id) }
             } catch { ConversationDiagnostics.live.log("live_activity.unavailable") }
         }
     }
     nonisolated private static func endActivity(_ id: String) async {
-        guard let activity = Activity<ConversationUnlockActivityAttributes>.activities.first(where: { $0.id == id }) else { return }
+        guard let activity = Activity<ConversationUnlockActivityAttributes>.activities.first(where: { $0.id == id })
+        else { return }
         await activity.end(nil, dismissalPolicy: .immediate)
     }
     func active(_ id: UUID, in store: ConversationGrantStore) -> Bool {
         guard !endedIDs.contains(id) else { return false }
-        return (try? store.transaction { state in
-            state.activeGrants.contains { $0.plan.grantID == id && !$0.plan.hasExpired(at: .now) && ConversationGrantStore.isValid($0, in: state.snapshots) }
-        }) == true
+        return
+            (try? store.transaction { state in
+                state.activeGrants.contains {
+                    $0.plan.grantID == id && !$0.plan.hasExpired(at: .now)
+                        && ConversationGrantStore.isValid($0, in: state.snapshots)
+                }
+            }) == true
     }
 }

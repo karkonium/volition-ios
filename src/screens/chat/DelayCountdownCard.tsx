@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Text, Flex } from "@itsRares/ahhzo-elements";
 import type { Intervention } from "../../redux/grantsSlice";
 import { useNow } from "../../components/ActiveGrantBanner";
@@ -10,6 +11,7 @@ export function DelayCountdownCard({
 }: {
   offer: Intervention;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const now = useNow();
   const remaining =
     offer.status === "ready"
@@ -20,12 +22,12 @@ export function DelayCountdownCard({
       <Flex vertical gap="sm">
         <Text type="H3" testID="reflectionCountdown">
           {remaining > 0
-            ? `${remaining} seconds to pause`
-            : "Your pause has ended"}
+            ? t("pauseSeconds", { count: remaining })
+            : t("pauseEnded")}
         </Text>
         {remaining > 0 ? (
           <Button
-            text="End delay"
+            text={t("endDelay")}
             size="small"
             variant="ghost"
             testID="cancelReflectionButton"
@@ -33,7 +35,9 @@ export function DelayCountdownCard({
           />
         ) : (
           <Button
-            text={`Unlock for ${offer.decision.unlock_minutes ?? 1} minutes`}
+            text={t("unlockMinutes", {
+              count: offer.decision.unlock_minutes ?? 1,
+            })}
             variant="outline"
             onPress={() =>
               perform(() => coordinator.activate(offer.appId, "delay"))
@@ -41,7 +45,7 @@ export function DelayCountdownCard({
           />
         )}
         <Button
-          text="Keep locked"
+          text={t("keepLocked")}
           onPress={() => perform(() => coordinator.keepLocked(offer.appId))}
         />
       </Flex>

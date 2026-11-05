@@ -1,3 +1,4 @@
+import type { Language } from "../translations/locale";
 import { COACHING_SYSTEM_PROMPT } from "./coachingPolicy";
 import {
   decisionSchema,
@@ -6,12 +7,14 @@ import {
 } from "./decision";
 export interface DecisionRequest {
   context: unknown;
+  language?: Language;
   apiKey: string;
   signal: AbortSignal;
   consent: () => boolean;
 }
 export async function requestCoachDecision({
   context,
+  language = "en",
   apiKey,
   signal,
   consent,
@@ -31,7 +34,8 @@ export async function requestCoachDecision({
       body: JSON.stringify({
         model: "gpt-5.4-mini",
         store: false,
-        instructions: COACHING_SYSTEM_PROMPT,
+        instructions: `${COACHING_SYSTEM_PROMPT}
+Write the user-facing reply in ${{ en: "English", es: "Spanish", zh: "Simplified Chinese" }[language]}. Keep JSON keys and decision values unchanged.`,
         input: JSON.stringify(context),
         reasoning: { effort: "medium" },
         text: {

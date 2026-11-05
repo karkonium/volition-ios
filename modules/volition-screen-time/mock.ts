@@ -17,6 +17,7 @@ export function createPreviewBridge(): ScreenTimeBridge {
     isEnabled: true,
   };
   return {
+    setLanguage: async () => undefined,
     requestAuthorization: async () => "approved",
     getAuthorizationStatus: () => "approved",
     presentAppPicker: async () => ({ tokenBase64: `preview-${Date.now()}` }),

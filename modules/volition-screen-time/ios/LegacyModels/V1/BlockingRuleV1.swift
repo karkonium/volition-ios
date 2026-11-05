@@ -46,9 +46,9 @@ extension OpenAppLockSchemaV1 {
         /// Cleared automatically once the date passes; never set while Lock While Blocking is active.
         var pausedUntil: Date?
         var createdAt: Date
-        
+
         // MARK: Raw per-kind storage (access via `configuration`)
-        
+
         /// Schedule-window bounds, minutes from midnight. Meaningful for `.schedule`.
         var startMinutes: Int
         var endMinutes: Int
@@ -58,7 +58,7 @@ extension OpenAppLockSchemaV1 {
         var dailyLimitMinutes: Int
         /// Daily open budget for `.openLimit` rules.
         var maxOpens: Int
-        
+
         init(
             id: UUID = UUID(),
             name: String,
@@ -89,7 +89,7 @@ extension OpenAppLockSchemaV1 {
             self.maxOpens = 5
             applyConfiguration(configuration)
         }
-        
+
         /// The kind-specific options of this rule. Reading assembles the sum type
         /// from the raw columns; writing routes through `applyConfiguration`, which
         /// keeps the schedule-only options off limit rules.
@@ -97,21 +97,21 @@ extension OpenAppLockSchemaV1 {
             get {
                 switch kind {
                 case .schedule:
-                        .schedule(
-                            ScheduleConfig(
-                                startMinutes: startMinutes,
-                                endMinutes: endMinutes,
-                                selectionMode: selectionMode))
+                    .schedule(
+                        ScheduleConfig(
+                            startMinutes: startMinutes,
+                            endMinutes: endMinutes,
+                            selectionMode: selectionMode))
                 case .timeLimit:
-                        .timeLimit(TimeLimitConfig(dailyLimitMinutes: dailyLimitMinutes))
+                    .timeLimit(TimeLimitConfig(dailyLimitMinutes: dailyLimitMinutes))
                 case .conversation: .conversation(ConversationConfig())
                 case .openLimit:
-                        .openLimit(OpenLimitConfig(maxOpens: maxOpens))
+                    .openLimit(OpenLimitConfig(maxOpens: maxOpens))
                 }
             }
             set { applyConfiguration(newValue) }
         }
-        
+
         /// Writes a configuration onto the raw columns. Limit kinds explicitly
         /// reset the Schedule-only options so a rule can never carry a Block /
         /// Allow-Only mode unless it is a Schedule rule.
@@ -132,22 +132,22 @@ extension OpenAppLockSchemaV1 {
                 selectionModeRaw = SelectionMode.block.rawValue
             }
         }
-        
+
         nonisolated var kind: RuleKind {
             get { RuleKind(rawValue: kindRaw) ?? .schedule }
             set { kindRaw = newValue.rawValue }
         }
-        
+
         /// How this rule interprets its app list. Always `.block` for limit kinds.
         var selectionMode: SelectionMode {
             SelectionMode(rawValue: selectionModeRaw) ?? .block
         }
-        
+
         var days: Set<Weekday> {
             get { Set(dayNumbers.compactMap(Weekday.init(rawValue:))) }
             set { dayNumbers = newValue.map(\.rawValue).sorted() }
         }
-        
+
         var schedule: RuleSchedule {
             RuleSchedule(startMinutes: startMinutes, endMinutes: endMinutes, days: days)
         }

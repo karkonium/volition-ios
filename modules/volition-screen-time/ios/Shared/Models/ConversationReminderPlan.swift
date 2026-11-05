@@ -16,7 +16,9 @@ nonisolated enum ConversationReminderPlan {
         zip([60, 30, 10], identifiers(for: plan.grantID)).compactMap { seconds, id in
             let date = plan.expiresAt.addingTimeInterval(-Double(seconds))
             guard date > now else { return nil }
-            return .init(identifier: id, threadIdentifier: "unlock-\(plan.grantID.uuidString)", secondsRemaining: seconds, fireAt: date)
+            return .init(
+                identifier: id, threadIdentifier: "unlock-\(plan.grantID.uuidString)", secondsRemaining: seconds,
+                fireAt: date)
         }
     }
 }

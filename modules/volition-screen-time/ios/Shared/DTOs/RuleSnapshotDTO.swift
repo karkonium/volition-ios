@@ -108,4 +108,3 @@ nonisolated extension RuleSnapshotDTO {
         URL.fromRuleID(self.id)
     }
 }
-

@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Button, Flex, Text } from "@itsRares/ahhzo-elements";
-import { VolitionCard } from "./VolitionCard";
+import { useTranslation } from "react-i18next";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import {
+  Button,
+  Flex,
+  Text,
+  colorWithOpacity,
+  useTheme,
+} from "@itsRares/ahhzo-elements";
 import type { ActiveGrant } from "../../modules/volition-screen-time";
 export function useNow(): number {
   const [now, setNow] = useState(Date.now());
@@ -19,24 +26,44 @@ export function ActiveGrantBanner({
   name: string;
   onEnd: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
+  const { theme } = useTheme();
   const seconds = Math.max(
     0,
     Math.ceil((Date.parse(grant.expiresAt) - useNow()) / 1000),
   );
   return (
-    <VolitionCard accent>
-      <Flex vertical gap="sm">
-        <Text type="H3">
-          {name} · {Math.floor(seconds / 60)}:
-          {String(seconds % 60).padStart(2, "0")}
-        </Text>
-        <Button
-          text="End unlock"
-          variant="outline"
-          testID="endConversationUnlockButton"
-          onPress={onEnd}
-        />
-      </Flex>
-    </VolitionCard>
+    <Flex
+      gap="xs"
+      alignItems="center"
+      wrap="wrap"
+      style={{
+        backgroundColor: colorWithOpacity(theme.colors.accent, 0.08),
+        borderRadius: 14,
+        paddingHorizontal: 12,
+        paddingVertical: 2,
+        marginBottom: 8,
+      }}
+    >
+      <Ionicons
+        name="lock-open-outline"
+        size={17}
+        color={theme.colors.textLink}
+      />
+      <Text weight="SemiBold" style={{ flex: 1, minWidth: 60 }}>
+        {name}
+      </Text>
+      <Text weight="SemiBold" style={{ fontVariant: ["tabular-nums"] }}>
+        {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}
+      </Text>
+      <Button
+        text={t("endUnlock")}
+        layout="inline"
+        variant="ghost"
+        textStyle={{ fontSize: 13 }}
+        testID="endConversationUnlockButton"
+        onPress={onEnd}
+      />
+    </Flex>
   );
 }

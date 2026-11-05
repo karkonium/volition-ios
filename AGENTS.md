@@ -1,7 +1,9 @@
 # Volition — agent guide
 
-Volition is a conversation-first iOS Screen Time app. The Xcode project and target
-are still named OpenAppLock. Users save individual apps with a name and intention;
+Volition is a conversation-first Expo React Native iOS Screen Time app.
+`App.tsx` starts the shipping app; its generated workspace and scheme are `Volition`.
+Expo prebuild owns the generated `ios/Volition.xcworkspace`; the retired native
+project, compatibility harness and native test folders were removed at the user’s request. Users save individual apps with a name and intention;
 a respectful coach asks for intention, approves 1–60 minutes, offers reflections
 or explicit access/break deals, and progressively challenges rapid repeat use.
 Ten-second delays start immediately; longer delays require explicit agreement.
@@ -18,6 +20,8 @@ enforcement and notification acceptance remain pending.
 
 ## Start here
 
+- `Docs/Agents/Specs/EXPO_MIGRATION.md`: current source ownership, bridge and build workflow.
+
 - `Docs/Agents/Specs/CONVERSATION_UNLOCK.md`: current product/enforcement contract.
 - `Docs/Agents/Specs/COMPATIBILITY.md`: why legacy models/services remain.
 - `Docs/Agents/Specs/OPERATIONS.md`: permissions, logs, local config and copy.
@@ -29,24 +33,22 @@ enforcement and notification acceptance remain pending.
 
 | Location | Responsibility |
 |---|---|
-| `OpenAppLock/Models/` | SwiftData V1–V5 schemas, migrations, BlockingRule/AppList, ConversationArchive/ConversationRecord; legacy value models and regression tests remain |
-| `OpenAppLock/Services/Conversation/` | Saved app setup/migration, name routing, shared chat/history, private activity log/exports, OpenAI client, diagnostics, approval support snapshots |
-| `OpenAppLock/Views/Design/` | Compact native card, button, section and form styles; preserve semantic type, adaptive colors and 44-point actions |
-| `OpenAppLock/Views/Conversation/` | App library/editor, chat, activity log and coach settings |
-| `OpenAppLock/Views/` | Root permission gate, onboarding, adaptive shell and diagnostic settings |
-| `OpenAppLock/Services/FocusController.swift`, `Shared/Focus/` | Focus sessions/schedules and stricter local protection |
-| `OpenAppLock/Services/RuleEnforcer.swift` | Foreground reconciliation, including a 30-second backstop |
-| `OpenAppLock/Services/RuleScheduler.swift` | DeviceActivity registration and removal of retired monitors |
-| `Shared/Stores/ConversationGrantStore.swift` | Coordinated App Group state, independent grants and pending shield target |
-| `Shared/Stores/ConversationRequestStore.swift` | Fresh notification/manual request identities and acknowledgements; advisory metadata without grant-file locks |
-| `Shared/Enforcement/ConversationEnforcement.swift` | Transactional grant registration, shield release, expiry and rollback |
-| `Shared/Enforcement/ShieldController.swift` | Per-rule ManagedSettings stores, orphan cleanup and configured-blocker readback |
-| `Shared/` | Cross-process DTOs, domain logic, stores, diagnostics, copy and platform IDs |
-| `OpenAppLockMonitor/` | Background expiry plus legacy activity callbacks |
-| `OpenAppLockShieldConfig/`, `OpenAppLockShieldAction/` | Shield presentation and Request access → Chat routing |
-| `ActivityShared/`, `VolitionLiveActivity/` | Shared ActivityKit attributes; native Lock Screen/Dynamic Island countdown |
-| `OpenAppLockReport/` | Legacy usage-report extension; retained for compatibility |
-| `OpenAppLockTests/`, `OpenAppLockUITests/` | Swift Testing domain suites and XCUITest flows |
+| `App.tsx`, `src/navigation/`, `src/screens/` | Provider tree, permissions/onboarding, five tabs and iPad sidebar |
+| `src/layout/`, `src/components/` | Ahhzo Elements 0.8.2 theme, semantic type, adaptive colors and 44-point actions |
+| `src/redux/` | Persisted profiles, consent, chat, offers, grants, Focus and private outcomes |
+| `src/services/` | Coach client/policy, routing, local validation, native reconciliation and exports |
+| `modules/volition-screen-time/ios/` | Expo bridge, native picker/icon, Keychain and legacy import |
+| `modules/volition-screen-time/ios/LegacyModels/` | Frozen SwiftData V1–V5 schemas and migrations |
+| `modules/volition-screen-time/ios/Shared/` | Authoritative cross-process stores, enforcement, Focus, diagnostics, copy and platform IDs |
+| `modules/volition-screen-time/ios/ActivityShared/` | ActivityKit attributes |
+| `targets/shield-config/`, `targets/shield-action/` | Shield presentation and lightweight Request access routing |
+| `targets/activity-monitor/`, `targets/activity-report/`, `targets/live-activity/` | Background expiry, compatibility callbacks/report and native countdown |
+| `Scripts/link-native-sources.py`, `Scripts/patch-expo-headers.cjs` | Source-link maintenance and reproducible SDK header corrections |
+
+Paths to `OpenAppLock/Views`, top-level `Shared` and old extension folders in older
+spec sections describe the pre-migration layout; use the ownership table above.
+The superseded SwiftUI interface has been removed. The user explicitly requested removal of the retired compatibility host and
+native test suites. New regression coverage belongs to the Expo test setup.
 
 ## Invariants
 
@@ -139,40 +141,34 @@ enforcement and notification acceptance remain pending.
 
 ## Build and test
 
-Shared.xcconfig enables complete concurrency checking and Sendable inference for
-closure/key-path literals in Swift 5 language mode. Validate changes with
-`SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`; keep persisted V1–V5 fields unchanged.
+Run `npm run typecheck`, `npm test`, and `npx expo prebuild --clean`. Build the
+generated workspace with:
 
-Prefer connected Xcode MCP build/test tools. If unavailable, use `xcodebuild`.
-Scheme: `OpenAppLock`; project: `OpenAppLock.xcodeproj`.
+```sh
+xcodebuild -workspace ios/Volition.xcworkspace -scheme Volition \
+  -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
+```
 
-1. Query `xcrun simctl list devices booted`. Use a fresh/unbooted simulator or one
-   owned by this task; never collide with somebody else’s booted simulator.
-2. Run tests against an iOS simulator, never a physical-device test destination:
+The local module enables complete concurrency checking and Swift warnings as
+errors in its podspec. Native dependencies retain their upstream diagnostics.
+`npm ci` applies the checked-in SDK header corrections and shared-source links.
+Never register source files manually in the generated project; update module,
+target or plugin configuration so clean prebuild reproduces the change.
 
-   ```sh
-   xcodebuild test -project OpenAppLock.xcodeproj -scheme OpenAppLock \
-     -destination 'platform=iOS Simulator,id=<owned-UDID>' \
-     -only-testing:OpenAppLockTests/<Suite>
-   ```
-
-3. Drop the filter for the full suite. CLI runs are headless; do not open Simulator
-   just to test. Build a signed device artifact with `-destination 'generic/platform=iOS'`.
-4. Screenshots: use Xcode previews/device tools when present; otherwise drive
-   XCUITest, export xcresult attachments and inspect the images yourself.
-5. FamilyControls compiles on the simulator, but actual shields/background callbacks
-   need a phone. The UI harness mocks picker selections; real selection needs real
-   authorization. Report any pending device verification explicitly.
-
-The project uses file-system-synchronized groups: add/remove Swift files on disk;
-no manual pbxproj source registration is needed.
+For simulator UI verification, first query `xcrun simctl list devices booted` and
+use a fresh/unbooted simulator or one owned by this task. Never collide with
+somebody else’s booted simulator. Real FamilyControls selections, visible shields,
+background expiry and notification/Live Activity acceptance need a physical phone.
+Report pending device verification explicitly. The explicit development preview
+uses `EXPO_PUBLIC_VOLITION_PREVIEW=1`, synthetic selections and mock coaching;
+it cannot prove real enforcement and is disabled in production builds.
 
 ## Workflow and documentation
 
 - Plan nontrivial work and confirm scope before editing; existing user authorization
   counts. Consult the owning feature contract before behavior changes.
 - Use red-green TDD: failing test first (compile failure counts), implement, focused
-  tests, then the full suite. Keep all compatibility regression coverage.
+  tests, then the full suite. Keep Expo regression coverage; the user explicitly removed the retired native test suites.
 - Attempt visual UI verification before committing rendered changes. If preview/
   interaction tooling is unavailable, explicitly report the limitation and hand
   real-device acceptance to the user; do not silently claim verification.
@@ -187,8 +183,8 @@ no manual pbxproj source registration is needed.
 
 ## Test and platform gotchas
 
-- SwiftData: insert both models before wiring relationships. Tests use the shared
-  `makeInMemoryContext()` factory; repeated containers can trap inside SwiftData.
+- SwiftData: insert both models before wiring relationships; repeated containers
+  can trap inside SwiftData. Keep persisted V1–V5 fields unchanged.
 - App target defaults to MainActor isolation. Shared cross-process values must be
   Sendable/nonisolated; import the defining FamilyControls module for token APIs.
 - SwiftUI container identifiers need `.accessibilityElement(children: .combine)`
@@ -196,16 +192,12 @@ no manual pbxproj source registration is needed.
 - Use concrete `Color.primary/secondary` inside tinted button rows.
 - iPad sheets are shorter and centered; scroll controls into view and navigate via
   idiom-aware helpers, not hardcoded tab bars or full-window edge swipes.
-- Unsigned CI cannot register ManagedSettings stores. Config/CI.xcconfig marks
-  the native store-release integration test unavailable; signed local runs retain
-  it. Domain/enforcement regressions still run in CI. Export UI tests use the
-  exported filename, not Apple’s private labels/hierarchy.
+- Unsigned builds cannot prove ManagedSettings registration or visible shield release.
 - If XCTest waits 60 seconds for keyboard animations and a short test grant expires,
   rerun the timer flow in isolation. This occurred during concurrent iPhone/iPad
   automation; do not change production deadlines to accommodate the test runner.
-- UI launches use `-ui-testing`, mocked authorization/shields and in-memory storage;
-  `-onboarding-completed`/`-onboarding-required` and `-seed-scenario=conversation` or
-  `conversation-multiple` make flows deterministic. `-seed-logs` seeds diagnostics.
+- Expo development previews require the explicit preview environment flag; they
+  never authorize real access. No retired SwiftUI launch-argument harness remains.
 - Stable IDs include `conversationMessageField`, `conversationSendButton`,
   `conversationChooseAppButton`, `conversationAppOption`, `conversationAppSelectionHint`,
   `conversationActivityLogButton`, `exportActivityLogButton`, `clearActivityLogButton`,
@@ -218,10 +210,10 @@ no manual pbxproj source registration is needed.
 
 ## Credentials
 
-`OpenAppLock/Conversation.env` is a personal ignored file bundled for this prototype;
-`Config/Conversation.env.example` is the tracked placeholder. Never print/copy real
+Expo stores user-entered OpenAI keys in native Keychain; never persist them in Redux,
+App Group state or technical logs. No personal-key file is bundled in the Expo application. Never print/copy real
 keys into docs, logs, tests or commits. Never distribute a personal-key build.
-Check that a device build still bundles the local config without printing it.
+Verify production builds do not bundle personal configuration.
 Old local archival branches may contain keys: never push historical branches
 blindly. Do not bypass GitHub secret protection; preserve remote history and
 sanitize unpublished work before pushing.

@@ -71,7 +71,8 @@ nonisolated final class ManagedSettingsShieldController: ShieldApplying, @unchec
         track(ruleID: ruleID)
         Diag.log(
             .shield, .event,
-            "apply rule-\(ruleID.logTag) mode=\(mode) apps=\(selection.applicationTokens.count) cats=\(selection.categoryTokens.count) web=\(selection.webDomainTokens.count)")
+            "apply rule-\(ruleID.logTag) mode=\(mode) apps=\(selection.applicationTokens.count) cats=\(selection.categoryTokens.count) web=\(selection.webDomainTokens.count)"
+        )
     }
 
     func clearShield(ruleID: UUID) {
@@ -92,9 +93,13 @@ nonisolated final class ManagedSettingsShieldController: ShieldApplying, @unchec
 
     func clearShields(except activeRuleIDs: Set<UUID>) {
         let registeredNames: Set<String>
-        if #available(iOS 26.5, *) { registeredNames = Set(ManagedSettingsStore.stores.map(\.rawValue)) }
-        else { registeredNames = [] }
-        let toClear = ShieldStoreInventory.staleRuleIDs(tracked: trackedIDs,
+        if #available(iOS 26.5, *) {
+            registeredNames = Set(ManagedSettingsStore.stores.map(\.rawValue))
+        } else {
+            registeredNames = []
+        }
+        let toClear = ShieldStoreInventory.staleRuleIDs(
+            tracked: trackedIDs,
             registeredNames: registeredNames, keeping: activeRuleIDs)
         if !toClear.isEmpty {
             Diag.log(
@@ -119,18 +124,22 @@ nonisolated final class ManagedSettingsShieldController: ShieldApplying, @unchec
         let registered: Set<UUID>
         if #available(iOS 26.5, *) {
             registered = ShieldStoreInventory.ruleIDs(in: Set(ManagedSettingsStore.stores.map(\.rawValue)))
-        } else { registered = [] }
-        return Set(ruleIDs.union(trackedIDs).union(registered).filter { id in
-            let store = store(for: id)
-            if #available(iOS 26.5, *), !store.isActive { return false }
-            if store.shield.applications?.contains(token) == true { return true }
-            switch store.shield.applicationCategories {
-            case .all(let exceptions): return !exceptions.contains(token)
-            case .specific(let categories, let exceptions): return !categories.isEmpty && !exceptions.contains(token)
-            case nil, .some(.none): return false
-            @unknown default: return true
-            }
-        })
+        } else {
+            registered = []
+        }
+        return Set(
+            ruleIDs.union(trackedIDs).union(registered).filter { id in
+                let store = store(for: id)
+                if #available(iOS 26.5, *), !store.isActive { return false }
+                if store.shield.applications?.contains(token) == true { return true }
+                switch store.shield.applicationCategories {
+                case .all(let exceptions): return !exceptions.contains(token)
+                case .specific(let categories, let exceptions):
+                    return !categories.isEmpty && !exceptions.contains(token)
+                case nil, .some(.none): return false
+                @unknown default: return true
+                }
+            })
     }
 
     private static var uninstallProtectionStoreName: ManagedSettingsStore.Name {
@@ -188,11 +197,12 @@ nonisolated final class MockShieldController: ShieldApplying, @unchecked Sendabl
     }
 
     func blockingRuleIDs(for token: ApplicationToken, among ruleIDs: Set<UUID>) -> Set<UUID> {
-        Set(shieldedRuleIDs.filter { id in
-            let selection = AppSelectionCodec.decode(appliedSelectionData[id] ?? nil)
-            return selection.applicationTokens.contains(token) || !selection.categoryTokens.isEmpty ||
-                (appliedModes[id] == .allowOnly && !selection.applicationTokens.contains(token))
-        })
+        Set(
+            shieldedRuleIDs.filter { id in
+                let selection = AppSelectionCodec.decode(appliedSelectionData[id] ?? nil)
+                return selection.applicationTokens.contains(token) || !selection.categoryTokens.isEmpty
+                    || (appliedModes[id] == .allowOnly && !selection.applicationTokens.contains(token))
+            })
     }
 
     func setAppRemovalDenied(_ denied: Bool) {
@@ -208,7 +218,7 @@ nonisolated enum AppSelectionCodec {
 
     static func decode(_ data: Data?) -> FamilyActivitySelection {
         guard let data,
-              let selection = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data)
+            let selection = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data)
         else { return FamilyActivitySelection() }
         return selection
     }
@@ -224,10 +234,11 @@ nonisolated enum AppSelectionCodec {
 /// writes or upgrades. Unrelated named stores are never parsed as rule stores.
 nonisolated enum ShieldStoreInventory {
     static func ruleIDs(in names: Set<String>) -> Set<UUID> {
-        Set(names.compactMap { name in
-            guard name.hasPrefix("rule-") else { return nil }
-            return UUID(uuidString: String(name.dropFirst(5)))
-        })
+        Set(
+            names.compactMap { name in
+                guard name.hasPrefix("rule-") else { return nil }
+                return UUID(uuidString: String(name.dropFirst(5)))
+            })
     }
     static func staleRuleIDs(tracked: Set<UUID>, registeredNames: Set<String>, keeping: Set<UUID>) -> Set<UUID> {
         tracked.union(ruleIDs(in: registeredNames)).subtracting(keeping)

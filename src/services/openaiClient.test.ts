@@ -21,23 +21,19 @@ test("consent gates transmission", async () => {
   expect(fetch).not.toHaveBeenCalled();
 });
 test("uses stateless Responses, medium reasoning and strict output", async () => {
-  const fetch = jest
-    .spyOn(globalThis, "fetch")
-    .mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: "completed",
-          output: [
-            {
-              content: [
-                { type: "output_text", text: JSON.stringify(decision) },
-              ],
-            },
-          ],
-        }),
-        { status: 200 },
-      ),
-    );
+  const fetch = jest.spyOn(globalThis, "fetch").mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        status: "completed",
+        output: [
+          {
+            content: [{ type: "output_text", text: JSON.stringify(decision) }],
+          },
+        ],
+      }),
+      { status: 200 },
+    ),
+  );
   expect(
     await requestCoachDecision({
       context: { app: "example" },
@@ -86,4 +82,28 @@ test("withdrawal after response rejects completion", async () => {
       consent: () => consent,
     }),
   ).rejects.toThrow("cancelled");
+});
+test("asks the coach to respond in the selected language without changing decision keys", async () => {
+  const fetch = jest.spyOn(globalThis, "fetch").mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        status: "completed",
+        output: [
+          {
+            content: [{ type: "output_text", text: JSON.stringify(decision) }],
+          },
+        ],
+      }),
+    ),
+  );
+  await requestCoachDecision({
+    context: {},
+    apiKey: "private",
+    signal: new AbortController().signal,
+    consent: () => true,
+    language: "es",
+  });
+  const body = JSON.parse(String(fetch.mock.calls[0]?.[1]?.body));
+  expect(body.instructions).toContain("Spanish");
+  expect(body.text.format.schema).toEqual(expect.any(Object));
 });

@@ -1,5 +1,6 @@
 import { Image } from "react-native";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Text, useThemedStyles } from "@itsRares/ahhzo-elements";
 import { Screen } from "../../components/Screen";
 import { VolitionCard } from "../../components/VolitionCard";
@@ -8,6 +9,7 @@ export function WelcomeScreen({
 }: {
   onContinue: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const styles = useThemedStyles((theme) => ({
     logo: {
       width: 96,
@@ -18,23 +20,20 @@ export function WelcomeScreen({
     },
   }));
   return (
-    <Screen title="Volition" subtitle="Make room for what matters">
+    <Screen title="Volition" subtitle={t("welcomeSubtitle")}>
       <Image
         source={require("../../../assets/icon.png")}
         style={styles.logo}
         accessibilityLabel="Volition"
       />
       <VolitionCard>
-        <Text type="H3">A conversation before a scroll</Text>
-        <Text>
-          Tell your coach what you want to do. Choose a pause, a little access,
-          or an agreement that helps you stop.
-        </Text>
+        <Text type="H3">{t("welcomeTitle")}</Text>
+        <Text>{t("welcomeBody")}</Text>
       </VolitionCard>
-      <Text>1. Choose AI sharing</Text>
-      <Text>2. Allow Screen Time access</Text>
-      <Text>3. Save an app with intention</Text>
-      <Button text="Get started" onPress={onContinue} />
+      <Text>{t("welcomeStep1")}</Text>
+      <Text>{t("welcomeStep2")}</Text>
+      <Text>{t("welcomeStep3")}</Text>
+      <Button text={t("getStarted")} onPress={onContinue} />
     </Screen>
   );
 }
