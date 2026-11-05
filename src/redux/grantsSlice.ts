@@ -73,6 +73,9 @@ const slice = createSlice({
     legacyWaitImported(state, action: PayloadAction<Record<string, string>>) {
       state.hardWaits = action.payload;
     },
+    commitmentsSynced(state, action: PayloadAction<Commitment[]>) {
+      state.commitments = action.payload;
+    },
     nativeSynced(
       state,
       action: PayloadAction<{

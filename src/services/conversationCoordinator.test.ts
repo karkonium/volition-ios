@@ -43,13 +43,18 @@ function setup(response: CoachDecisionResponse, random = 1) {
     revokeGrant: jest.fn(async () => undefined),
     syncPresentation: async () => undefined,
     recordPushback: async () => undefined,
+    getCommitments: jest.fn(async () => []),
   } as unknown as ScreenTimeBridge;
+  const request = jest.fn(
+    async (_request: import("./openaiClient").DecisionRequest) => response,
+  );
+  const flush = jest.fn(async () => undefined);
   const coordinator = new ConversationCoordinator({
     getState: store.getState,
     dispatch: store.dispatch,
     native,
-    flush: async () => undefined,
-    request: async () => response,
+    flush,
+    request,
     foreground: () => true,
     now: () => now,
     id: () => String(Math.random()),
@@ -60,6 +65,8 @@ function setup(response: CoachDecisionResponse, random = 1) {
     coordinator,
     native,
     createGrant,
+    request,
+    flush,
     advance: (ms: number) => {
       now += ms;
     },
@@ -181,6 +188,98 @@ test("consent changing during native activation rolls back the exact grant", asy
   await s.coordinator.send();
   expect(s.native.rollbackGrant).toHaveBeenCalledWith("g");
   expect(s.store.getState().grants.accessHistory).toHaveLength(0);
+  expect(s.store.getState().activityLog.entries[0]?.outcome).toBe(
+    "interrupted",
+  );
+});
+
+test("failed request keeps its error visible after cleanup and the draft editable", async () => {
+  const s = setup(pause);
+  s.request.mockRejectedValueOnce(new Error("Coach temporarily unavailable"));
+  await s.coordinator.send();
+  expect(s.store.getState().chat.error).toBe("Coach temporarily unavailable");
+  expect(s.store.getState().chat.pendingRequestId).toBeNull();
+  expect(s.store.getState().chat.draft).toBe("youtube to learn");
+});
+
+test("a late cancelled request cannot replace a newer request error", async () => {
+  const s = setup(pause);
+  let rejectOld: (reason: Error) => void = () => {
+    throw new Error("Old request did not start");
+  };
+  s.request.mockImplementationOnce(
+    () =>
+      new Promise((_resolve, reject) => {
+        rejectOld = reject;
+      }),
+  );
+  const old = s.coordinator.send();
+  while (s.request.mock.calls.length === 0) await Promise.resolve();
+  s.coordinator.cancel();
+  s.request.mockRejectedValueOnce(new Error("New request failed"));
+  await s.coordinator.send();
+  rejectOld(new Error("Old request failed"));
+  await old;
+  expect(s.store.getState().chat.error).toBe("New request failed");
+});
+
+test("cancel during activation revokes the unpublished native grant", async () => {
+  const s = setup({ ...pause, decision: "approve", pause_seconds: null });
+  s.createGrant.mockImplementationOnce(async () => {
+    s.coordinator.cancel();
+    return {
+      grantId: "g",
+      appId: "a",
+      tokenBase64: "token",
+      minutes: 5,
+      expiresAt: new Date().toISOString(),
+    };
+  });
+  await s.coordinator.send();
+  expect(s.native.rollbackGrant).toHaveBeenCalledWith("g");
+  expect(s.store.getState().grants.accessHistory).toHaveLength(0);
+  expect(s.store.getState().activityLog.entries[0]?.outcome).toBe(
+    "interrupted",
+  );
+});
+
+test("the next coach request receives the native commitment even before the refresh loop", async () => {
+  const s = setup({
+    ...pause,
+    decision: "ask",
+    unlock_minutes: null,
+    pause_seconds: null,
+  });
+  const commitment = {
+    grantId: "deal-g",
+    appId: "a",
+    blockedUntil: new Date(2000000).toISOString(),
+    pushbackCount: 2,
+    overriddenAt: null,
+    minimumReplacementBreakMinutes: 32,
+  };
+  jest.mocked(s.native.getCommitments).mockResolvedValue([commitment]);
+  await s.coordinator.send();
+  expect(s.request.mock.calls[0]?.[0]).toMatchObject({
+    context: { deal: { ...commitment, canOverride: true } },
+  });
+  expect(s.store.getState().activityLog.entries[0]?.outcome).toBe("asked");
+});
+
+test("a failed durable activation claim is interrupted without calling native approval", async () => {
+  const s = setup({
+    ...pause,
+    decision: "deal",
+    pause_seconds: null,
+    block_minutes: 30,
+  });
+  await s.coordinator.send();
+  s.flush.mockRejectedValueOnce(new Error("Local storage unavailable"));
+  await expect(s.coordinator.activate("a", "deal")).rejects.toThrow(
+    "Local storage unavailable",
+  );
+  expect(s.createGrant).not.toHaveBeenCalled();
+  expect(s.store.getState().grants.offers.a).toBeUndefined();
   expect(s.store.getState().activityLog.entries[0]?.outcome).toBe(
     "interrupted",
   );

@@ -1,1 +1,0 @@
-../../../../modules/volition-screen-time/ios/LegacyModels/V3/OpenAppLockSchemaV3.swift

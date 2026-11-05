@@ -1,1 +1,0 @@
-../../../targets/activity-report/RuleUsageReport.swift

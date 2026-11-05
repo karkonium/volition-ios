@@ -23,11 +23,10 @@ files link to the module. `Scripts/link-native-sources.py` maintains these links
 The report preset adapter in `plugins/with-volition-targets.js` preserves the
 DeviceActivity Report extension missing from apple-targets 5.0's preset registry.
 
-The superseded SwiftUI screens and launch shell have been removed.
-`NativeCompatibility/` is a test-only host and compatibility logic for the
-existing native domain suites; it does not ship in Expo. `OpenAppLock.xcodeproj`
-exists only to run these suites. Its tiny host can seed a synthetic original-module
-SwiftData store using `-seed-expo-migration` on an owned simulator.
+The superseded SwiftUI screens, native project, signing/launch configuration,
+compatibility harness and old native test folders have been removed at the user's
+explicit request. Production native code is owned by the module and targets.
+New regression coverage uses the Expo test setup.
 
 ## Verification
 
@@ -40,14 +39,9 @@ and private framework membership for internal headers. They do not disable
 compiler diagnostics. Expo and React Native build from source with Xcode 27 scene
 support. Upstream dependency warnings remain visible.
 
-The compatibility command is `xcodebuild test -project OpenAppLock.xcodeproj
--scheme OpenAppLock -destination 'platform=iOS Simulator,id=<owned-UDID>'
--only-testing:OpenAppLockTests SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`.
-
 `EXPO_PUBLIC_VOLITION_PREVIEW=1` enables an explicitly labeled development preview
 with synthetic selections and model responses. It never calls FamilyControls or
-OpenAI. Production builds cannot enable it. `ExpoMigrationUITests` is opt-in via
-`VOLITION_EXPO_UI_TESTS=1` and exercises that preview, never real app access.
+OpenAI. Production builds cannot enable it.
 
 Real-device acceptance remains required for shields, picker authorization,
 background/terminated expiry, notification delivery and Live Activities. A

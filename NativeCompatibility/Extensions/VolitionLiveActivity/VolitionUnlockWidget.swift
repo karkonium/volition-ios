@@ -1,1 +1,0 @@
-../../../targets/live-activity/VolitionUnlockWidget.swift

@@ -62,7 +62,7 @@ const slice = createSlice({
     },
     requestChanged(state, action: PayloadAction<string | null>) {
       state.pendingRequestId = action.payload;
-      state.error = null;
+      if (action.payload !== null) state.error = null;
     },
     failed(state, action: PayloadAction<string>) {
       state.error = action.payload;

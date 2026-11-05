@@ -6,10 +6,9 @@ xcuserdata/
 DerivedData/
 build/
 
-# Personal OpenAI prototype configuration
+# Never track personal OpenAI configuration
+**/Conversation.env
 Config/*
-!Config/Conversation.env.example
-OpenAppLock/Conversation.env
 
 # Expo generated files
 node_modules/
@@ -19,4 +18,7 @@ node_modules/
 coverage/
 *.tsbuildinfo
 
-NativeCompatibility/App/Conversation.env
+
+# Swift Package native regression artifacts
+.build/
+.swiftpm/
