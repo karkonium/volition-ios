@@ -39,11 +39,15 @@ export const i18nReady = i18n
     interpolation: { escapeValue: false },
   });
 // Extensions run in separate processes and read this preference from the App Group.
-i18n.on("languageChanged", (language) => {
-  void VolitionScreenTime.setLanguage(resolveLanguage(language, [])).catch(
-    () => {},
-  );
-});
+let nativeLanguageUpdate = Promise.resolve();
+function syncNativeLanguage(language: string): void {
+  nativeLanguageUpdate = nativeLanguageUpdate
+    .catch(() => undefined)
+    .then(() => VolitionScreenTime.setLanguage(resolveLanguage(language, [])))
+    .catch(() => undefined);
+}
+i18n.on("languageChanged", syncNativeLanguage);
+void i18nReady.then(() => syncNativeLanguage(i18n.resolvedLanguage ?? "en"));
 export async function changeLanguage(language: Language): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, language);
   await i18n.changeLanguage(language);

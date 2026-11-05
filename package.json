@@ -11,10 +11,12 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "test": "jest --runInBand",
     "postinstall": "node Scripts/patch-expo-headers.cjs && python3 Scripts/link-native-sources.py",
-    "format": "prettier --write . && npm run format:swift",
-    "format:check": "prettier --check . && npm run format:swift:check",
+    "format": "prettier --write . && npm run format:swift && npm run format:python",
+    "format:check": "prettier --check . && npm run format:swift:check && npm run format:python:check",
     "format:swift": "node Scripts/format-swift.cjs",
-    "format:swift:check": "node Scripts/format-swift.cjs --check"
+    "format:swift:check": "node Scripts/format-swift.cjs --check",
+    "format:python": "uvx ruff@0.17.3 format Scripts",
+    "format:python:check": "uvx ruff@0.17.3 format --check Scripts"
   },
   "dependencies": {
     "@bacons/apple-targets": "^5.0.0",

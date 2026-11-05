@@ -41,12 +41,8 @@ export function SessionSection({
           <Text type="Small" weight="SemiBold" style={styles.accent}>
             {t("focusInProgress")}
           </Text>
-          <Text type="H1">
-            {t("minutesLeft", { count: activeMinutes })}
-          </Text>
-          <Text type="Small">
-            {t("focusActiveHelp")}
-          </Text>
+          <Text type="H1">{t("minutesLeft", { count: activeMinutes })}</Text>
+          <Text type="Small">{t("focusActiveHelp")}</Text>
           <Button text={t("endFocus")} variant="outline" onPress={onEnd} />
         </Flex>
       </VolitionCard>
@@ -57,9 +53,7 @@ export function SessionSection({
         <Flex vertical gap="xs">
           <Flex vertical gap="xxs">
             <Text type="H2">{t("startSession")}</Text>
-            <Text type="Small">
-              {t("startSessionHelp")}
-            </Text>
+            <Text type="Small">{t("startSessionHelp")}</Text>
           </Flex>
           <Flex wrap="wrap" gap="xs">
             {[15, 25, 50].map((minutes) => (

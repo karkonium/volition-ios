@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   Button,
@@ -25,6 +26,7 @@ export function ActiveGrantBanner({
   name: string;
   onEnd: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const seconds = Math.max(
     0,
@@ -55,7 +57,7 @@ export function ActiveGrantBanner({
         {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}
       </Text>
       <Button
-        text="End unlock"
+        text={t("endUnlock")}
         layout="inline"
         variant="ghost"
         textStyle={{ fontSize: 13 }}

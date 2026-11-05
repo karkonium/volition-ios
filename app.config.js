@@ -18,11 +18,7 @@ module.exports = {
   plugins: [
     ...base.plugins,
     ...(configured
-      ? [
-          "@react-native-firebase/app",
-          "@react-native-firebase/crashlytics",
-          "./plugins/with-firebase-symbols",
-        ]
+      ? ["@react-native-firebase/app", "@react-native-firebase/crashlytics"]
       : []),
     "./plugins/with-firebase-privacy",
   ],

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { layout } from "../../layout/layout";
 import type { ResponsiveStyle, Theme } from "@itsRares/ahhzo-elements";
 import React, { useRef, useState, useEffect } from "react";
@@ -25,6 +26,7 @@ import { OutcomeFeedbackCard } from "./OutcomeFeedbackCard";
 
 /** App selection and independent grant banners stay outside the scrolling conversation. */
 export function ChatScreen(): React.JSX.Element {
+  const { t } = useTranslation();
   const state = useAppSelector((state) => state);
   const dispatch = useAppDispatch();
   const [picker, setPicker] = useState(false);
@@ -103,7 +105,7 @@ export function ChatScreen(): React.JSX.Element {
         )}
         {state.chat.messages.length > state.chat.visibleCount && (
           <Button
-            text="Earlier messages"
+            text={t("earlierMessages")}
             variant="ghost"
             onPress={() => dispatch(chatActions.loadEarlier())}
           />
@@ -136,7 +138,7 @@ export function ChatScreen(): React.JSX.Element {
       </ScrollView>
       {!nearBottom && state.chat.messages.length > 0 && (
         <Button
-          text="Jump to latest"
+          text={t("jumpLatest")}
           variant="ghost"
           testID="conversationJumpLatest"
           onPress={() => {

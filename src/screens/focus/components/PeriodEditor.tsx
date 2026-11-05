@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ScrollView } from "react-native";
 import {
   Button,
@@ -26,10 +27,11 @@ export function PeriodEditor({
   onClose: () => void;
   onSave: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   return (
     <Modal
-      title={draft?.id ? "Edit period" : "New period"}
+      title={draft?.id ? t("editPeriod") : t("newPeriod")}
       isVisible={draft !== null}
       onClose={onClose}
     >
@@ -40,34 +42,33 @@ export function PeriodEditor({
         >
           <Flex vertical gap="md">
             <Text type="Small">
-              Create a recurring boundary for the time you want to protect.
+              {t("periodIntro")}
             </Text>
             <TextField
-              placeholderLabel="Period name"
-              accessibilityLabel="Period name"
+              placeholderLabel={t("periodName")}
+              accessibilityLabel={t("periodName")}
               value={draft.name}
               onChange={(name) => setDraft({ ...draft, name })}
               maxLength={100}
             />
             <Flex vertical gap="xs">
-              <Text type="H4">Time</Text>
+              <Text type="H4">{t("time")}</Text>
               <Text type="Small">
-                Use 24-hour time. An end time before the start continues into
-                the next day.
+                {t("timeHelp")}
               </Text>
               <Flex wrap="wrap" gap="sm">
                 <Flex style={styles.timeField}>
                   <TextField
-                    placeholderLabel="Start (HH:mm)"
-                    accessibilityLabel="Start time, 24-hour hours and minutes"
+                    placeholderLabel={t("startTime")}
+                    accessibilityLabel={t("startTimeLabel")}
                     value={draft.start}
                     onChange={(start) => setDraft({ ...draft, start })}
                   />
                 </Flex>
                 <Flex style={styles.timeField}>
                   <TextField
-                    placeholderLabel="End (HH:mm)"
-                    accessibilityLabel="End time, 24-hour hours and minutes"
+                    placeholderLabel={t("endTime")}
+                    accessibilityLabel={t("endTimeLabel")}
                     value={draft.end}
                     onChange={(end) => setDraft({ ...draft, end })}
                   />
@@ -75,15 +76,15 @@ export function PeriodEditor({
               </Flex>
             </Flex>
             <Flex vertical gap="xs">
-              <Text type="H4">Repeat on</Text>
+              <Text type="H4">{t("repeatOn")}</Text>
               <Text type="Small">
-                Overnight periods begin on the selected day.
+                {t("overnightHelp")}
               </Text>
               <Flex wrap="wrap" gap="xs">
                 {days.map((day, index) => (
                   <FocusChoice
                     key={day}
-                    label={day}
+                    label={t(day.toLowerCase())}
                     multiple
                     selected={draft.weekdays.includes(index + 1)}
                     onPress={() =>
@@ -105,7 +106,7 @@ export function PeriodEditor({
               selected={draft.appIDs}
               onChange={(appIDs) => setDraft({ ...draft, appIDs })}
             />
-            <Button text="Save period" onPress={onSave} />
+            <Button text={t("savePeriod")} onPress={onSave} />
           </Flex>
         </ScrollView>
       )}

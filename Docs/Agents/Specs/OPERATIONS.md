@@ -159,3 +159,14 @@ build on a real device and confirm events in DebugView. Expo Go and the dev-clie
 crash overlay cannot validate native crash reporting. No Android application is
 currently configured; a future Android port needs its own Firebase registration,
 `google-services.json`, Android Expo config and device verification.
+
+
+## Source formatting
+
+Run `npm run format` to format the maintained JavaScript, TypeScript, JSON, YAML,
+Swift and Python sources. `npm run format:check` checks the same files and runs
+in CI. Install Xcode command-line tools for `swift-format` and `uv` for the
+pinned Ruff formatter (`uvx` downloads it on first use). Generated native
+projects, dependencies, human-authored Markdown, lockfiles and symlinked extension
+copies are excluded. The Swift formatter is restricted to source-owned files and
+its rewriting rules are disabled.

@@ -1,9 +1,10 @@
 """Link production shared Swift into the five Expo extension targets."""
+
 from pathlib import Path
 import os
 
 ROOT = Path(__file__).resolve().parent.parent
-NATIVE = ROOT / 'modules/volition-screen-time/ios'
+NATIVE = ROOT / "modules/volition-screen-time/ios"
 
 
 def link(source: Path, destination: Path) -> None:
@@ -22,7 +23,13 @@ def link(source: Path, destination: Path) -> None:
         destination.symlink_to(relative)
 
 
-for directory in ['shield-config', 'shield-action', 'activity-monitor', 'activity-report', 'live-activity']:
-    target = ROOT / 'targets' / directory
-    link(NATIVE / 'Shared', target / 'Shared')
-    link(NATIVE / 'ActivityShared', target / 'ActivityShared')
+for directory in [
+    "shield-config",
+    "shield-action",
+    "activity-monitor",
+    "activity-report",
+    "live-activity",
+]:
+    target = ROOT / "targets" / directory
+    link(NATIVE / "Shared", target / "Shared")
+    link(NATIVE / "ActivityShared", target / "ActivityShared")

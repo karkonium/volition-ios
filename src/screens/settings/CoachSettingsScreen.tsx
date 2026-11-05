@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Linking, View } from "react-native";
 import {
   Button,
@@ -28,26 +29,21 @@ const tones: { value: CoachTone; title: string; description: string }[] = [
   { value: "direct", title: "Direct", description: "Clear and concise" },
 ];
 export function CoachSettingsScreen(): React.JSX.Element {
+  const { t } = useTranslation();
   const state = useAppSelector((state) => state.settings);
   const dispatch = useAppDispatch();
   const [key, setKey] = useState("");
   const styles = useThemedStyles(createStyles);
   const { theme } = useTheme();
   return (
-    <Screen
-      title="Coach settings"
-      subtitle="Choose how your coach communicates."
-    >
-      <SettingsSection
-        title="COACH TONE"
-        footer="Tone changes the coach’s style, not the rules for access."
-      >
+    <Screen title={t("coach")} subtitle={t("coachSubtitle")}>
+      <SettingsSection title={t("toneHeading")} footer={t("toneFooter")}>
         {tones.map((tone) => (
           <SettingsRow
             key={tone.value}
-            title={tone.title}
-            description={tone.description}
-            value={state.tone === tone.value ? "Selected" : undefined}
+            title={t(tone.value)}
+            description={t(`${tone.value}Desc`)}
+            value={state.tone === tone.value ? t("selected") : undefined}
             leading={
               <Icon
                 accessible={false}
@@ -68,21 +64,16 @@ export function CoachSettingsScreen(): React.JSX.Element {
           />
         ))}
       </SettingsSection>
-      <SettingsSection
-        title="OPENAI API KEY"
-        footer="Your personal key is stored in Keychain. GPT-5.4 mini is used for coaching."
-      >
+      <SettingsSection title={t("apiKeyHeading")} footer={t("apiKeyFooter")}>
         <View style={styles.card}>
           <Text weight="SemiBold">
-            {state.keyConfigured ? "Key configured" : "No key configured"}
+            {state.keyConfigured ? t("keyConfigured") : t("keyMissing")}
           </Text>
           <Text type="Small">
-            {state.keyConfigured
-              ? "Enter a new key to replace it."
-              : "Add your personal API key to use the coach."}
+            {state.keyConfigured ? t("keyReplace") : t("keyAdd")}
           </Text>
           <TextField
-            placeholderLabel="API key"
+            placeholderLabel={t("apiKey")}
             secure
             value={key}
             onChange={setKey}
@@ -90,7 +81,7 @@ export function CoachSettingsScreen(): React.JSX.Element {
             autoCorrect={false}
           />
           <Button
-            text="Save key securely"
+            text={t("saveKey")}
             disabled={!key.trim()}
             onPress={() =>
               perform(async () => {
@@ -102,7 +93,7 @@ export function CoachSettingsScreen(): React.JSX.Element {
           />
           {state.keyConfigured && (
             <Button
-              text="Remove key"
+              text={t("removeKey")}
               variant="ghost"
               tone="danger"
               onPress={() =>
@@ -116,13 +107,10 @@ export function CoachSettingsScreen(): React.JSX.Element {
           )}
         </View>
       </SettingsSection>
-      <SettingsSection
-        title="UNLOCK REMINDERS"
-        footer="Alerts at 60, 30 and 10 seconds remaining are best effort; system delivery can be delayed or unavailable."
-      >
+      <SettingsSection title={t("reminders")} footer={t("reminderFooter")}>
         <SettingsRow
-          title="Allow notifications"
-          description="Request notification permission"
+          title={t("allowNotifications")}
+          description={t("notificationPermission")}
           onPress={() =>
             perform(async () => {
               dispatch(
@@ -134,8 +122,8 @@ export function CoachSettingsScreen(): React.JSX.Element {
           }
         />
         <SettingsRow
-          title="Notification settings"
-          description="Manage permissions in iOS Settings"
+          title={t("notificationSettings")}
+          description={t("notificationSettingsDesc")}
           onPress={() => perform(() => Linking.openSettings())}
         />
       </SettingsSection>

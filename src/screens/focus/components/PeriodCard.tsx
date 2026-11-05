@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   Button,
   Flex,
@@ -23,6 +24,7 @@ export function PeriodCard({
   onToggle: () => void;
   onDelete: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   return (
     <VolitionCard>
@@ -41,27 +43,27 @@ export function PeriodCard({
             weight="SemiBold"
             style={period.isEnabled ? styles.enabled : styles.paused}
           >
-            {period.isEnabled ? "Enabled" : "Paused"}
+            {period.isEnabled ? t("enabled") : t("paused")}
           </Text>
         </Flex>
         <Text>{formatSchedule(period)}</Text>
-        <Text type="Small">Protects: {appSummary(period.appIDs, apps)}</Text>
+        <Text type="Small">{t("protects", { apps: period.appIDs.length ? appSummary(period.appIDs, apps) : t("allApps") })}</Text>
         <Flex wrap="wrap" gap="xs">
           <Button
             layout="inline"
-            text="Edit"
+            text={t("edit")}
             variant="outline"
             onPress={onEdit}
           />
           <Button
             layout="inline"
-            text={period.isEnabled ? "Pause" : "Enable"}
+            text={period.isEnabled ? t("pause") : t("enable")}
             variant="ghost"
             onPress={onToggle}
           />
           <Button
             layout="inline"
-            text="Delete"
+            text={t("delete")}
             variant="ghost"
             tone="danger"
             onPress={onDelete}

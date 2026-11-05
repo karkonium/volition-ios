@@ -30,12 +30,11 @@ export function SettingsScreen(): React.JSX.Element {
           onPress={() => navigation.navigate("CoachSettings")}
         />
       </SettingsSection>
-      <SettingsSection title={t("language")}>
+      <SettingsSection title={t("language")} footer={t("languageNotice")}>
         {languages.map((language) => (
           <SettingsRow
             key={language}
             title={`${i18n.resolvedLanguage === language ? "✓ " : ""}${{ en: "English", es: "Español", zh: "中文" }[language]}`}
-            description={t("languageNotice")}
             leading={icon("language-outline")}
             onPress={() => {
               perform(() => changeLanguage(language));

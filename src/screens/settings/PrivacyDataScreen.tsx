@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, View } from "react-native";
 import {
   Button,
@@ -18,6 +19,7 @@ import { setConsent, coordinator } from "../../services/runtime";
 import { SettingsSection } from "./SettingsSection";
 
 export function PrivacyDataScreen(): React.JSX.Element {
+  const { t } = useTranslation();
   const consent = useAppSelector((state) => state.auth.aiConsent);
   const dispatch = useAppDispatch();
   const analytics = useAppSelector(
@@ -31,59 +33,52 @@ export function PrivacyDataScreen(): React.JSX.Element {
     if (!enabled) perform(() => setConsent(false));
     else
       Alert.alert(
-        "Enable AI sharing?",
-        "The information described above will be sent to OpenAI for coaching.",
+        t("enableSharingQuestion"),
+        t("enableSharingBody"),
         [
-          { text: "Cancel", style: "cancel" },
-          { text: "Enable", onPress: () => perform(() => setConsent(true)) },
+          { text: t("cancel"), style: "cancel" },
+          { text: t("enable"), onPress: () => perform(() => setConsent(true)) },
         ],
       );
   };
   return (
     <Screen
-      title="Privacy & data"
-      subtitle="Control what is shared and stored."
+      title={t("privacy")}
+      subtitle={t("privacySubtitle")}
     >
       <SettingsSection
-        title="AI SHARING"
-        footer="Turning sharing off cancels pending coach responses and offers."
+        title={t("sharingHeading")}
+        footer={t("sharingFooter")}
       >
         <SettingsRow
           type="toggle"
-          title="Share with OpenAI"
+          title={t("shareOpenAI")}
           description={
             consent
-              ? "On · coaching can use your context"
-              : "Off · coaching requests are paused"
+              ? t("sharingOnDescription")
+              : t("sharingOffDescription")
           }
           value={consent}
           onValueChange={changeConsent}
         />
         <View style={styles.card}>
-          <Text weight="SemiBold">What is shared</Text>
+          <Text weight="SemiBold">{t("whatShared")}</Text>
           <Text>
-            Messages, saved app names, intentions, notes, recent allocated
-            sessions, active unlocks and waits, agreements, recent app-removal
-            feedback and optional check-ins are sent only while AI sharing is
-            enabled.
+            {t("whatSharedBody")}
           </Text>
         </View>
       </SettingsSection>
-      <SettingsSection title="OPTIONAL GOOGLE DIAGNOSTICS">
+      <SettingsSection title={t("googleDiagnostics")}>
         <View style={styles.card}>
           <Text>
-            Analytics shares device information and which Volition screens you
-            visit with Google. Crash reports share crash details, device
-            information and stack traces. Reports can contain information
-            present in a crash. These choices are independent of AI sharing.
-            Disabling crash reports takes full effect after restarting the app.
+            {t("googleDiagnosticsBody")}
           </Text>
         </View>
         {firebaseConfigured ? (
           <>
             <SettingsRow
               type="toggle"
-              title="Analytics"
+              title={t("analytics")}
               value={analytics}
               onValueChange={(value) =>
                 dispatch(settingsActions.analyticsChanged(value))
@@ -91,7 +86,7 @@ export function PrivacyDataScreen(): React.JSX.Element {
             />
             <SettingsRow
               type="toggle"
-              title="Crash reports"
+              title={t("crashReports")}
               value={crashReports}
               onValueChange={(value) =>
                 dispatch(settingsActions.crashReportsChanged(value))
@@ -100,36 +95,34 @@ export function PrivacyDataScreen(): React.JSX.Element {
           </>
         ) : (
           <Text type="Small" style={styles.note}>
-            Google diagnostics are unavailable in this build.
+            {t("googleUnavailable")}
           </Text>
         )}
       </SettingsSection>
-      <SettingsSection title="ON THIS DEVICE">
+      <SettingsSection title={t("onDevice")}>
         <View style={styles.card}>
           <Text>
-            Chat, private activity history, saved profiles and commitments
-            remain local. Keys are kept in Keychain. Ratings never affect
-            access.
+            {t("onDeviceBody")}
           </Text>
         </View>
       </SettingsSection>
       <SettingsSection
-        title="ERASE CHAT"
-        footer="Activity logs, access history and accepted commitments are retained. Pending offers are cancelled."
+        title={t("eraseChatHeading")}
+        footer={t("eraseChatFooter")}
       >
         <View style={styles.card}>
           <Button
-            text="Erase coaching content"
+            text={t("eraseCoaching")}
             variant="ghost"
             tone="danger"
             onPress={() =>
               Alert.alert(
-                "Erase chat?",
-                "Private activity logs, access history and existing agreements remain available. Pending offers are cancelled.",
+                t("eraseQuestion"),
+                t("eraseConfirm"),
                 [
-                  { text: "Cancel", style: "cancel" },
+                  { text: t("cancel"), style: "cancel" },
                   {
-                    text: "Erase",
+                    text: t("erase"),
                     style: "destructive",
                     onPress: () => {
                       coordinator.cancel();

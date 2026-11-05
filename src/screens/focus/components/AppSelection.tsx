@@ -16,9 +16,7 @@ export function AppSelection({
   return (
     <Flex vertical gap="xxs">
       <Text type="H4">{t("protectedApps")}</Text>
-      <Text type="Small">
-        {t("protectedAppsHelp")}
-      </Text>
+      <Text type="Small">{t("protectedAppsHelp")}</Text>
       <Flex wrap="wrap" gap="xs">
         <FocusChoice
           label={t("allApps")}
@@ -41,9 +39,7 @@ export function AppSelection({
           />
         ))}
       </Flex>
-      {!apps.length && (
-        <Text type="Small">{t("saveAppsFirst")}</Text>
-      )}
+      {!apps.length && <Text type="Small">{t("saveAppsFirst")}</Text>}
     </Flex>
   );
 }
