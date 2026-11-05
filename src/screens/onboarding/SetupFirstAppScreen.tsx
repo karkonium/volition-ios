@@ -1,6 +1,6 @@
 import React from "react";
 import { Screen } from "../../components/Screen";
-import { AppEditorForm } from "../apps/AppEditorModal";
+import { AppEditorForm } from "../apps/AppEditorForm";
 export function SetupFirstAppScreen({
   onSaved,
 }: {

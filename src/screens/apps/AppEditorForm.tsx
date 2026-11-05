@@ -2,7 +2,6 @@ import React, { useRef, useState } from "react";
 import { AccessibilityInfo, Pressable, View } from "react-native";
 import * as Crypto from "expo-crypto";
 import {
-  Modal,
   Button,
   Text,
   TextField,
@@ -17,7 +16,6 @@ import {
 import { VolitionScreenTime } from "../../../modules/volition-screen-time";
 import { AttentionRegion } from "../../components/AttentionRegion";
 import { VolitionAppIcon } from "../../components/VolitionAppIcon";
-import { VolitionCard } from "../../components/VolitionCard";
 import { perform } from "../../components/Screen";
 import type { VolitionSavedApp } from "../../redux/appsSlice";
 import { saveApp } from "../../services/runtime";
@@ -61,7 +59,7 @@ export function AppEditorForm({
   const nameField = useRef<TextFieldRef>(null);
   return (
     <Flex vertical gap="md">
-      <VolitionCard style={styles.stepCard}>
+      <View style={styles.stepCard}>
         <Text type="H4">1. Choose one app</Text>
         <Text type="Small">
           Choose the app you’d like to use more intentionally.
@@ -104,13 +102,14 @@ export function AppEditorForm({
             accessible={false}
           />
         </Pressable>
-      </VolitionCard>
-      <VolitionCard style={styles.stepCard}>
+      </View>
+      <View style={styles.stepCard}>
         <Text type="H4">2. Give it a name</Text>
         <AttentionRegion trigger={missing}>
           <TextField
             ref={nameField}
             placeholderLabel="App name"
+            inputStyle={styles.input}
             value={name}
             onChange={(text) => {
               setName(text);
@@ -129,8 +128,8 @@ export function AppEditorForm({
             Please give this app a name.
           </Text>
         )}
-      </VolitionCard>
-      <VolitionCard style={styles.stepCard}>
+      </View>
+      <View style={styles.stepCard}>
         <Text type="H4">3. Set your intention</Text>
         <Text type="Small">
           Think about when you want to use it, work you need to do, or how you’d
@@ -178,6 +177,7 @@ export function AppEditorForm({
         </Text>
         <TextField
           placeholderLabel="Add a note"
+          inputStyle={styles.input}
           value={notes}
           onChange={setNotes}
           maxLength={2000}
@@ -185,7 +185,7 @@ export function AppEditorForm({
           multiline
           testID="volitionAppIntention"
         />
-      </VolitionCard>
+      </View>
       <Button
         text="Save app"
         testID="saveVolitionAppButton"
@@ -225,41 +225,18 @@ export function AppEditorForm({
     </Flex>
   );
 }
-export function AppEditorModal({
-  visible,
-  existing,
-  onClose,
-}: {
-  visible: boolean;
-  existing?: VolitionSavedApp;
-  onClose: () => void;
-}): React.JSX.Element {
-  return (
-    <Modal
-      title={existing ? "Edit app" : "Save an app"}
-      isVisible={visible}
-      scrollable
-      onClose={onClose}
-    >
-      {visible ? (
-        <AppEditorForm
-          key={existing?.id ?? "new"}
-          existing={existing}
-          onSaved={onClose}
-        />
-      ) : null}
-    </Modal>
-  );
-}
 const createStyles = (theme: Theme) =>
   ({
     stepCard: {
-      backgroundColor: theme.colors.secondary,
-      borderWidth: 0,
+      backgroundColor: theme.colors.card,
+      borderColor: theme.colors.border,
+      borderWidth: 1,
+      borderRadius: theme.radii.md,
       padding: theme.spacing.md,
+      gap: theme.spacing.sm,
     },
     preview: {
-      backgroundColor: theme.colors.card,
+      backgroundColor: theme.colors.secondary,
       borderRadius: theme.radii.base,
       minHeight: 64,
       padding: theme.spacing.sm,
@@ -268,6 +245,7 @@ const createStyles = (theme: Theme) =>
       gap: theme.spacing.sm,
     },
     previewText: { flex: 1, minWidth: 0 },
+    input: { backgroundColor: theme.colors.background },
     error: { color: theme.colors.error },
     session: {
       borderTopWidth: 1,

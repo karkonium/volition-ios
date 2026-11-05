@@ -1,12 +1,15 @@
 import { previewMode } from "../../modules/volition-screen-time";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { useWindowDimensions } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
+import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme, Text, Flex } from "@itsRares/ahhzo-elements";
 import { ChatScreen } from "../screens/chat/ChatScreen";
 import { AppsScreen } from "../screens/apps/AppsScreen";
+import { AppEditorScreen } from "../screens/apps/AppEditorScreen";
 import { InsightsScreen } from "../screens/insights/InsightsScreen";
 import { FocusScreen } from "../screens/focus/FocusScreen";
 import { SettingsScreen } from "../screens/settings/SettingsScreen";
@@ -14,18 +17,38 @@ import { CoachSettingsScreen } from "../screens/settings/CoachSettingsScreen";
 import { PrivacyDataScreen } from "../screens/settings/PrivacyDataScreen";
 import { ActivityLogScreen } from "../screens/settings/ActivityLogScreen";
 import { DiagnosticsLogsScreen } from "../screens/settings/DiagnosticsLogsScreen";
-import type { MainTabs, SettingsStack } from "./types";
+import type { AppsStack, MainTabs, SettingsStack } from "./types";
 const Tabs = createBottomTabNavigator<MainTabs>();
 const Stack = createStackNavigator<SettingsStack>();
+const AppsStackNavigator = createStackNavigator<AppsStack>();
+function AppsNavigator(): React.JSX.Element {
+  const { theme } = useTheme();
+  return (
+    <AppsStackNavigator.Navigator
+      screenOptions={{
+        headerShown: false,
+        cardStyle: { backgroundColor: theme.colors.background },
+      }}
+    >
+      <AppsStackNavigator.Screen
+        name="AppsHome"
+        component={AppsScreen}
+        options={{ headerShown: false }}
+      />
+      <AppsStackNavigator.Screen name="AppEditor" component={AppEditorScreen} />
+    </AppsStackNavigator.Navigator>
+  );
+}
 function SettingsNavigator(): React.JSX.Element {
   const { theme } = useTheme();
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: theme.colors.background },
-        headerTintColor: theme.colors.text,
+        headerTintColor: theme.colors.textLink,
         cardStyle: { backgroundColor: theme.colors.background },
         headerTitle: "",
+        headerBackTitle: "Settings",
       }}
     >
       <Stack.Screen
@@ -51,6 +74,7 @@ const icons: Record<
   Settings: "settings-outline",
 };
 export function MainTabNavigator(): React.JSX.Element {
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const sidebar = width >= 768;
   const { theme } = useTheme();
@@ -66,12 +90,13 @@ export function MainTabNavigator(): React.JSX.Element {
             paddingVertical: 4,
           }}
         >
-          Preview mode · no device restrictions
+          {t("preview")}
         </Text>
       )}
       <Tabs.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
+          tabBarLabel: t(({ Chat: "chat", Apps: "apps", Insights: "insights", Focus: "focus", Settings: "settings" } as const)[route.name]),
           tabBarButtonTestID: `sidebarItem-${route.name.toLowerCase()}`,
           tabBarPosition: sidebar ? "left" : "bottom",
           tabBarVariant: sidebar ? "material" : "uikit",
@@ -89,6 +114,12 @@ export function MainTabNavigator(): React.JSX.Element {
           tabBarActiveTintColor: theme.colors.tabBarActiveTintColor,
           tabBarInactiveTintColor: theme.colors.textSecondary,
           tabBarStyle: {
+            display:
+              !sidebar &&
+              route.name === "Apps" &&
+              getFocusedRouteNameFromRoute(route) === "AppEditor"
+                ? "none"
+                : "flex",
             backgroundColor: theme.colors.tabBarBackground,
             borderColor: theme.colors.border,
             borderTopWidth: sidebar ? 0 : 0.5,
@@ -101,7 +132,7 @@ export function MainTabNavigator(): React.JSX.Element {
         })}
       >
         <Tabs.Screen name="Chat" component={ChatScreen} />
-        <Tabs.Screen name="Apps" component={AppsScreen} />
+        <Tabs.Screen name="Apps" component={AppsNavigator} />
         <Tabs.Screen name="Insights" component={InsightsScreen} />
         <Tabs.Screen name="Focus" component={FocusScreen} />
         <Tabs.Screen name="Settings" component={SettingsNavigator} />

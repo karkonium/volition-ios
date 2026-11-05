@@ -7,8 +7,16 @@ const slice = createSlice({
     tone: "balanced" as CoachTone,
     keyConfigured: false,
     notificationsEnabled: false,
+    analyticsEnabled: false,
+    crashReportsEnabled: false,
   },
   reducers: {
+    analyticsChanged(state, action: PayloadAction<boolean>) {
+      state.analyticsEnabled = action.payload;
+    },
+    crashReportsChanged(state, action: PayloadAction<boolean>) {
+      state.crashReportsEnabled = action.payload;
+    },
     legacyImported(state) {
       state.legacyImported = true;
     },

@@ -1,0 +1,21 @@
+{
+  "chat": "Chat",
+  "apps": "Apps",
+  "insights": "Insights",
+  "focus": "Focus",
+  "settings": "Settings",
+  "coach": "Coach settings",
+  "activity": "Activity log",
+  "privacy": "Privacy & data",
+  "diagnostics": "Diagnostics",
+  "language": "Language",
+  "languageNotice": "Language support is in progress. Some text appears in English.",
+  "preview": "Preview mode · no device restrictions",
+  "welcomeSubtitle": "Make room for what matters",
+  "welcomeTitle": "A conversation before a scroll",
+  "welcomeBody": "Tell your coach what you want to do. Choose a pause, a little access, or an agreement that helps you stop.",
+  "welcomeStep1": "1. Choose AI sharing",
+  "welcomeStep2": "2. Allow Screen Time access",
+  "welcomeStep3": "3. Save an app with intention",
+  "getStarted": "Get started"
+}

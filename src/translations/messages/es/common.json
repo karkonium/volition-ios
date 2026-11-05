@@ -1,0 +1,21 @@
+{
+  "chat": "Chat",
+  "apps": "Apps",
+  "insights": "Estadísticas",
+  "focus": "Concentración",
+  "settings": "Ajustes",
+  "coach": "Ajustes del guía",
+  "activity": "Registro de actividad",
+  "privacy": "Privacidad y datos",
+  "diagnostics": "Diagnóstico",
+  "language": "Idioma",
+  "languageNotice": "La traducción está en curso. Parte del texto aparece en inglés.",
+  "preview": "Modo de prueba · sin restricciones en el dispositivo",
+  "welcomeSubtitle": "Haz espacio para lo que importa",
+  "welcomeTitle": "Una conversación antes de deslizar",
+  "welcomeBody": "Cuéntale a tu guía qué quieres hacer. Elige una pausa, un poco de acceso o un acuerdo que te ayude a parar.",
+  "welcomeStep1": "1. Elige si compartir con la IA",
+  "welcomeStep2": "2. Permite el acceso a Tiempo de uso",
+  "welcomeStep3": "3. Guarda una app con una intención",
+  "getStarted": "Empezar"
+}

@@ -1,0 +1,21 @@
+{
+  "chat": "对话",
+  "apps": "应用",
+  "insights": "概览",
+  "focus": "专注",
+  "settings": "设置",
+  "coach": "教练设置",
+  "activity": "活动记录",
+  "privacy": "隐私与数据",
+  "diagnostics": "诊断",
+  "language": "语言",
+  "languageNotice": "语言支持正在完善中。部分内容仍以英文显示。",
+  "preview": "预览模式 · 无设备限制",
+  "welcomeSubtitle": "为重要的事留出空间",
+  "welcomeTitle": "滑动之前，先聊一聊",
+  "welcomeBody": "告诉教练你想做什么。选择暂停、短暂使用，或制定一项帮助你停下来的约定。",
+  "welcomeStep1": "1. 选择是否与 AI 共享",
+  "welcomeStep2": "2. 允许访问屏幕使用时间",
+  "welcomeStep3": "3. 保存应用并设定使用意图",
+  "getStarted": "开始"
+}

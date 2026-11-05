@@ -10,15 +10,20 @@ import type { VolitionSavedApp } from "../../redux/appsSlice";
 import { chatActions } from "../../redux/chatSlice";
 import { removeApp, recordRemoval } from "../../services/runtime";
 import { focusProtects } from "../../services/policy";
-import { AppEditorModal } from "./AppEditorModal";
-import type { MainTabs } from "../../navigation/types";
+import type { AppsStack, MainTabs } from "../../navigation/types";
+import type { CompositeNavigationProp } from "@react-navigation/native";
+import type { StackNavigationProp } from "@react-navigation/stack";
 export function AppsScreen(): React.JSX.Element {
   const state = useAppSelector((state) => state);
   const dispatch = useAppDispatch();
-  const navigation = useNavigation<NavigationProp<MainTabs>>();
+  const navigation =
+    useNavigation<
+      CompositeNavigationProp<
+        StackNavigationProp<AppsStack, "AppsHome">,
+        NavigationProp<MainTabs>
+      >
+    >();
   const now = useNow();
-  const [editing, setEditing] = useState<VolitionSavedApp | undefined>();
-  const [editor, setEditor] = useState(false);
   const [removing, setRemoving] = useState<VolitionSavedApp | null>(null);
   const [reason, setReason] = useState("");
   const [step, setStep] = useState(1);
@@ -55,8 +60,7 @@ export function AppsScreen(): React.JSX.Element {
             app={app}
             status={status}
             onEdit={() => {
-              setEditing(app);
-              setEditor(true);
+              navigation.navigate("AppEditor", { appId: app.id });
             }}
             onRemove={() => {
               setRemoving(app);
@@ -71,14 +75,8 @@ export function AppsScreen(): React.JSX.Element {
         text="Add app"
         testID="addVolitionAppButton"
         onPress={() => {
-          setEditing(undefined);
-          setEditor(true);
+          navigation.navigate("AppEditor", {});
         }}
-      />
-      <AppEditorModal
-        visible={editor}
-        existing={editing}
-        onClose={() => setEditor(false)}
       />
       <Modal
         title="Remove app"

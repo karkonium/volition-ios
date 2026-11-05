@@ -22,3 +22,6 @@ coverage/
 # Swift Package native regression artifacts
 .build/
 .swiftpm/
+# Firebase configuration is supplied locally or by the build environment
+GoogleService-Info.plist
+google-services.json
