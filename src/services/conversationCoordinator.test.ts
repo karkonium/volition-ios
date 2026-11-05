@@ -284,3 +284,24 @@ test("a failed durable activation claim is interrupted without calling native ap
     "interrupted",
   );
 });
+
+test("an approval shortened by an upcoming routine needs explicit acceptance", async () => {
+  const s = setup({ ...pause, decision: "approve", pause_seconds: null });
+  const startAt = new Date(1000000 + 185000).toISOString();
+  s.native.getFocus = async () =>
+    JSON.stringify({
+      revision: 1, periods: [], session: null, preferences: null, active: [],
+      upcoming: [{ id: "p", sourceId: "p", kind: "routine", name: "Study",
+        appIDs: ["a"], exceptedAppIDs: [], startsAt: startAt,
+        endsAt: new Date(1000000 + 3600000).toISOString() }],
+    });
+  await s.coordinator.send();
+  expect(s.createGrant).not.toHaveBeenCalled();
+  expect(s.store.getState().grants.offers.a?.decision.unlock_minutes).toBe(3);
+  s.advance(65000);
+  await s.coordinator.activate("a", "open");
+  expect(s.createGrant).not.toHaveBeenCalled();
+  expect(s.store.getState().grants.offers.a?.decision.unlock_minutes).toBe(2);
+  await s.coordinator.activate("a", "open");
+  expect(s.createGrant).toHaveBeenCalledWith("token", 2, "config", null, null, false, 0);
+});

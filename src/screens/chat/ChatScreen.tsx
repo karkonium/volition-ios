@@ -1,187 +1,146 @@
+import React, { useRef, useState } from "react";
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, View, useWindowDimensions } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { layout } from "../../layout/layout";
-import type { ResponsiveStyle, Theme } from "@itsRares/ahhzo-elements";
-import React, { useRef, useState, useEffect } from "react";
-import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from "react-native";
-import { Button, Flex, Text, useThemedStyles } from "@itsRares/ahhzo-elements";
-import { ChatHeader } from "./components/ChatHeader";
-import { ChatEmptyState } from "./components/ChatEmptyState";
-import { ChatComposer } from "./components/ChatComposer";
-import { ConversationMessage } from "./components/ConversationMessage";
-import { useAppSelector, useAppDispatch } from "../../redux/store";
-import { chatActions } from "../../redux/chatSlice";
-import { coordinator, endGrant } from "../../services/runtime";
-import { perform } from "../../components/Screen";
+import { useThemedStyles, type ResponsiveStyle, type Theme } from "@itsRares/ahhzo-elements";
 import { ActiveGrantBanner } from "../../components/ActiveGrantBanner";
+import { perform } from "../../components/Screen";
+import { layout } from "../../layout/layout";
+import { chatActions } from "../../redux/chatSlice";
+import { store, useAppDispatch, useAppSelector } from "../../redux/store";
+import { coordinator, endGrant } from "../../services/runtime";
 import { AppPickerModal } from "./AppPickerModal";
-import { EmotionCheckInSheet } from "./EmotionCheckInSheet";
 import { DelayCountdownCard } from "./DelayCountdownCard";
+import { EmotionCheckInSheet } from "./EmotionCheckInSheet";
 import { InterventionChoiceCard } from "./InterventionChoiceCard";
 import { OutcomeFeedbackCard } from "./OutcomeFeedbackCard";
+import { ChatComposer } from "./components/ChatComposer";
+import { ChatHeader } from "./components/ChatHeader";
+import { ChatTranscript } from "./components/ChatTranscript";
+import { composerState } from "./components/composerState";
+
+const rateableOutcomes = new Set(["approved", "keptLocked", "earlyEnded", "expired"]);
 
 /** App selection and independent grant banners stay outside the scrolling conversation. */
 export function ChatScreen(): React.JSX.Element {
   const { t } = useTranslation();
-  const state = useAppSelector((state) => state);
-  const dispatch = useAppDispatch();
-  const [picker, setPicker] = useState(false);
-  const transcript = useRef<ScrollView>(null);
-  const [nearBottom, setNearBottom] = useState(true);
-  const app = state.apps.items.find(
-    (item) => item.id === state.chat.selectedAppId,
-  );
-  const offer = app ? state.grants.offers[app.id] : undefined;
-  const feedback = [...state.activityLog.entries]
-    .reverse()
-    .find(
-      (entry) =>
-        !entry.feedback &&
-        ["approved", "keptLocked", "earlyEnded", "expired"].includes(
-          entry.outcome,
-        ),
-    );
   const styles = useThemedStyles(createStyles);
-  useEffect(() => {
-    if (nearBottom) transcript.current?.scrollToEnd({ animated: true });
-  }, [state.chat.messages.length, offer?.status, feedback?.id, nearBottom]);
-  useEffect(() => {
-    if (feedback) {
-      setNearBottom(true);
-      transcript.current?.scrollToEnd({ animated: true });
-    }
-  }, [feedback?.id]);
+  const { width } = useWindowDimensions();
+  const dispatch = useAppDispatch();
+  const chat = useAppSelector((state) => state.chat);
+  const apps = useAppSelector((state) => state.apps.items);
+  const activeGrants = useAppSelector((state) => state.grants.activeGrants);
+  const offer = useAppSelector((state) =>
+    chat.selectedAppId ? state.grants.offers[chat.selectedAppId] : undefined,
+  );
+  const feedback = useAppSelector((state) =>
+    state.activityLog.entries.findLast(
+      (entry) => !entry.feedback && rateableOutcomes.has(entry.outcome),
+    ),
+  );
+  const consent = useAppSelector((state) => state.auth.aiConsent);
+  const app = apps.find((item) => item.id === chat.selectedAppId && item.isEnabled);
+  const pending = Boolean(chat.pendingRequestId);
+  const [picker, setPicker] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
+  const container = useRef<View>(null);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+
+  const send = () => {
+    Keyboard.dismiss();
+    setCancelled(false);
+    const attention = store.getState().chat.selectionAttention;
+    perform(async () => {
+      try {
+        await coordinator.send();
+      } catch (error) {
+        if (store.getState().chat.selectionAttention === attention) throw error;
+      }
+    });
+  };
+
   return (
-    <KeyboardAvoidingView
+    <View
+      ref={container}
       style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      onLayout={() => container.current?.measureInWindow((_x, y) => setKeyboardOffset(y))}
     >
-      <ChatHeader
-        app={app}
-        attention={state.chat.selectionAttention}
-        onChooseApp={() => setPicker(true)}
-      />
-      {state.grants.activeGrants.length > 0 && (
-        <ScrollView style={[styles.width, styles.pinned]}>
-          {state.grants.activeGrants.map((grant) => (
-            <ActiveGrantBanner
-              key={grant.grantId}
-              grant={grant}
-              name={
-                state.apps.items.find((item) => item.id === grant.appId)
-                  ?.name ?? "App"
-              }
-              onEnd={() => perform(() => endGrant(grant.grantId))}
-            />
-          ))}
-        </ScrollView>
-      )}
-      <ScrollView
-        ref={transcript}
-        style={styles.width}
-        contentContainerStyle={styles.transcript}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        testID="conversationTranscript"
-        scrollEventThrottle={100}
-        onScroll={({
-          nativeEvent: { contentOffset, contentSize, layoutMeasurement },
-        }) =>
-          setNearBottom(
-            contentSize.height - contentOffset.y - layoutMeasurement.height <
-              100,
-          )
-        }
-        onContentSizeChange={() => {
-          if (nearBottom) transcript.current?.scrollToEnd({ animated: true });
-        }}
+      <KeyboardAvoidingView
+        style={styles.root}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={keyboardOffset}
       >
-        {state.chat.messages.length === 0 && (
-          <ChatEmptyState appName={app?.name} />
-        )}
-        {state.chat.messages.length > state.chat.visibleCount && (
-          <Button
-            text={t("earlierMessages")}
-            variant="ghost"
-            onPress={() => dispatch(chatActions.loadEarlier())}
+        <SafeAreaView
+          style={styles.root}
+          edges={width >= 768 ? ["top", "left", "right", "bottom"] : ["top", "left", "right"]}
+        >
+          <ChatHeader
+            app={app}
+            attention={chat.selectionAttention}
+            onChooseApp={() => {
+              Keyboard.dismiss();
+              setPicker(true);
+            }}
           />
-        )}
-        <Flex vertical gap="md">
-          {state.chat.messages
-            .slice(-state.chat.visibleCount)
-            .map((message) => (
-              <ConversationMessage
-                key={message.id}
-                role={message.role}
-                text={message.text}
-              />
-            ))}
-          {offer &&
-            (offer.status === "checkIn" ? (
-              <EmotionCheckInSheet appId={offer.appId} />
-            ) : offer.status === "delaying" || offer.status === "ready" ? (
-              <DelayCountdownCard offer={offer} />
-            ) : (
-              <InterventionChoiceCard offer={offer} />
-            ))}
-          {feedback && <OutcomeFeedbackCard entry={feedback} />}
-          {state.chat.error && (
-            <Text accessibilityRole="alert" style={styles.error}>
-              {state.chat.error}
-            </Text>
+          {activeGrants.length > 0 && (
+            <ScrollView style={styles.pinned} contentContainerStyle={styles.grants}>
+              {activeGrants.map((grant) => (
+                <ActiveGrantBanner
+                  key={grant.grantId}
+                  grant={grant}
+                  name={apps.find((item) => item.id === grant.appId)?.name ?? t("chatApp")}
+                  onEnd={() => perform(() => endGrant(grant.grantId))}
+                />
+              ))}
+            </ScrollView>
           )}
-        </Flex>
-      </ScrollView>
-      {!nearBottom && state.chat.messages.length > 0 && (
-        <Button
-          text={t("jumpLatest")}
-          variant="ghost"
-          testID="conversationJumpLatest"
-          onPress={() => {
-            setNearBottom(true);
-            transcript.current?.scrollToEnd({ animated: true });
-          }}
-        />
-      )}
-      <ChatComposer
-        draft={state.chat.draft}
-        pending={Boolean(state.chat.pendingRequestId)}
-        hasApp={Boolean(app)}
-        onChange={(text) => dispatch(chatActions.draftChanged(text))}
-        onCancel={() => coordinator.cancel()}
-        onSend={() => {
-          Keyboard.dismiss();
-          setNearBottom(true);
-          perform(() => coordinator.send());
-        }}
-      />
-      <AppPickerModal visible={picker} onClose={() => setPicker(false)} />
-    </KeyboardAvoidingView>
+          <ChatTranscript
+            appName={app?.name}
+            messages={chat.messages}
+            visibleCount={chat.visibleCount}
+            onLoadEarlier={() => dispatch(chatActions.loadEarlier())}
+            error={chat.error}
+            cancelled={cancelled}
+            onRetry={consent && composerState(chat.draft, pending).canSend ? send : undefined}
+          >
+            {app && offer &&
+              (offer.status === "checkIn" ? (
+                <EmotionCheckInSheet key={offer.id} appId={offer.appId} />
+              ) : offer.status === "delaying" || offer.status === "ready" ? (
+                <DelayCountdownCard offer={offer} appName={app.name} />
+              ) : (
+                <InterventionChoiceCard offer={offer} appName={app.name} />
+              ))}
+            {feedback && <OutcomeFeedbackCard entry={feedback} />}
+          </ChatTranscript>
+          <ChatComposer
+            draft={chat.draft}
+            pending={pending}
+            hasApp={Boolean(app)}
+            onChange={(text) => dispatch(chatActions.draftChanged(text))}
+            onCancel={() => {
+              coordinator.cancel();
+              setCancelled(true);
+            }}
+            onSend={send}
+          />
+        </SafeAreaView>
+        <AppPickerModal visible={picker} onClose={() => setPicker(false)} />
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const createStyles = (theme: Theme) =>
   ({
     root: { flex: 1, backgroundColor: theme.colors.background },
-    width: {
+    pinned: {
       width: "100%",
       maxWidth: layout.pageMaxWidth,
       alignSelf: "center",
-    },
-    pinned: {
-      maxHeight: 160,
+      maxHeight: 120,
       flexGrow: 0,
-      paddingHorizontal: theme.spacing.lg,
+      flexShrink: 1,
     },
-    transcript: {
-      paddingHorizontal: theme.spacing.lg,
-      paddingTop: theme.spacing.xs,
-      paddingBottom: theme.spacing.lg,
-      flexGrow: 1,
-    },
-    error: { color: theme.colors.error },
+    grants: { gap: theme.spacing.xxs, paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.xs },
   }) satisfies Record<string, ResponsiveStyle>;

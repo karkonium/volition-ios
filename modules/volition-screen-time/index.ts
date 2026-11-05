@@ -27,7 +27,8 @@ export type AuthorizationStatus =
   "approved" | "denied" | "notDetermined" | "unknown";
 export interface ScreenTimeBridge {
   exportLegacyState(): Promise<string>;
-  updateFocus(json: string): Promise<void>;
+  applyFocusCommand(json: string): Promise<string>;
+  repairFocusMonitoring(): Promise<void>;
   getFocus(): Promise<string>;
   requestAuthorization(): Promise<AuthorizationStatus>;
   getAuthorizationStatus(): AuthorizationStatus;
@@ -67,7 +68,8 @@ export const VolitionScreenTime: ScreenTimeBridge = previewMode
   ? createPreviewBridge()
   : (native ?? {
       exportLegacyState: async () => unavailable(),
-      updateFocus: async () => unavailable(),
+      applyFocusCommand: async () => unavailable(),
+      repairFocusMonitoring: async () => unavailable(),
       getFocus: async () => unavailable(),
       requestAuthorization: async () => "notDetermined",
       getAuthorizationStatus: () => "notDetermined",

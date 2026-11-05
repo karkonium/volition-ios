@@ -415,6 +415,10 @@ nonisolated enum CopyKey: String, CaseIterable {
     case shieldOpenLimitJustBlockedSubtitle = "shield.openLimitJustBlocked.subtitle"
     case shieldOpenButtonOne = "shield.openButtonOne"
     case shieldOpenButtonMany = "shield.openButtonMany"
+    case shieldQuickFocusTitle = "shield.quickFocusTitle"
+    case shieldFocusUntil = "shield.focusUntil"
+    case shieldFocusOverlap = "shield.focusOverlap"
+    case shieldReviewFocus = "shield.reviewFocus"
     case shieldPrimaryButtonLabel = "shield.primaryButtonLabel"
 
     // MARK: - LimitWarningDecision

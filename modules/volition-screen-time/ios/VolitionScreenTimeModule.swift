@@ -35,7 +35,7 @@ public final class VolitionScreenTimeModule: Module {
                 ?? "",
             "tokenBase64": (try? JSONEncoder().encode(grant.token).base64EncodedString()) ?? "",
             "minutes": grant.plan.minutes,
-            "expiresAt": ISO8601DateFormatter().string(from: grant.plan.expiresAt),
+            "expiresAt": ISO8601DateFormatter().string(from: grant.effectiveExpiry),
         ]
     }
     private static func authorizationStatus() -> String {
@@ -46,6 +46,15 @@ public final class VolitionScreenTimeModule: Module {
         @unknown default: return "unknown"
         }
     }
+    private static func focusSnapshot() throws -> String {
+        let snapshot = try ConversationGrantStore().transaction { state in
+            FocusSnapshot(state.focus ?? FocusProtectionState(), apps: state.focusAppIDs, now: .now)
+        }
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return String(decoding: try encoder.encode(snapshot), as: UTF8.self)
+    }
+
     public func definition() -> ModuleDefinition {
         Name("VolitionScreenTime")
         AsyncFunction("requestAuthorization") { () -> String in
@@ -103,7 +112,8 @@ public final class VolitionScreenTimeModule: Module {
                 return Self.authorizationStatus() == "approved" && (wait.map { $0 <= Date() } ?? true)
             }
             guard allowed else { throw Self.failure("An existing wait or permission prevents access") }
-            let grant = try Self.enforcement.approve(
+            let grant: ConversationGrantStore.Grant
+            do { grant = try Self.enforcement.approve(
                 token: decodedToken, minutes: minutes, fingerprint: fingerprint,
                 blockMinutes: breakMinutes, overridingDealID: overridingID.flatMap(UUID.init(uuidString:)),
                 immediateRelief: relief,
@@ -111,6 +121,9 @@ public final class VolitionScreenTimeModule: Module {
                     AppGroup.defaults.bool(forKey: "expoAIConsent")
                         && AppGroup.defaults.integer(forKey: "expoConsentRevision") == consentRevision
                 })
+            } catch let error as ConversationAccessError where error == .focusProtected || error == .focusBoundary {
+                throw FocusBridgeError(code: error == .focusProtected ? "FOCUS_ACTIVE" : "FOCUS_BOUNDARY")
+            }
             let snapshots = try ConversationGrantStore().transaction { $0.snapshots }
             return Self.grantRecord(grant, snapshots: snapshots)
         }
@@ -211,18 +224,42 @@ public final class VolitionScreenTimeModule: Module {
         AsyncFunction("exportLegacyState") { () -> String in
             try await MainActor.run { try LegacyImport.shared.export() }
         }
-        AsyncFunction("updateFocus") { (json: String) in
-            let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
-            let state = try decoder.decode(FocusProtectionState.self, from: Data(json.utf8))
-            try Self.enforcement.updateFocus(state, monitor: DeviceFocusMonitor())
+        AsyncFunction("applyFocusCommand") { (json: String) -> String in
+            let active = await MainActor.run { UIApplication.shared.applicationState == .active }
+            guard active, Self.authorizationStatus() == "approved" else {
+                throw FocusBridgeError(code: "FOCUS_PERMISSION")
+            }
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let command = try decoder.decode(FocusCommand.self, from: Data(json.utf8))
+            do { try Self.enforcement.mutateFocus(command) }
+            catch let error as ConversationAccessError {
+                switch error {
+                case .focusNeedsApps: throw FocusBridgeError(code: "FOCUS_APPS")
+                case .focusInvalid: throw FocusBridgeError(code: "FOCUS_INVALID")
+                case .staleRequest: throw FocusBridgeError(code: "FOCUS_STALE")
+                default: throw FocusBridgeError(code: "FOCUS_REGISTRATION")
+                }
+            } catch { throw FocusBridgeError(code: "FOCUS_REGISTRATION") }
+            return try Self.focusSnapshot()
         }
-        AsyncFunction("getFocus") { () -> String in
-            let state = try ConversationGrantStore().transaction { _ in try Self.enforcement.focusStore.load() }
-            let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
-            return String(decoding: try encoder.encode(state), as: UTF8.self)
+        AsyncFunction("getFocus") { () -> String in try Self.focusSnapshot() }
+        AsyncFunction("repairFocusMonitoring") { () in
+            do { try Self.enforcement.repairFocusMonitoring() }
+            catch { throw FocusBridgeError(code: "FOCUS_REGISTRATION") }
+        }
+        View(FocusTimePickerView.self) {
+            Events("onTimeChange")
+            Prop("minutes") { (view: FocusTimePickerView, minutes: Int) in view.setMinutes(minutes) }
+            Prop("label") { (view: FocusTimePickerView, label: String) in view.setLabel(label) }
         }
         View(VolitionAppIconView.self) {
             Prop("tokenBase64") { (view: VolitionAppIconView, encoded: String) in view.updateToken(encoded) }
         }
     }
+}
+
+private struct FocusBridgeError: CodedError {
+    let code: String
+    var description: String { code }
 }

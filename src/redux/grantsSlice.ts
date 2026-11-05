@@ -14,6 +14,7 @@ export interface Intervention {
   status:
     "checkIn" | "offered" | "delaying" | "ready" | "activating" | "interrupted";
   deadline?: string;
+  focusLimitedUntil?: string;
   createdAt: string;
   expiresAt: string;
   emotion?: string;

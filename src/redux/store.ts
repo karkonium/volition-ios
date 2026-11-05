@@ -34,6 +34,13 @@ export const store = configureStore({
       key: previewMode ? "volition-preview-v1" : "volition-v1",
       version: 1,
       storage: AsyncStorage,
+      blacklist: ["focus"],
+      migrate: async (state) => {
+        if (!state) return state;
+        const next = { ...state } as typeof state & { focus?: unknown };
+        delete next.focus;
+        return next;
+      },
     },
     reducer,
   ),

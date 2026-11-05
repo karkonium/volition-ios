@@ -2,11 +2,12 @@ import { previewMode } from "../../modules/volition-screen-time";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { useWindowDimensions } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useTheme, Text, Flex } from "@itsRares/ahhzo-elements";
+import { useTheme, useThemedStyles, Text, Flex, type Theme } from "@itsRares/ahhzo-elements";
 import { ChatScreen } from "../screens/chat/ChatScreen";
 import { AppsScreen } from "../screens/apps/AppsScreen";
 import { AppEditorScreen } from "../screens/apps/AppEditorScreen";
@@ -77,21 +78,8 @@ export function MainTabNavigator(): React.JSX.Element {
   const { width } = useWindowDimensions();
   const sidebar = width >= 768;
   const { theme } = useTheme();
-  return (
-    <Flex vertical flex={1}>
-      {previewMode && (
-        <Text
-          type="ExtraSmall"
-          style={{
-            textAlign: "center",
-            backgroundColor: theme.colors.secondary,
-            color: theme.colors.textSecondary,
-            paddingVertical: 4,
-          }}
-        >
-          {t("preview")}
-        </Text>
-      )}
+  const styles = useThemedStyles(createStyles);
+  const tabs = (
       <Tabs.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
@@ -146,6 +134,22 @@ export function MainTabNavigator(): React.JSX.Element {
         <Tabs.Screen name="Focus" component={FocusScreen} />
         <Tabs.Screen name="Settings" component={SettingsNavigator} />
       </Tabs.Navigator>
-    </Flex>
   );
+  return previewMode ? (
+    <Flex vertical flex={1}>
+      <SafeAreaView edges={["top", "left", "right"]} style={styles.preview}>
+        <Text type="ExtraSmall" style={styles.previewText}>{t("preview")}</Text>
+      </SafeAreaView>
+      <SafeAreaProvider>{tabs}</SafeAreaProvider>
+    </Flex>
+  ) : tabs;
 }
+
+const createStyles = (theme: Theme) => ({
+  preview: { backgroundColor: theme.colors.secondary },
+  previewText: {
+    textAlign: "center",
+    color: theme.colors.textSecondary,
+    paddingVertical: theme.spacing.xxs,
+  },
+});

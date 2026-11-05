@@ -12,6 +12,9 @@ nonisolated struct ConversationGrantStore: Sendable {
         let token: ApplicationToken
         let fingerprint: String
         var configurationFingerprint: String? = nil
+        var focusCutoff: Date? = nil
+        var effectiveExpiry: Date { min(plan.expiresAt, focusCutoff ?? plan.expiresAt) }
+        func hasExpired(at now: Date) -> Bool { effectiveExpiry <= now }
     }
     /// Accepted terms survive chat clearing, relaunch, early ending and expiry.
     struct DealCommitment: Codable, Equatable, Sendable {
@@ -42,6 +45,11 @@ nonisolated struct ConversationGrantStore: Sendable {
         var pendingAt: Date?
         var syncedAt: Date?
         var recoveredAt: Date?
+        var focus: FocusProtectionState?
+
+        var focusAppIDs: Set<UUID> {
+            Set(snapshots.filter { $0.kind == .conversation && $0.isEnabled }.map(\.id))
+        }
     }
     let fileURL: URL?
 
@@ -63,10 +71,23 @@ nonisolated struct ConversationGrantStore: Sendable {
                 if FileManager.default.fileExists(atPath: url.path) {
                     state = try JSONDecoder().decode(State.self, from: Data(contentsOf: url))
                 }
+                let migrated = state.focus == nil
+                if migrated { state.focus = try legacyFocus() }
+                let previous = state
                 let value = try operation(&state)
-                try saveMirror(state.snapshots)
-                try JSONEncoder().encode(state).write(
-                    to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+                if migrated || previous.focus != state.focus || previous.snapshots != state.snapshots {
+                    try saveMirror(state)
+                } else if !FileManager.default.fileExists(atPath: mirrorURL?.path ?? "") {
+                    try saveMirror(state)
+                }
+                do {
+                    try JSONEncoder().encode(state).write(
+                        to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+                } catch {
+                    try? saveMirror(previous)
+                    throw error
+                }
+                if let focus = state.focus { try? FocusDisplayStore(base: fileURL).publish(focus) }
                 return value
             }
         }
@@ -81,10 +102,32 @@ nonisolated struct ConversationGrantStore: Sendable {
     }
     private var mirrorURL: URL? { fileURL?.appendingPathExtension("configuration") }
 
-    private func saveMirror(_ snapshots: [RuleSnapshotDTO]) throws {
+    private struct RecoveryConfiguration: Codable {
+        let snapshots: [RuleSnapshotDTO]
+        let focus: FocusProtectionState?
+    }
+
+    private func legacyFocus() throws -> FocusProtectionState {
+        guard let url = fileURL?.deletingLastPathComponent().appendingPathComponent("focus.json") else {
+            throw ConversationAccessError.storageUnavailable
+        }
+        guard FileManager.default.fileExists(atPath: url.path) else { return FocusProtectionState(revision: 0) }
+        var focus = try JSONDecoder().decode(FocusProtectionState.self, from: Data(contentsOf: url))
+        guard focus.isValid else { throw ConversationAccessError.storageUnavailable }
+        for index in focus.periods.indices {
+            focus.periods[index].allApps = focus.periods[index].appIDs.isEmpty
+        }
+        if let session = focus.session {
+            focus.session?.allApps = session.appIDs.isEmpty
+        }
+        focus.revision = 0
+        return focus
+    }
+
+    private func saveMirror(_ state: State) throws {
         guard let mirrorURL else { throw ConversationAccessError.storageUnavailable }
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
-        let payload = try encoder.encode(snapshots)
+        let payload = try encoder.encode(RecoveryConfiguration(snapshots: state.snapshots, focus: state.focus))
         let mirror = ConfigurationMirror(
             payload: payload,
             checksum: SHA256.hash(data: payload).map { String(format: "%02x", $0) }.joined())
@@ -108,14 +151,20 @@ nonisolated struct ConversationGrantStore: Sendable {
                     _ = state
                     return
                 }
-                let snapshots: [RuleSnapshotDTO]
-                if let fallback {
-                    snapshots = fallback
-                } else {
+                let recovery: RecoveryConfiguration?
+                if FileManager.default.fileExists(atPath: mirrorURL.path) {
                     let mirror = try JSONDecoder().decode(ConfigurationMirror.self, from: Data(contentsOf: mirrorURL))
                     let checksum = SHA256.hash(data: mirror.payload).map { String(format: "%02x", $0) }.joined()
                     guard checksum == mirror.checksum else { throw ConversationAccessError.storageUnavailable }
-                    snapshots = try JSONDecoder().decode([RuleSnapshotDTO].self, from: mirror.payload)
+                    if let configuration = try? JSONDecoder().decode(RecoveryConfiguration.self, from: mirror.payload) {
+                        recovery = configuration
+                    } else {
+                        recovery = RecoveryConfiguration(
+                            snapshots: try JSONDecoder().decode([RuleSnapshotDTO].self, from: mirror.payload), focus: nil)
+                    }
+                } else { recovery = nil }
+                guard let snapshots = fallback ?? recovery?.snapshots else {
+                    throw ConversationAccessError.storageUnavailable
                 }
                 for snapshot in snapshots where snapshot.isEnabled && snapshot.kind == .conversation {
                     guard let data = snapshot.selectionData,
@@ -129,7 +178,8 @@ nonisolated struct ConversationGrantStore: Sendable {
                 }
                 restore(snapshots)
                 var state = State(); state.snapshots = snapshots; state.recoveredAt = .now
-                try saveMirror(snapshots)
+                state.focus = try recovery?.focus ?? legacyFocus()
+                try saveMirror(state)
                 try JSONEncoder().encode(state).write(
                     to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             }
@@ -203,5 +253,5 @@ nonisolated struct ConversationGrantStore: Sendable {
 
 nonisolated enum ConversationAccessError: Error, Equatable {
     case storageUnavailable, alreadyUnlocked, staleRequest, noApplicableRule, monitoringUnavailable,
-        shieldReleaseFailed, waiting, focusProtected
+        shieldReleaseFailed, waiting, focusProtected, focusBoundary, focusNeedsApps, focusInvalid
 }
