@@ -31,57 +31,41 @@ export function ChatHeader({
 
   return (
     <Flex vertical style={styles.header}>
-      <Flex alignItems="center" justifyContent="space-between" gap="sm">
-        <Text type="H3" accessibilityRole="header">
-          {t("chat")}
-        </Text>
-        <Flex style={styles.selection}>
-          <AttentionRegion trigger={attention}>
-            <Touchable
-              type="opacity"
-              style={styles.chooser}
-              testID="conversationChooseAppButton"
-              accessibilityRole="button"
-              accessibilityLabel={
-                app
-                  ? t("requestAccessLabel", { app: app.name })
-                  : t("chooseApp")
-              }
-              onPress={onChooseApp}
+      <Text type="H2" accessibilityRole="header">
+        {t("chat")}
+      </Text>
+      <AttentionRegion trigger={attention}>
+        <Touchable
+          type="opacity"
+          style={styles.chooser}
+          testID="conversationChooseAppButton"
+          accessibilityRole="button"
+          accessibilityLabel={
+            app ? t("requestAccessLabel", { app: app.name }) : t("chooseApp")
+          }
+          onPress={onChooseApp}
+        >
+          <VolitionAppIcon
+            key={app?.tokenBase64}
+            tokenBase64={app?.tokenBase64 ?? ""}
+          />
+          <Flex vertical flex={1} style={styles.appLabel}>
+            <Text type="ExtraSmall">{t("requestAccessFor")}</Text>
+            <Text
+              weight="SemiBold"
+              numberOfLines={1}
+              style={!app && styles.chooseLabel}
             >
-              {app ? (
-                <Flex style={styles.iconSlot}>
-                  <Flex style={styles.compactIcon}>
-                    <VolitionAppIcon
-                      key={app.tokenBase64}
-                      tokenBase64={app.tokenBase64}
-                    />
-                  </Flex>
-                </Flex>
-              ) : (
-                <Icon
-                  name="apps-outline"
-                  size={theme.typography.sizes.lg}
-                  color={theme.colors.textLink}
-                />
-              )}
-              <Text
-                type="Small"
-                weight="SemiBold"
-                numberOfLines={1}
-                style={app ? styles.appName : styles.chooseLabel}
-              >
-                {app?.name ?? t("chooseApp")}
-              </Text>
-              <Icon
-                name="chevron-down"
-                size={theme.typography.sizes.sm}
-                color={theme.colors.textSecondary}
-              />
-            </Touchable>
-          </AttentionRegion>
-        </Flex>
-      </Flex>
+              {app?.name ?? t("chooseApp")}
+            </Text>
+          </Flex>
+          <Icon
+            name="chevron-down"
+            size={theme.typography.sizes.sm}
+            color={theme.colors.textSecondary}
+          />
+        </Touchable>
+      </AttentionRegion>
       {attention > 0 && (
         <Text
           type="Small"
@@ -103,12 +87,11 @@ const createStyles = (theme: Theme) =>
       maxWidth: layout.pageMaxWidth,
       alignSelf: "center",
       paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.xxs,
+      paddingVertical: theme.spacing.xs,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.border,
-      gap: theme.spacing.xxs,
+      gap: theme.spacing.xs,
     },
-    selection: { maxWidth: "76%", flexShrink: 1 },
     chooser: {
       flexDirection: "row",
       alignItems: "center",
@@ -121,14 +104,7 @@ const createStyles = (theme: Theme) =>
       paddingVertical: theme.spacing.xxs,
       minHeight: layout.minimumTouchSize,
     },
-    iconSlot: {
-      width: theme.spacing.lg,
-      height: theme.spacing.lg,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    compactIcon: { transform: [{ scale: 0.5 }] },
-    appName: { flexShrink: 1, color: theme.colors.text },
-    chooseLabel: { flexShrink: 1, color: theme.colors.textLink },
-    hint: { color: theme.colors.textLink, alignSelf: "flex-end" },
+    appLabel: { minWidth: 0 },
+    chooseLabel: { color: theme.colors.textLink },
+    hint: { color: theme.colors.textLink },
   }) satisfies Record<string, ResponsiveStyle>;

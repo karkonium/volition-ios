@@ -206,6 +206,8 @@
   "quickFocusHelp": "在这里或通过 Siri 和快捷指令开始专注。",
   "quickFocusSummary_one": "{{count}} 分钟 · {{apps}}",
   "quickFocusSummary_other": "{{count}} 分钟 · {{apps}}",
+  "focusStartTime": "开始时间",
+  "focusEndTime": "结束时间",
   "focusIdle": "无生效的保护",
   "focusRoutinesEmpty": "为工作、睡眠或定期休息安排时间。",
   "focusAccessBlocked": "此应用的专注保护已生效。请选择“查看专注”了解可用操作。",

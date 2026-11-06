@@ -206,6 +206,8 @@
   "quickFocusHelp": "Inicia una sesión aquí o desde Siri y Atajos.",
   "quickFocusSummary_one": "{{count}} minuto · {{apps}}",
   "quickFocusSummary_other": "{{count}} minutos · {{apps}}",
+  "focusStartTime": "Hora de inicio",
+  "focusEndTime": "Hora de fin",
   "focusIdle": "Sin protección activa",
   "focusRoutinesEmpty": "Reserva tiempo para trabajar, dormir o hacer una pausa.",
   "focusAccessBlocked": "La concentración está activa para esta app. Revisa Concentración para ver tus opciones.",

@@ -206,6 +206,8 @@
   "quickFocusHelp": "Start a session here or from Siri and Shortcuts.",
   "quickFocusSummary_one": "{{count}} minute · {{apps}}",
   "quickFocusSummary_other": "{{count}} minutes · {{apps}}",
+  "focusStartTime": "Start time",
+  "focusEndTime": "End time",
   "focusIdle": "No active protection",
   "focusRoutinesEmpty": "Schedule time for work, sleep, or a regular break.",
   "focusAccessBlocked": "Focus is active for this app. Use Review Focus for your options.",

@@ -1,7 +1,16 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { requireNativeViewManager } from "expo-modules-core";
-import { Button, Flex, Modal, Text, TextField } from "@itsRares/ahhzo-elements";
+import { enCA, es, zhCN } from "date-fns/locale";
+import {
+  Button,
+  Flex,
+  Modal,
+  DateField,
+  Text,
+  TextField,
+  useThemedStyles,
+  type Theme,
+} from "@itsRares/ahhzo-elements";
 import { FocusChoice } from "./FocusChoice";
 import {
   days,
@@ -10,14 +19,15 @@ import {
   type PeriodDraft,
 } from "../focusPresentation";
 import { AppSelection } from "./AppSelection";
+import { resolveLanguage } from "../../../translations/locale";
 
-const NativeTimePicker = requireNativeViewManager<{
-  minutes: number;
-  locale: string;
-  label: string;
-  onTimeChange: (event: { nativeEvent: { minutes: number } }) => void;
-  style: { height: number; width: number };
-}>("VolitionScreenTime", "FocusTimePickerView");
+const timeKeys = ["startMinutes", "endMinutes"] as const;
+const locales = { en: enCA, es, zh: zhCN };
+
+function dateForTime(minutes: number): Date {
+  // Use a fixed local date so a routine can pick any minute on DST transition days.
+  return new Date(2000, 0, 15, Math.floor(minutes / 60), minutes % 60);
+}
 
 export function PeriodEditor({
   draft,
@@ -35,11 +45,23 @@ export function PeriodEditor({
   busy: boolean;
 }): React.JSX.Element {
   const { t, i18n } = useTranslation();
+  const styles = useThemedStyles(createStyles);
+  const locale = locales[resolveLanguage(i18n.resolvedLanguage ?? null, [])];
+  const startMinutes = draft?.startMinutes ?? 0;
+  const endMinutes = draft?.endMinutes ?? 0;
+  const timeValues = useMemo(
+    () => ({
+      startMinutes: dateForTime(startMinutes),
+      endMinutes: dateForTime(endMinutes),
+    }),
+    [startMinutes, endMinutes],
+  );
   return (
     <Modal
       title={draft?.id ? t("editPeriod") : t("newPeriod")}
       isVisible={draft !== null}
       onClose={onClose}
+      closeLabel={t("cancel")}
       scrollable
     >
       {draft && (
@@ -51,22 +73,30 @@ export function PeriodEditor({
             onChange={(name) => setDraft({ ...draft, name })}
             maxLength={100}
           />
-          <Flex wrap="wrap" gap="md">
-            {(["startMinutes", "endMinutes"] as const).map((key) => {
+          <Flex wrap="wrap" gap="sm">
+            {timeKeys.map((key) => {
               const label = t(
-                key === "startMinutes" ? "startTimeLabel" : "endTimeLabel",
+                key === "startMinutes" ? "focusStartTime" : "focusEndTime",
               );
               return (
-                <Flex key={key} vertical gap="xs">
-                  <Text type="Small">{label}</Text>
-                  <NativeTimePicker
-                    minutes={draft[key]}
-                    label={label}
-                    locale={i18n.resolvedLanguage ?? "en"}
-                    style={{ height: 44, width: 145 }}
-                    onTimeChange={({ nativeEvent }) =>
-                      setDraft({ ...draft, [key]: nativeEvent.minutes })
+                <Flex key={key} style={{ flexGrow: 1, flexBasis: 130 }}>
+                  <DateField
+                    mode="time"
+                    title={label}
+                    placeholderLabel={label}
+                    rightIcon="time-outline"
+                    locale={locale}
+                    displayFormat="p"
+                    calendarContentContainerStyle={styles.pickerPanel}
+                    calendarTimePickerStyle={styles.pickerControls}
+                    value={timeValues[key]}
+                    onChange={(date) =>
+                      setDraft({
+                        ...draft,
+                        [key]: date.getHours() * 60 + date.getMinutes(),
+                      })
                     }
+                    disabled={busy}
                   />
                 </Flex>
               );
@@ -129,3 +159,9 @@ export function PeriodEditor({
     </Modal>
   );
 }
+
+const createStyles = (theme: Theme) => ({
+  pickerPanel: { borderRadius: theme.radii.lg },
+  // DateField already pads its body. Drop the extra divider spacing used below a calendar.
+  pickerControls: { marginTop: 0, paddingTop: 0, borderTopWidth: 0 },
+});
