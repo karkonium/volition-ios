@@ -1,5 +1,5 @@
 import { parseLegacyHistory } from "./legacyImport";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import * as Crypto from "expo-crypto";
 import { store, persistor } from "../redux/store";
 import {
@@ -240,11 +240,15 @@ export async function applyFocusCommand(command: FocusCommand): Promise<void> {
       JSON.stringify(command),
     );
   } catch (error) {
+    const android = Platform.OS === "android";
+    const registration = android
+      ? "androidFocusRegistration"
+      : "focusRegistration";
     const messages: Record<string, string> = {
       FOCUS_APPS: "focusChooseApps",
       FOCUS_INVALID: "focusInvalid",
-      FOCUS_PERMISSION: "focusPermission",
-      FOCUS_REGISTRATION: "focusRegistration",
+      FOCUS_PERMISSION: android ? "androidFocusPermission" : "focusPermission",
+      FOCUS_REGISTRATION: registration,
       FOCUS_STALE: "focusChanged",
     };
     if ((error as { code?: string } | null)?.code === "FOCUS_STALE")
@@ -252,7 +256,7 @@ export async function applyFocusCommand(command: FocusCommand): Promise<void> {
     throw new Error(
       i18n.t(
         messages[(error as { code?: string } | null)?.code ?? ""] ??
-          "focusRegistration",
+          registration,
       ),
     );
   }

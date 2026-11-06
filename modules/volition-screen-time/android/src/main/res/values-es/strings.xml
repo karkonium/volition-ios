@@ -1,0 +1,18 @@
+<resources>
+    <string name="volition_blocked_title">Se necesita una conversación</string>
+    <string name="volition_pending_title">Continuar en Volition</string>
+    <string name="volition_blocked_instructions">Toca Solicitar acceso para abrir el chat en Volition. Si no se abre, abre Volition directamente.</string>
+    <string name="volition_request_access">Solicitar acceso</string>
+    <string name="volition_close">Aceptar</string>
+    <string name="volition_quick_focus">Concentración rápida</string>
+    <string name="volition_focus_until">Protección de Concentración hasta las %1$s.</string>
+    <string name="volition_focus_overlap">Esta protección termina a las %1$s. Hay otras protecciones activas.</string>
+    <string name="volition_review_focus">Revisar Concentración</string>
+    <string name="volition_block_service">Bloqueo de apps de Volition</string>
+    <string name="volition_block_description">Detecta la app activa para mostrar la pantalla de bloqueo de Volition en las apps que elijas.</string>
+    <string name="volition_choose_app">Elige una app</string>
+    <string name="volition_access_timers">Temporizadores de acceso de Volition</string>
+    <string name="volition_access_reminders">Recordatorios de acceso de Volition</string>
+    <string name="volition_unlocked">%1$s está desbloqueada</string>
+    <string name="volition_seconds_remaining">Quedan %1$s segundos</string>
+</resources>

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Platform } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Button, Flex, Modal, Text, TextField } from "@itsRares/ahhzo-elements";
 import { FocusChoice } from "./FocusChoice";
@@ -78,7 +79,13 @@ export function SessionSection({
         scrollable
       >
         <Flex vertical gap="md">
-          <Text type="Small">{t("quickFocusHelp")}</Text>
+          <Text type="Small">
+            {t(
+              Platform.OS === "android"
+                ? "androidQuickFocusHelp"
+                : "quickFocusHelp",
+            )}
+          </Text>
           <Flex wrap="wrap" gap="xs">
             {[15, 25, 50].map((minutes) => (
               <FocusChoice

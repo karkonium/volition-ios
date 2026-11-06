@@ -28,6 +28,16 @@ compatibility harness and old native test folders have been removed at the user'
 explicit request. Production native code is owned by the module and targets.
 New regression coverage uses the Expo test setup.
 
+## Android native boundary
+
+The same Expo shell and TypeScript coordinator call the Kotlin implementation of
+`VolitionScreenTime` under `modules/volition-screen-time/android/`. The Android
+picker returns a single launchable package as an opaque bridge token. The Expo
+module and Accessibility Service share the main looper and an atomic native state
+file for saved apps, grants, breaks and Focus. The service observes active window
+packages and does not read their contents. Keys use Android Keystore encryption
+with a private, non-backed-up ciphertext file. Firebase is configured only on iOS.
+
 ## Verification
 
 Run `npm ci`, `npm run typecheck`, `npm test`, and `npx expo prebuild --clean
@@ -46,3 +56,8 @@ OpenAI. Production builds cannot enable it.
 Real-device acceptance remains required for shields, picker authorization,
 background/terminated expiry, notification delivery and Live Activities. A
 successful unsigned build or preview is not evidence that iOS dismissed a shield.
+
+For Android run `npx expo prebuild --clean --platform android`, then
+`cd android && ./gradlew :volition-screen-time:testDebugUnitTest :app:assembleDebug`.
+Use a task-owned Android emulator or physical test device. The end-to-end check
+must leave the selected app on screen through a real one-minute deadline.

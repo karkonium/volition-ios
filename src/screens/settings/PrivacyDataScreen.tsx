@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, View } from "react-native";
+import { Alert, Platform, View } from "react-native";
 import {
   Button,
   SettingsRow,
@@ -86,7 +86,13 @@ export function PrivacyDataScreen(): React.JSX.Element {
       </SettingsSection>
       <SettingsSection title={t("onDevice")}>
         <View style={styles.card}>
-          <Text>{t("onDeviceBody")}</Text>
+          <Text>
+            {t(
+              Platform.OS === "android"
+                ? "androidOnDeviceBody"
+                : "onDeviceBody",
+            )}
+          </Text>
         </View>
       </SettingsSection>
       <SettingsSection

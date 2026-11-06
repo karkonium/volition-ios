@@ -259,6 +259,26 @@ For repeated requests the coach can ask a concrete, voluntary next-use commitmen
 “If we make room for five minutes on SoundCloud now, when would you be comfortable
 checking it again?” Discuss this before offering a deal; only an accepted deal creates the enforced block, and activation may still fail.
 
+### Android enforcement
+
+After the user agrees to Volition's in-app disclosure and enables the Android
+Accessibility Service, opening a saved app shows an accessibility overlay with
+the same shield copy and actions.
+Request access saves a foreground routing request and opens Volition with that
+profile selected. It cannot issue a grant. Chat runs the shared coach and offers
+flow. The Android service evaluates only durable local rules, without inspecting
+screen contents or sending window events to the coach.
+
+The native bridge checks the live app configuration, consent revision, Focus,
+existing grant and any accepted break before storing a grant. The service checks
+the deadline on window changes and schedules an in-process callback for the
+nearest boundary, including while React Native is in the background. It rechecks
+on screen and time changes. A grant can only release its own app. Countdown
+notifications and grouped 60/30/10-second reminders are presentation only.
+The user can turn the service off in Android settings. The Android overlay and
+countdown notifications use Android system surfaces. Physical device acceptance
+and Play Accessibility Service review remain pending.
+
 ## Configuration and evidence
 
 See OPERATIONS.md for ignored personal Conversation.env, tagged diagnostics and

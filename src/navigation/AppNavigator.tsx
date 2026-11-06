@@ -1,4 +1,7 @@
-import { previewMode } from "../../modules/volition-screen-time";
+import {
+  observeShieldRequests,
+  previewMode,
+} from "../../modules/volition-screen-time";
 import React, { useEffect, useState, useRef } from "react";
 import { AppState, Linking, useColorScheme, View } from "react-native";
 import {
@@ -49,12 +52,17 @@ export function AppNavigator(): React.JSX.Element {
       if (status === "active" && initialized.current)
         void syncNative().catch(() => diagnostic("native.sync_failed"));
     });
+    const requests = observeShieldRequests(() => {
+      if (initialized.current)
+        void syncNative().catch(() => diagnostic("native.sync_failed"));
+    });
     const timer = setInterval(() => {
       if (AppState.currentState === "active" && initialized.current)
         void syncNative().catch(() => diagnostic("native.sync_failed"));
     }, 30000);
     return () => {
       listener.remove();
+      requests?.remove();
       clearInterval(timer);
     };
   }, []);

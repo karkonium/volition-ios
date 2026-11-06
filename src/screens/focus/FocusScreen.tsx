@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, View } from "react-native";
+import { Alert, Platform, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import * as Crypto from "expo-crypto";
 import {
@@ -14,6 +14,7 @@ import { SymbolTile } from "../../components/SymbolTile/SymbolTile";
 import { useRoute, type RouteProp } from "@react-navigation/native";
 import { Screen, perform } from "../../components/Screen";
 import { VolitionCard } from "../../components/VolitionCard";
+import { layout } from "../../layout/layout";
 import { useAppSelector } from "../../redux/store";
 import type { FocusCommand, FocusOccurrence } from "../../redux/focusSlice";
 import type { MainTabs } from "../../navigation/types";
@@ -105,7 +106,13 @@ export function FocusScreen(): React.JSX.Element {
       {focus.monitoringUnavailable && (
         <VolitionCard>
           <Flex vertical gap="xs">
-            <Text accessibilityRole="alert">{t("focusRegistration")}</Text>
+            <Text accessibilityRole="alert">
+              {t(
+                Platform.OS === "android"
+                  ? "androidFocusRegistration"
+                  : "focusRegistration",
+              )}
+            </Text>
             <Button
               text={t("focusRetry")}
               variant="outline"
@@ -182,8 +189,13 @@ export function FocusScreen(): React.JSX.Element {
           </Text>
           <Button
             layout="inline"
+            size="small"
             text={t("focusAddRoutine")}
-            variant="outline"
+            variant="ghost"
+            leftIcon="add"
+            leftIconFamily="Ionicons"
+            buttonStyle={styles.addRoutine}
+            textStyle={styles.addRoutineText}
             disabled={busy || focus.revision < 0}
             testID="addFocusRoutine"
             onPress={() => edit()}
@@ -278,4 +290,10 @@ export function FocusScreen(): React.JSX.Element {
 const createStyles = (theme: Theme) => ({
   eyebrow: { color: theme.colors.textSecondary },
   divider: { height: 1, backgroundColor: theme.colors.border },
+  addRoutine: {
+    minHeight: layout.minimumTouchSize,
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: theme.spacing.xs,
+  },
+  addRoutineText: { fontSize: 14, lineHeight: 20 },
 });

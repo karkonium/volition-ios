@@ -39,7 +39,7 @@ describe("Firebase native configuration", () => {
     const config = configuration();
     expect(config.extra.firebaseConfigured).toBe(false);
     expect(config.dependencies["@react-native-firebase/crashlytics"]).toEqual({
-      platforms: { ios: { scriptPhases: [] } },
+      platforms: { android: null, ios: { scriptPhases: [] } },
     });
   });
 
@@ -47,6 +47,10 @@ describe("Firebase native configuration", () => {
     writeFileSync(join(directory, "GoogleService-Info.plist"), "placeholder");
     const config = configuration();
     expect(config.extra.firebaseConfigured).toBe(true);
-    expect(config.dependencies).toEqual({});
+    expect(config.dependencies).toEqual({
+      "@react-native-firebase/app": { platforms: { android: null } },
+      "@react-native-firebase/analytics": { platforms: { android: null } },
+      "@react-native-firebase/crashlytics": { platforms: { android: null } },
+    });
   });
 });

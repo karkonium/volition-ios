@@ -1,5 +1,5 @@
 import React from "react";
-import { Image, View } from "react-native";
+import { Image, Platform, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import {
   Button,
@@ -38,13 +38,19 @@ export function WelcomeScreen({
           <Text type="Small" weight="Bold" style={styles.previewLabel}>
             {t("onboardingSetupPreview")}
           </Text>
-          {[t("welcomeStep1"), t("welcomeStep2"), t("welcomeStep3")].map(
-            (item) => (
-              <Text key={item} style={styles.step}>
-                {item}
-              </Text>
+          {[
+            t("welcomeStep1"),
+            t(
+              Platform.OS === "android"
+                ? "androidWelcomeBlocking"
+                : "welcomeStep2",
             ),
-          )}
+            t("welcomeStep3"),
+          ].map((item) => (
+            <Text key={item} style={styles.step}>
+              {item}
+            </Text>
+          ))}
         </View>
         <Button text={t("getStarted")} onPress={onContinue} />
       </View>
