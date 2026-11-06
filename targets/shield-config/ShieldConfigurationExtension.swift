@@ -45,7 +45,18 @@ final class ShieldConfigurationExtension: ShieldConfigurationDataSource {
         categoryToken: ActivityCategoryToken? = nil
     ) -> ShieldConfiguration {
         let snapshots = RuleSnapshotUserDefaultsStore().load()
-        if !ConversationGrantStore.applicable(to: token, in: snapshots).isEmpty {
+        let apps = ConversationGrantStore.applicable(to: token, in: snapshots)
+        if !apps.isEmpty {
+            let focus = FocusDisplayStore().load()?.occurrences(
+                at: .now, apps: Set(apps.map(\.id)), includeUpcoming: false
+            ).active
+            if let reason = focus?.first(where: { !$0.appIDs.subtracting($0.exceptedAppIDs).isEmpty }) {
+                return focusConfiguration(
+                    reason,
+                    count: focus?.filter {
+                        !$0.appIDs.subtracting($0.exceptedAppIDs).isEmpty
+                    }.count ?? 1)
+            }
             return configuration(
                 for: .conversation(
                     route: .current, requestPending: ConversationRequestStore().pending()?.token == token))
@@ -84,6 +95,21 @@ final class ShieldConfigurationExtension: ShieldConfigurationDataSource {
                 maxOpens: snapshot.maxOpens,
                 sessionMinutes: MonitoringPlan.openSessionMinutes)
         )
+    }
+
+    private func focusConfiguration(_ reason: FocusOccurrence, count: Int) -> ShieldConfiguration {
+        let title = reason.name ?? CopyKey.shieldQuickFocusTitle.string
+        let time = reason.endsAt.formatted(
+            .dateTime.hour().minute().locale(CopyKey.shieldFocusUntil.resource.locale))
+        return ShieldConfiguration(
+            backgroundBlurStyle: .systemMaterial,
+            title: .init(text: title, color: .label),
+            subtitle: .init(
+                text: count > 1 ? CopyKey.shieldFocusOverlap.string(time) : CopyKey.shieldFocusUntil.string(time),
+                color: .secondaryLabel),
+            primaryButtonLabel: .init(text: CopyKey.shieldPrimaryButtonLabel.string, color: .white),
+            primaryButtonBackgroundColor: .systemBlue,
+            secondaryButtonLabel: .init(text: CopyKey.shieldReviewFocus.string, color: .systemBlue))
     }
 
     private func configuration(for presentation: ShieldPresentation) -> ShieldConfiguration {

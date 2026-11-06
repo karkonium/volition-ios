@@ -15,11 +15,13 @@ import type { VolitionSavedApp } from "../../../redux/appsSlice";
 export function AppRow({
   app,
   status,
+  focusLinks,
   onEdit,
   onRemove,
 }: {
   app: VolitionSavedApp;
   status: string;
+  focusLinks: { id: string; label: string; open: () => void }[];
   onEdit: () => void;
   onRemove: () => void;
 }) {
@@ -56,6 +58,19 @@ export function AppRow({
         <Text type="Small">{app.goal}</Text>
       </Pressable>
       <View style={styles.footer}>
+        {focusLinks.map(({ id, label, open }) => (
+          <Pressable
+            key={id}
+            accessibilityRole="button"
+            accessibilityLabel={label}
+            onPress={open}
+            style={styles.remove}
+          >
+            <Text type="Small" style={styles.status}>
+              {label}
+            </Text>
+          </Pressable>
+        ))}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Remove ${app.name}`}

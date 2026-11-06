@@ -1,27 +1,35 @@
+import React from "react";
+import { useTranslation } from "react-i18next";
 import {
+  Flex,
+  Text,
   colorWithOpacity,
+  useThemedStyles,
   type ResponsiveStyle,
   type Theme,
 } from "@itsRares/ahhzo-elements";
-import React from "react";
-import { Flex, Text, useThemedStyles } from "@itsRares/ahhzo-elements";
+import type { ChatMessage } from "../../../redux/chatSlice";
+
 export function ConversationMessage({
   role,
   text,
-}: {
-  role: string;
-  text: string;
-}): React.JSX.Element {
+}: Pick<ChatMessage, "role" | "text">): React.JSX.Element {
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
+  const user = role === "user";
+
   return (
-    <Flex
-      vertical
-      style={[styles.message, role === "user" && styles.userMessage]}
-    >
-      <Text type="ExtraSmall" weight="SemiBold">
-        {role === "user" ? "YOU" : "VOLITION"}
+    <Flex vertical style={[styles.message, user && styles.userMessage]}>
+      <Text
+        type="ExtraSmall"
+        weight="SemiBold"
+        style={[styles.byline, user && styles.userByline]}
+      >
+        {user ? t("chatYou") : "Volition"}
       </Text>
-      <Text selectable>{text}</Text>
+      <Text selectable style={styles.body}>
+        {text}
+      </Text>
     </Flex>
   );
 }
@@ -29,21 +37,27 @@ export function ConversationMessage({
 const createStyles = (theme: Theme) =>
   ({
     message: {
-      maxWidth: "92%",
-      padding: theme.spacing.md,
+      maxWidth: "94%",
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
       borderRadius: theme.radii.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderTopLeftRadius: theme.radii.sm / 2,
       backgroundColor: theme.colors.card,
       gap: theme.spacing.xxs,
       alignSelf: "flex-start",
-      borderTopLeftRadius: theme.radii.sm / 2,
     },
     userMessage: {
+      maxWidth: "86%",
       alignSelf: "flex-end",
-      backgroundColor: colorWithOpacity(theme.colors.accent, 0.09),
-      borderColor: "transparent",
+      backgroundColor: colorWithOpacity(theme.colors.accent, 0.13),
       borderTopLeftRadius: theme.radii.md,
-      borderBottomRightRadius: theme.radii.sm / 2,
+      borderTopRightRadius: theme.radii.sm / 2,
+    },
+    byline: { color: theme.colors.textSecondary },
+    userByline: { color: theme.colors.textLink },
+    body: {
+      fontSize: theme.typography.sizes.md,
+      lineHeight:
+        theme.typography.sizes.md * theme.typography.lineHeights.loose,
     },
   }) satisfies Record<string, ResponsiveStyle>;

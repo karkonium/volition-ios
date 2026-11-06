@@ -5,6 +5,10 @@ export type DiagnosticEvent =
   | "grant.confirmed"
   | "grant.failed"
   | "native.sync_failed"
+  | "focus.monitor_repair_failed"
+  | "focus.boundary_sync_failed"
+  | "authorization.request_failed"
+  | "authorization.settings_failed"
   | "presentation.failed";
 export interface DiagnosticEntry {
   date: string;

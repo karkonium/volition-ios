@@ -2,11 +2,12 @@ export type MainTabs = {
   Chat: undefined;
   Apps: undefined;
   Insights: undefined;
-  Focus: undefined;
+  Focus: { sourceId: string; visit: number } | undefined;
   Settings: undefined;
 };
 export type SettingsStack = {
   SettingsHome: undefined;
+  Preferences: undefined;
   CoachSettings: undefined;
   PrivacyData: undefined;
   ActivityLog: undefined;

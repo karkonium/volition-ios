@@ -51,3 +51,18 @@ describe.each(["light", "dark"] as const)("%s presentation", (scheme) => {
     });
   });
 });
+
+it("keeps page headers compact below the safe area", () => {
+  const theme = volitionTheme("light", {
+    top: 59,
+    bottom: 34,
+    left: 0,
+    right: 0,
+  });
+  expect(theme.components!.Header!.containerStyle).toMatchObject({
+    paddingTop: 4,
+  });
+  expect(theme.components!.Header!.iconRowStyle).toMatchObject({
+    marginBottom: 4,
+  });
+});

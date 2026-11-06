@@ -1,7 +1,6 @@
-import { layout } from "../../../layout/layout";
-import type { ResponsiveStyle, Theme } from "@itsRares/ahhzo-elements";
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { ActivityIndicator, StyleSheet } from "react-native";
 import {
   Button,
   Flex,
@@ -10,7 +9,12 @@ import {
   TextField,
   useTheme,
   useThemedStyles,
+  type ResponsiveStyle,
+  type Theme,
 } from "@itsRares/ahhzo-elements";
+import { layout } from "../../../layout/layout";
+import { composerState, messageLimit } from "./composerState";
+
 interface ChatComposerProps {
   draft: string;
   pending: boolean;
@@ -19,6 +23,7 @@ interface ChatComposerProps {
   onSend: () => void;
   onCancel: () => void;
 }
+
 export function ChatComposer({
   draft,
   pending,
@@ -30,29 +35,44 @@ export function ChatComposer({
   const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { canSend, showCount } = composerState(draft, pending);
+  const highlighted = canSend && hasApp;
+
   return (
     <Flex vertical style={styles.composer}>
       {pending && (
-        <Flex alignItems="center" justifyContent="space-between">
-          <Text type="Small" accessibilityLiveRegion="polite">
-            {t("coachThinking")}
-          </Text>
+        <Flex alignItems="center" justifyContent="space-between" gap="xs">
+          <Flex flex={1} alignItems="center" gap="xs">
+            <ActivityIndicator color={theme.colors.textLink} />
+            <Text
+              type="Small"
+              style={styles.pending}
+              accessibilityLiveRegion="polite"
+              testID="conversationThinking"
+            >
+              {t("coachThinking")}
+            </Text>
+          </Flex>
           <Button
             text={t("cancelRequest")}
             variant="ghost"
             layout="inline"
+            testID="conversationCancelButton"
+            buttonStyle={styles.cancel}
             onPress={onCancel}
           />
         </Flex>
       )}
       <Flex gap="xs" alignItems="flex-end">
         <TextField
-          placeholderLabel={t("composerPlaceholder")}
+          placeholderLabel={t("messageCoach")}
           accessibilityLabel={t("messageCoach")}
           value={draft}
           onChange={onChange}
+          autoCapitalize="sentences"
           multiline
-          maxLength={4000}
+          maxLength={messageLimit}
+          showCharacterCount={false}
           containerStyle={styles.field}
           inputStyle={styles.input}
           testID="conversationMessageField"
@@ -60,18 +80,28 @@ export function ChatComposer({
         <IconButton
           icon="arrow-up"
           family="Ionicons"
-          variant="filled"
-          size={theme.sizes.lg}
+          size={theme.typography.sizes.xxxl}
           buttonColor={
-            hasApp ? theme.colors.accent : theme.colors.textSecondary
+            highlighted ? theme.colors.buttonPrimary : theme.colors.secondary
           }
-          iconColor={theme.colors.buttonPrimaryText}
+          iconColor={
+            highlighted ? theme.colors.buttonPrimaryText : theme.colors.text
+          }
+          borderRadius={theme.radii.base}
           accessibilityLabel={t("send")}
           testID="conversationSendButton"
-          disabled={!draft.trim() || pending}
+          disabled={!canSend}
           onPress={onSend}
         />
       </Flex>
+      {showCount && (
+        <Text type="ExtraSmall" style={styles.count} testID="characterCount">
+          {t("chatCharacterCount", {
+            count: draft.length,
+            limit: messageLimit,
+          })}
+        </Text>
+      )}
     </Flex>
   );
 }
@@ -82,12 +112,19 @@ const createStyles = (theme: Theme) =>
       width: "100%",
       maxWidth: layout.pageMaxWidth,
       alignSelf: "center",
-      paddingHorizontal: theme.spacing.lg,
-      paddingVertical: theme.spacing.sm,
-      gap: theme.spacing.xs,
-      borderTopWidth: 1,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+      gap: theme.spacing.xxs,
+      borderTopWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.border,
     },
     field: { flex: 1, minWidth: 0 },
-    input: { maxHeight: 132 },
+    input: {
+      minHeight: layout.minimumTouchSize,
+      maxHeight: 128,
+      paddingVertical: theme.spacing.xs,
+    },
+    count: { textAlign: "right", fontVariant: ["tabular-nums"] },
+    pending: { flexShrink: 1 },
+    cancel: { minHeight: layout.minimumTouchSize, padding: theme.spacing.xs },
   }) satisfies Record<string, ResponsiveStyle>;

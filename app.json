@@ -19,14 +19,21 @@
       },
       "appleTeamId": "X3956RJC8P"
     },
+    "android": {
+      "package": "com.a5karki.volition"
+    },
     "plugins": [
       "./plugins/with-volition-targets",
+      "./plugins/with-volition-focus",
       "expo-font",
       "expo-notifications",
       "expo-sharing",
       [
         "expo-build-properties",
         {
+          "android": {
+            "minSdkVersion": 26
+          },
           "ios": {
             "deploymentTarget": "18.0",
             "useFrameworks": "static",
@@ -47,7 +54,7 @@
       "expo-video",
       "expo-web-browser"
     ],
-    "platforms": ["ios"],
+    "platforms": ["ios", "android"],
     "icon": "./assets/icon.png"
   }
 }

@@ -11,51 +11,105 @@ nonisolated struct ConversationEnforcement {
     let store: ConversationGrantStore
     let shields: any ShieldApplying
     var currentTime: @Sendable () -> Date = { .now }
-    var focusStore: FocusStore {
-        FocusStore(fileURL: store.fileURL?.deletingLastPathComponent().appendingPathComponent("focus.json"))
+    func mutateFocus(
+        _ command: FocusCommand, monitor: any FocusMonitoring = DeviceFocusMonitor(), now: Date = .now
+    ) throws {
+        // Serialize registration and cleanup between the app and Shortcuts.
+        // DeviceActivity IPC stays outside the grant lock: starting or stopping
+        // an activity may cause the monitor extension to reconcile immediately.
+        try withFocusMonitorLock {
+            let (previous, apps) = try store.transaction { state in
+                (state.focus ?? FocusProtectionState(), state.focusAppIDs)
+            }
+            var next = previous
+            try command.apply(to: &next, apps: apps, now: now)
+            guard next != previous else { return }
+            next.revision = (previous.revision ?? 0) + 1
+            monitor.keepOnly(previous.activityNames(at: now))
+            do {
+                try monitor.register(next, now: now, reservingSlots: command.kind == .saveRoutine)
+                try withRevokedGrantCleanup { state in
+                    guard state.focus == previous, state.focusAppIDs == apps else {
+                        throw ConversationAccessError.staleRequest
+                    }
+                    let commitTime = currentTime()
+                    if command.kind == .exceptApp {
+                        // The occurrence may end while the monitors are being checked.
+                        var validated = previous
+                        try command.apply(to: &validated, apps: apps, now: commitTime)
+                    }
+                    // An edit or exception after a cutoff cannot restore the old grant.
+                    state.activeGrants.removeAll { $0.hasExpired(at: commitTime) }
+                    state.focus = next
+                    refreshFocusGrants(&state, now: commitTime)
+                }
+            } catch {
+                monitor.keepOnly(previous.activityNames(at: now))
+                throw error
+            }
+            monitor.keepOnly(next.activityNames(at: currentTime()))
+            reconcileStored()
+        }
     }
 
-    func updateFocus(_ protection: FocusProtectionState, monitor: any FocusMonitoring, now: Date = .now) throws {
-        guard protection.periods.allSatisfy(\.isValid), protection.session?.isValid ?? true else {
+    func repairFocusMonitoring(monitor: any FocusMonitoring = DeviceFocusMonitor(), now: Date = .now) throws {
+        try withFocusMonitorLock {
+            let focus = try store.transaction { $0.focus ?? FocusProtectionState() }
+            monitor.keepOnly(focus.activityNames(at: now))
+            try monitor.register(focus, now: now, reservingSlots: false)
+        }
+    }
+
+    private func withFocusMonitorLock(_ body: () throws -> Void) throws {
+        guard let url = store.fileURL?.appendingPathExtension("focus-monitor-lock") else {
             throw ConversationAccessError.storageUnavailable
         }
-        let previous = try focusStore.load()
-        do {
-            try withRevokedGrantCleanup { state in
-                try monitor.register(protection, now: now)
-                try focusStore.save(protection)
-                let revoked = state.activeGrants.filter { grant in
-                    ConversationGrantStore.applicable(to: grant.token, in: state.snapshots).contains {
-                        protection.protects(appID: $0.id, at: now)
-                    }
-                }
-                state.activeGrants.removeAll { grant in revoked.contains { $0.plan.grantID == grant.plan.grantID } }
-                _ = apply(state, now: now)
-            }
-            monitor.keepOnly(protection.activityNames(at: now))
-        } catch {
-            // Restore the prior policy without lifting shields; foreground sync
-            // can repair timer state after a failed durable write.
-            try? focusStore.save(previous)
-            monitor.keepOnly(previous.activityNames(at: now))
-            throw error
+        var coordinationError: NSError?
+        var result: Result<Void, Error>?
+        NSFileCoordinator().coordinate(writingItemAt: url, options: .forMerging, error: &coordinationError) { _ in
+            result = Result { try body() }
+        }
+        if let coordinationError { throw coordinationError }
+        guard let result else { throw ConversationAccessError.storageUnavailable }
+        try result.get()
+    }
+
+    private func refreshFocusGrants(_ state: inout ConversationGrantStore.State, now: Date) {
+        guard let focus = state.focus else { state.activeGrants = []; return }
+        let occurrences = focus.occurrences(at: now, apps: state.focusAppIDs)
+        state.activeGrants = state.activeGrants.compactMap { grant in
+            guard !grant.hasExpired(at: now) else { return nil }
+            let ids = ConversationGrantStore.applicable(to: grant.token, in: state.snapshots).map(\.id)
+            guard !occurrences.active.contains(where: { reason in ids.contains(where: reason.protects) })
+            else { return nil }
+            var updated = grant
+            let next = occurrences.upcoming.first { reason in ids.contains(where: reason.protects) }?.startsAt
+            updated.focusCutoff = next.flatMap { $0 < grant.plan.expiresAt ? $0 : nil }
+            return updated
         }
     }
 
     func reconcileStored(now: Date = .now) {
         do {
             try withRevokedGrantCleanup { state in
-                let protection = try focusStore.load()
-                let revoked = state.activeGrants.filter { grant in
-                    grant.plan.hasExpired(at: now)
-                        || ConversationGrantStore.applicable(to: grant.token, in: state.snapshots).contains {
-                            protection.protects(appID: $0.id, at: now)
-                        }
-                }
-                state.activeGrants.removeAll { grant in revoked.contains { $0.plan.grantID == grant.plan.grantID } }
+                refreshFocusGrants(&state, now: now)
                 _ = reconcile(&state, now: now)
             }
         } catch { try? restoreProtection() }
+    }
+
+    private func validateFocus(
+        for token: ApplicationToken, through end: Date, in state: ConversationGrantStore.State, now: Date
+    ) throws {
+        guard let focus = state.focus else { throw ConversationAccessError.storageUnavailable }
+        let ids = ConversationGrantStore.applicable(to: token, in: state.snapshots).map(\.id)
+        let occurrences = focus.occurrences(at: now, apps: Set(ids))
+        if occurrences.active.contains(where: { reason in ids.contains(where: reason.protects) }) {
+            throw ConversationAccessError.focusProtected
+        }
+        if let next = occurrences.upcoming.first, next.startsAt < end {
+            throw ConversationAccessError.focusBoundary
+        }
     }
 
     func sync(_ snapshots: [RuleSnapshotDTO], now: Date = .now) throws -> Set<UUID> {
@@ -75,14 +129,8 @@ nonisolated struct ConversationEnforcement {
             }
             state.snapshots = snapshots
             state.syncedAt = now
-            let protection = try focusStore.load()
-            let invalid = state.activeGrants.filter { grant in
-                grant.plan.hasExpired(at: now) || !ConversationGrantStore.isValid(grant, in: snapshots)
-                    || ConversationGrantStore.applicable(to: grant.token, in: snapshots).contains {
-                        protection.protects(appID: $0.id, at: now)
-                    }
-            }
-            state.activeGrants.removeAll { grant in invalid.contains { $0.plan.grantID == grant.plan.grantID } }
+            refreshFocusGrants(&state, now: now)
+            state.activeGrants.removeAll { !ConversationGrantStore.isValid($0, in: snapshots) }
             for removed in old
             where removed.kind == .conversation && !snapshots.contains(where: { $0.id == removed.id }) {
                 shields.clearShield(ruleID: removed.id)
@@ -113,19 +161,12 @@ nonisolated struct ConversationEnforcement {
             grantID: UUID(), minutes: minutes,
             start: Date(timeIntervalSince1970: floor(now.timeIntervalSince1970)))
         do {
-            try store.transaction { state in
+            try withRevokedGrantCleanup { state in
                 guard activationAllowed() else { throw ConversationAccessError.staleRequest }
-                guard !state.activeGrants.contains(where: { $0.token == token && !$0.plan.hasExpired(at: now) }) else {
+                guard !state.activeGrants.contains(where: { $0.token == token && !$0.hasExpired(at: now) }) else {
                     throw ConversationAccessError.alreadyUnlocked
                 }
-                let protection = try focusStore.load()
-                guard
-                    !ConversationGrantStore.applicable(to: token, in: state.snapshots).contains(where: {
-                        protection.protects(appID: $0.id, at: now)
-                    })
-                else {
-                    throw ConversationAccessError.focusProtected
-                }
+                try validateFocus(for: token, through: plan.expiresAt, in: state, now: currentTime())
                 let commitment = state.dealCommitments.firstIndex { $0.token == token && $0.isBlocking(at: now) }
                 if let commitment {
                     let deal = state.dealCommitments[commitment]
@@ -144,9 +185,7 @@ nonisolated struct ConversationEnforcement {
                 guard !ConversationGrantStore.applicable(to: token, in: state.snapshots).isEmpty else {
                     throw ConversationAccessError.noApplicableRule
                 }
-                let expired = state.activeGrants.filter { $0.plan.hasExpired(at: now) }
-                for previous in expired { timer.stop(previous.plan.activityName) }
-                state.activeGrants.removeAll { $0.plan.hasExpired(at: now) }
+                state.activeGrants.removeAll { $0.hasExpired(at: now) }
                 try timer.start(plan)
                 state.activeGrants.append(
                     .init(
@@ -175,6 +214,7 @@ nonisolated struct ConversationEnforcement {
                     ConversationGrantStore.isValid(grant, in: state.snapshots),
                     !plan.hasExpired(at: currentTime())
                 else { throw ConversationAccessError.staleRequest }
+                try validateFocus(for: token, through: plan.expiresAt, in: state, now: currentTime())
                 // Retired/removed rules must not keep an independent restriction.
                 let enabled = Set(state.snapshots.filter(\.isEnabled).map(\.id))
                 for snapshot in state.snapshots where !snapshot.isEnabled { shields.clearShield(ruleID: snapshot.id) }
@@ -211,7 +251,7 @@ nonisolated struct ConversationEnforcement {
 
     func recordDealPushback(token: ApplicationToken, now: Date = .now) throws {
         try store.transaction { state in
-            guard !state.activeGrants.contains(where: { $0.token == token && !$0.plan.hasExpired(at: now) }),
+            guard !state.activeGrants.contains(where: { $0.token == token && !$0.hasExpired(at: now) }),
                 let index = state.dealCommitments.firstIndex(where: { $0.token == token && $0.isBlocking(at: now) })
             else { return }
             state.dealCommitments[index].pushbackCount = min(
@@ -244,7 +284,7 @@ nonisolated struct ConversationEnforcement {
         do {
             let expired: ConversationGrantStore.Grant? = try store.transaction { state in
                 guard let grant = state.activeGrants.first(where: { $0.plan.activityName == activity }),
-                    grant.plan.hasExpired(at: now)
+                    grant.hasExpired(at: now)
                 else { return nil }
                 state.activeGrants.removeAll { $0.plan.grantID == grant.plan.grantID }
                 _ = apply(state, now: now)
@@ -304,7 +344,7 @@ nonisolated struct ConversationEnforcement {
         shields.clearShields(except: enabled)
         let blocking = apply(state, now: now)
         let blockedGrants = state.activeGrants.filter { grant in
-            !grant.plan.hasExpired(at: now)
+            !grant.hasExpired(at: now)
                 && !shields.blockingRuleIDs(for: grant.token, among: Set(state.snapshots.map(\.id))).isEmpty
         }
         guard !blockedGrants.isEmpty else { return blocking }
@@ -317,12 +357,13 @@ nonisolated struct ConversationEnforcement {
     }
 
     private func apply(_ state: ConversationGrantStore.State, now: Date) -> Set<UUID> {
-        let protection = try? focusStore.load()
+        let activeFocus = state.focus?.occurrences(at: now, apps: state.focusAppIDs, includeUpcoming: false).active
         let valid = state.activeGrants.filter { grant in
-            guard let protection else { return false }
-            return !grant.plan.hasExpired(at: now) && ConversationGrantStore.isValid(grant, in: state.snapshots)
+            guard let activeFocus else { return false }
+            return !grant.hasExpired(at: now) && ConversationGrantStore.isValid(grant, in: state.snapshots)
                 && !ConversationGrantStore.applicable(to: grant.token, in: state.snapshots).contains {
-                    protection.protects(appID: $0.id, at: now)
+                    let appID = $0.id
+                    return activeFocus.contains { $0.protects(appID) }
                 }
                 && !state.dealCommitments.contains {
                     $0.token == grant.token && $0.grantID != grant.plan.grantID && $0.isBlocking(at: now)

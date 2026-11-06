@@ -33,7 +33,7 @@ nonisolated struct ConversationUnlockPlan: Codable, Equatable, Sendable {
     var activityName: String { Self.prefix + grantID.uuidString }
     func hasExpired(at now: Date) -> Bool { now >= expiresAt }
 
-    private static let prefix = "conversation-grant-"
+    static let prefix = "conversation-grant-"
     static func grantID(from name: String) -> UUID? {
         guard name.hasPrefix(prefix) else { return nil }
         return UUID(uuidString: String(name.dropFirst(prefix.count)))

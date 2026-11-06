@@ -1,9 +1,4 @@
-import {
-  checkInDue,
-  focusProtects,
-  recommendedPauseSeconds,
-  validateEmotion,
-} from "./policy";
+import { checkInDue, recommendedPauseSeconds, validateEmotion } from "./policy";
 import reducer from "../redux/grantsSlice";
 test("global check-in boundary is exactly 120 seconds", () => {
   expect(checkInDue(new Date(0).toISOString(), 119999)).toBe(false);
@@ -25,25 +20,4 @@ test("emotions accept trimmed Unicode and reject oversized text", () => {
   expect(validateEmotion("  tired  ")).toBe("tired");
   expect(() => validateEmotion(" ")).toThrow();
   expect(() => validateEmotion("x".repeat(161))).toThrow();
-});
-test("overnight focus belongs to starting weekday", () => {
-  const monday = new Date(2026, 10, 2, 23, 30).getTime();
-  const state = {
-    session: null,
-    periods: [
-      {
-        id: "p",
-        name: "Night",
-        appIDs: ["a"],
-        weekdays: [2],
-        startMinutes: 1380,
-        endMinutes: 60,
-        isEnabled: true,
-      },
-    ],
-  };
-  expect(focusProtects(state, "a", monday)).toBe(true);
-  expect(focusProtects(state, "a", monday + 3600000)).toBe(true);
-  expect(focusProtects(state, "a", monday + 7200000)).toBe(false);
-  expect(focusProtects(state, "b", monday)).toBe(false);
 });

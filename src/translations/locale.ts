@@ -13,3 +13,7 @@ export function resolveLanguage(
   }
   return "en";
 }
+
+export function isLanguage(value: string | null): value is Language {
+  return value !== null && (languages as readonly string[]).includes(value);
+}

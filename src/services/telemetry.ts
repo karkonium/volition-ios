@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import { Platform } from "react-native";
 import { previewMode } from "../../modules/volition-screen-time";
 import {
   crashReportAction,
@@ -7,7 +8,9 @@ import {
 } from "./telemetryPolicy";
 
 export const firebaseConfigured =
-  Constants.expoConfig?.extra?.firebaseConfigured === true && !previewMode;
+  Platform.OS === "ios" &&
+  Constants.expoConfig?.extra?.firebaseConfigured === true &&
+  !previewMode;
 let analyticsAllowed = false;
 let updateQueue = Promise.resolve();
 let previousCrashPreference: boolean | undefined;

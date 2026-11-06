@@ -1,5 +1,9 @@
 import { createPreviewBridge } from "./mock";
-import { requireOptionalNativeModule } from "expo-modules-core";
+import {
+  requireOptionalNativeModule,
+  type EventSubscription,
+} from "expo-modules-core";
+import { Platform } from "react-native";
 
 export interface SavedNativeApp {
   id: string;
@@ -27,7 +31,8 @@ export type AuthorizationStatus =
   "approved" | "denied" | "notDetermined" | "unknown";
 export interface ScreenTimeBridge {
   exportLegacyState(): Promise<string>;
-  updateFocus(json: string): Promise<void>;
+  applyFocusCommand(json: string): Promise<string>;
+  repairFocusMonitoring(): Promise<void>;
   getFocus(): Promise<string>;
   requestAuthorization(): Promise<AuthorizationStatus>;
   getAuthorizationStatus(): AuthorizationStatus;
@@ -54,10 +59,23 @@ export interface ScreenTimeBridge {
   setAPIKey(key: string): Promise<void>;
   getAPIKey(): Promise<string | null>;
 }
-const native =
-  requireOptionalNativeModule<ScreenTimeBridge>("VolitionScreenTime");
+const native = requireOptionalNativeModule<
+  ScreenTimeBridge & {
+    addListener?: (
+      event: "onShieldRequest",
+      listener: () => void,
+    ) => EventSubscription;
+  }
+>("VolitionScreenTime");
+
+export function observeShieldRequests(
+  listener: () => void,
+): EventSubscription | undefined {
+  if (Platform.OS === "android" && !previewMode)
+    return native?.addListener?.("onShieldRequest", listener);
+}
 const unavailable = (): never => {
-  throw new Error("Screen Time requires the Volition iOS development build.");
+  throw new Error("App blocking requires a native Volition build.");
 };
 // A missing module fails closed. Synthetic enforcement is injected by tests only.
 export const previewMode =
@@ -67,7 +85,8 @@ export const VolitionScreenTime: ScreenTimeBridge = previewMode
   ? createPreviewBridge()
   : (native ?? {
       exportLegacyState: async () => unavailable(),
-      updateFocus: async () => unavailable(),
+      applyFocusCommand: async () => unavailable(),
+      repairFocusMonitoring: async () => unavailable(),
       getFocus: async () => unavailable(),
       requestAuthorization: async () => "notDetermined",
       getAuthorizationStatus: () => "notDetermined",

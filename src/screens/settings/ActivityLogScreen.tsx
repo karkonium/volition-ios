@@ -8,7 +8,8 @@ import {
   type Theme,
   type ResponsiveStyle,
 } from "@itsRares/ahhzo-elements";
-import { Screen, perform } from "../../components/Screen";
+import { perform } from "../../components/Screen";
+import { SettingsPage } from "./SettingsPage";
 import { useAppSelector, useAppDispatch } from "../../redux/store";
 import { activityLogActions } from "../../redux/activityLogSlice";
 import { shareActivity, removeExports } from "../../services/activityExport";
@@ -19,7 +20,7 @@ export function ActivityLogScreen(): React.JSX.Element {
   const dispatch = useAppDispatch();
   const styles = useThemedStyles(createStyles);
   return (
-    <Screen
+    <SettingsPage
       title="Private activity log"
       subtitle="Model advice and actual local outcomes are recorded separately."
     >
@@ -80,7 +81,7 @@ export function ActivityLogScreen(): React.JSX.Element {
           />
         </View>
       </SettingsSection>
-    </Screen>
+    </SettingsPage>
   );
 }
 const createStyles = (theme: Theme) =>

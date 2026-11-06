@@ -1,0 +1,18 @@
+<resources>
+    <string name="volition_blocked_title">Conversation required</string>
+    <string name="volition_pending_title">Continue in Volition</string>
+    <string name="volition_blocked_instructions">Tap Request access to open chat in Volition. If it doesn’t open, open Volition directly.</string>
+    <string name="volition_request_access">Request access</string>
+    <string name="volition_close">OK</string>
+    <string name="volition_quick_focus">Quick Focus</string>
+    <string name="volition_focus_until">Focus protection until %1$s.</string>
+    <string name="volition_focus_overlap">This protection ends at %1$s. More Focus protections apply.</string>
+    <string name="volition_review_focus">Review Focus</string>
+    <string name="volition_block_service">Volition app blocking</string>
+    <string name="volition_block_description">Detects the active app to show the Volition block screen for apps you select.</string>
+    <string name="volition_choose_app">Choose one app</string>
+    <string name="volition_access_timers">Volition access timers</string>
+    <string name="volition_access_reminders">Volition access reminders</string>
+    <string name="volition_unlocked">%1$s is unlocked</string>
+    <string name="volition_seconds_remaining">%1$s seconds remaining</string>
+</resources>

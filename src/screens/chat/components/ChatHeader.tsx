@@ -1,20 +1,21 @@
-import { layout } from "../../../layout/layout";
-import type { ResponsiveStyle, Theme } from "@itsRares/ahhzo-elements";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Keyboard } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StyleSheet } from "react-native";
 import {
   Flex,
-  Text,
   Icon,
+  Text,
   Touchable,
   useThemedStyles,
   useTheme,
+  type ResponsiveStyle,
+  type Theme,
 } from "@itsRares/ahhzo-elements";
 import { AttentionRegion } from "../../../components/AttentionRegion";
 import { VolitionAppIcon } from "../../../components/VolitionAppIcon";
+import { layout } from "../../../layout/layout";
 import type { VolitionSavedApp } from "../../../redux/appsSlice";
+
 export function ChatHeader({
   app,
   attention,
@@ -26,32 +27,13 @@ export function ChatHeader({
 }): React.JSX.Element {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
   const styles = useThemedStyles(createStyles);
+
   return (
-    <Flex
-      vertical
-      style={[styles.header, { paddingTop: insets.top + theme.spacing.sm }]}
-    >
-      <Flex
-        alignItems="center"
-        justifyContent="space-between"
-        wrap="wrap"
-        gap="xs"
-      >
-        <Text type="H2" accessibilityRole="header">
-          {t("chat")}
-        </Text>
-        <Flex gap="xs" alignItems="center">
-          <Icon
-            name="sparkles-outline"
-            family="Ionicons"
-            size={theme.sizes.sm}
-            color={theme.colors.textSecondary}
-          />
-          <Text type="Small">{t("chatMoment")}</Text>
-        </Flex>
-      </Flex>
+    <Flex vertical style={styles.header}>
+      <Text type="H2" accessibilityRole="header">
+        {t("chat")}
+      </Text>
       <AttentionRegion trigger={attention}>
         <Touchable
           type="opacity"
@@ -61,26 +43,36 @@ export function ChatHeader({
           accessibilityLabel={
             app ? t("requestAccessLabel", { app: app.name }) : t("chooseApp")
           }
-          onPress={() => {
-            Keyboard.dismiss();
-            onChooseApp();
-          }}
+          onPress={onChooseApp}
         >
-          <VolitionAppIcon tokenBase64={app?.tokenBase64 ?? ""} />
-          <Flex vertical flex={1} gap="xxs">
+          <VolitionAppIcon
+            key={app?.tokenBase64}
+            tokenBase64={app?.tokenBase64 ?? ""}
+          />
+          <Flex vertical flex={1} style={styles.appLabel}>
             <Text type="ExtraSmall">{t("requestAccessFor")}</Text>
-            <Text weight="SemiBold">{app?.name ?? t("chooseApp")}</Text>
+            <Text
+              weight="SemiBold"
+              numberOfLines={1}
+              style={!app && styles.chooseLabel}
+            >
+              {app?.name ?? t("chooseApp")}
+            </Text>
           </Flex>
           <Icon
             name="chevron-down"
-            family="Ionicons"
-            size={theme.sizes.sm}
+            size={theme.typography.sizes.sm}
             color={theme.colors.textSecondary}
           />
         </Touchable>
       </AttentionRegion>
       {attention > 0 && (
-        <Text type="Small" testID="conversationAppSelectionHint">
+        <Text
+          type="Small"
+          accessibilityLiveRegion="polite"
+          testID="conversationAppSelectionHint"
+          style={styles.hint}
+        >
           {t("chooseAppHint")}
         </Text>
       )}
@@ -94,19 +86,25 @@ const createStyles = (theme: Theme) =>
       width: "100%",
       maxWidth: layout.pageMaxWidth,
       alignSelf: "center",
-      paddingHorizontal: theme.spacing.lg,
-      paddingBottom: theme.spacing.md,
-      gap: theme.spacing.md,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      gap: theme.spacing.xs,
     },
     chooser: {
       flexDirection: "row",
       alignItems: "center",
-      gap: theme.spacing.sm,
+      gap: theme.spacing.xs,
       backgroundColor: theme.colors.card,
-      borderWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.border,
-      borderRadius: theme.radii.md,
-      padding: theme.spacing.sm,
-      minHeight: 76,
+      borderRadius: theme.radii.base,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xxs,
+      minHeight: layout.minimumTouchSize,
     },
+    appLabel: { minWidth: 0 },
+    chooseLabel: { color: theme.colors.textLink },
+    hint: { color: theme.colors.textLink },
   }) satisfies Record<string, ResponsiveStyle>;

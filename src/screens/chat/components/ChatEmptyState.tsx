@@ -1,8 +1,14 @@
-import type { ResponsiveStyle, Theme } from "@itsRares/ahhzo-elements";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Image } from "react-native";
-import { Flex, Text, useThemedStyles } from "@itsRares/ahhzo-elements";
+import {
+  Flex,
+  Text,
+  useThemedStyles,
+  type ResponsiveStyle,
+  type Theme,
+} from "@itsRares/ahhzo-elements";
+
 export function ChatEmptyState({
   appName,
 }: {
@@ -11,17 +17,19 @@ export function ChatEmptyState({
   const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   return (
-    <Flex vertical style={styles.content}>
+    <Flex vertical style={styles.empty}>
       <Image
         source={require("../../../../assets/icon.png")}
         style={styles.logo}
-        accessibilityLabel="Volition"
+        accessible={false}
       />
       <Text type="H2" style={styles.title}>
         {t("chatEmptyTitle")}
       </Text>
-      <Text style={styles.body}>
-        {t("chatEmptyBody", { app: appName ?? t("yourApp") })}
+      <Text style={styles.prompt}>
+        {appName
+          ? t("chatEmptyBody", { app: appName })
+          : t("chatPromptWithoutApp")}
       </Text>
       <Text type="Small" style={styles.caption}>
         {t("chatEmptyCaption")}
@@ -32,24 +40,27 @@ export function ChatEmptyState({
 
 const createStyles = (theme: Theme) =>
   ({
-    content: {
-      flex: 1,
+    empty: {
+      flexGrow: 1,
       justifyContent: "center",
       alignItems: "center",
-      paddingVertical: theme.spacing.xl,
+      alignSelf: "center",
+      width: "100%",
+      maxWidth: 360,
+      paddingVertical: theme.spacing.lg,
       gap: theme.spacing.md,
     },
     logo: {
-      width: 64,
-      height: 64,
+      width: theme.spacing.xxxl,
+      height: theme.spacing.xxxl,
       borderRadius: theme.radii.md,
       marginBottom: theme.spacing.xxs,
     },
     title: { textAlign: "center" },
-    body: {
-      color: theme.colors.textSecondary,
+    prompt: {
+      maxWidth: 300,
       textAlign: "center",
-      maxWidth: 290,
+      color: theme.colors.textSecondary,
     },
-    caption: { textAlign: "center", marginTop: theme.spacing.xs },
+    caption: { textAlign: "center", marginTop: theme.spacing.xxs },
   }) satisfies Record<string, ResponsiveStyle>;

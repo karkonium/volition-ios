@@ -1,1 +1,5 @@
-{ "platforms": ["apple"], "apple": { "modules": ["VolitionScreenTimeModule"] } }
+{
+  "platforms": ["apple", "android"],
+  "apple": { "modules": ["VolitionScreenTimeModule"] },
+  "android": { "modules": ["expo.modules.volition.VolitionScreenTimeModule"] }
+}

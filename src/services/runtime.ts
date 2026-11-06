@@ -1,5 +1,5 @@
 import { parseLegacyHistory } from "./legacyImport";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import * as Crypto from "expo-crypto";
 import { store, persistor } from "../redux/store";
 import {
@@ -20,7 +20,9 @@ import { chatActions, type ChatMessage } from "../redux/chatSlice";
 import { grantsActions } from "../redux/grantsSlice";
 import { settingsActions } from "../redux/settingsSlice";
 import { activityLogActions } from "../redux/activityLogSlice";
-import { focusActions, type FocusState } from "../redux/focusSlice";
+import { focusActions, type FocusCommand } from "../redux/focusSlice";
+import { readFocusSnapshot } from "./focusStatus";
+import { diagnostic } from "./diagnostics";
 export const coordinator = new ConversationCoordinator({
   getState: store.getState,
   dispatch: store.dispatch,
@@ -45,6 +47,7 @@ export const coordinator = new ConversationCoordinator({
   now: Date.now,
   id: Crypto.randomUUID,
   random: Math.random,
+  focusMessage: (key) => i18n.t(key),
 });
 let syncQueue: Promise<void> = Promise.resolve();
 export function syncNative(): Promise<void> {
@@ -57,10 +60,29 @@ export function syncNative(): Promise<void> {
       store.getState().apps.items,
     );
     store.dispatch(appsActions.fingerprintUpdated(fingerprint));
-    const [grants, commitments] = await Promise.all([
+    try {
+      await VolitionScreenTime.repairFocusMonitoring();
+      store.dispatch(focusActions.monitoringChanged(false));
+    } catch {
+      store.dispatch(focusActions.monitoringChanged(true));
+      diagnostic("focus.monitor_repair_failed");
+    }
+    const [grants, commitments, focus] = await Promise.all([
       VolitionScreenTime.getActiveGrants(),
       VolitionScreenTime.getCommitments(),
+      VolitionScreenTime.getFocus(),
     ]);
+    const snapshot = readFocusSnapshot(focus);
+    store.dispatch(focusActions.synced(snapshot));
+    coordinator.interruptFocusOffers(
+      new Set(
+        store
+          .getState()
+          .focus.active.flatMap((reason) =>
+            reason.appIDs.filter((id) => !reason.exceptedAppIDs.includes(id)),
+          ),
+      ),
+    );
     store.dispatch(grantsActions.nativeSynced({ grants, commitments }));
     const appId = await VolitionScreenTime.consumeShieldRequest();
     if (appId) store.dispatch(chatActions.shieldRequested(appId));
@@ -148,10 +170,6 @@ export async function initializeRuntime(): Promise<void> {
       store.dispatch(activityLogActions.added(entry));
     if (store.getState().apps.items.length)
       store.dispatch(authActions.onboardingCompleted());
-    const focus = JSON.parse(await VolitionScreenTime.getFocus()) as FocusState;
-    store.dispatch(
-      focusActions.synced({ ...focus, session: focus.session ?? null }),
-    );
     store.dispatch(settingsActions.legacyImported());
     await persistor.flush();
   }
@@ -215,12 +233,41 @@ export async function removeApp(appId: string, reason: string): Promise<void> {
   await persistor.flush();
   await syncNative();
 }
-export async function updateFocus(state: FocusState): Promise<void> {
-  await VolitionScreenTime.updateFocus(JSON.stringify(state));
-  store.dispatch(focusActions.synced(state));
-  await persistor.flush();
-  await syncNative();
+export async function applyFocusCommand(command: FocusCommand): Promise<void> {
+  let snapshot: string;
+  try {
+    snapshot = await VolitionScreenTime.applyFocusCommand(
+      JSON.stringify(command),
+    );
+  } catch (error) {
+    const android = Platform.OS === "android";
+    const registration = android
+      ? "androidFocusRegistration"
+      : "focusRegistration";
+    const messages: Record<string, string> = {
+      FOCUS_APPS: "focusChooseApps",
+      FOCUS_INVALID: "focusInvalid",
+      FOCUS_PERMISSION: android ? "androidFocusPermission" : "focusPermission",
+      FOCUS_REGISTRATION: registration,
+      FOCUS_STALE: "focusChanged",
+    };
+    if ((error as { code?: string } | null)?.code === "FOCUS_STALE")
+      void syncNative().catch(() => diagnostic("native.sync_failed"));
+    throw new Error(
+      i18n.t(
+        messages[(error as { code?: string } | null)?.code ?? ""] ??
+          registration,
+      ),
+    );
+  }
+  store.dispatch(focusActions.synced(readFocusSnapshot(snapshot)));
+  if (command.kind === "exceptApp") {
+    coordinator.interruptFocusOffers(new Set([command.appID]), true);
+    await persistor.flush();
+  }
+  await syncNative().catch(() => diagnostic("native.sync_failed"));
 }
+
 export async function setConsent(value: boolean): Promise<void> {
   coordinator.cancel();
   store.dispatch(authActions.consentChanged(value));

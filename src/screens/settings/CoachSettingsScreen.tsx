@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Linking, View } from "react-native";
+import { Linking, Platform, View } from "react-native";
 import {
   Button,
   Icon,
+  ListItem,
   SettingsRow,
   Text,
   TextField,
@@ -12,7 +13,8 @@ import {
   type Theme,
   type ResponsiveStyle,
 } from "@itsRares/ahhzo-elements";
-import { Screen, perform } from "../../components/Screen";
+import { perform } from "../../components/Screen";
+import { SettingsPage } from "./SettingsPage";
 import { useAppSelector, useAppDispatch } from "../../redux/store";
 import { settingsActions, type CoachTone } from "../../redux/settingsSlice";
 import { VolitionScreenTime } from "../../../modules/volition-screen-time";
@@ -30,20 +32,23 @@ const tones: { value: CoachTone; title: string; description: string }[] = [
 ];
 export function CoachSettingsScreen(): React.JSX.Element {
   const { t } = useTranslation();
+  const android = Platform.OS === "android";
   const state = useAppSelector((state) => state.settings);
   const dispatch = useAppDispatch();
   const [key, setKey] = useState("");
   const styles = useThemedStyles(createStyles);
   const { theme } = useTheme();
   return (
-    <Screen title={t("coach")} subtitle={t("coachSubtitle")}>
+    <SettingsPage title={t("coach")} subtitle={t("coachSubtitle")}>
       <SettingsSection title={t("toneHeading")} footer={t("toneFooter")}>
         {tones.map((tone) => (
-          <SettingsRow
+          <ListItem
             key={tone.value}
             title={t(tone.value)}
             description={t(`${tone.value}Desc`)}
-            value={state.tone === tone.value ? t("selected") : undefined}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: state.tone === tone.value }}
+            containerStyle={styles.toneRow}
             leading={
               <Icon
                 accessible={false}
@@ -64,7 +69,10 @@ export function CoachSettingsScreen(): React.JSX.Element {
           />
         ))}
       </SettingsSection>
-      <SettingsSection title={t("apiKeyHeading")} footer={t("apiKeyFooter")}>
+      <SettingsSection
+        title={t("apiKeyHeading")}
+        footer={t(android ? "androidApiKeyFooter" : "apiKeyFooter")}
+      >
         <View style={styles.card}>
           <Text weight="SemiBold">
             {state.keyConfigured ? t("keyConfigured") : t("keyMissing")}
@@ -123,15 +131,26 @@ export function CoachSettingsScreen(): React.JSX.Element {
         />
         <SettingsRow
           title={t("notificationSettings")}
-          description={t("notificationSettingsDesc")}
+          description={t(
+            android
+              ? "androidNotificationSettingsDesc"
+              : "notificationSettingsDesc",
+          )}
           onPress={() => perform(() => Linking.openSettings())}
         />
       </SettingsSection>
-    </Screen>
+    </SettingsPage>
   );
 }
 const createStyles = (theme: Theme) =>
   ({
+    toneRow: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radii.base,
+      minHeight: 68,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+    },
     card: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radii.md,

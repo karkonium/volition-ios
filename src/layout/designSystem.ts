@@ -73,10 +73,11 @@ export function volitionTheme(
           marginTop: 0,
           marginBottom: 0,
           padding: 0,
-          paddingTop: 16,
+          paddingTop: 4,
           paddingBottom: 24,
         },
         leftIconContainerStyle: { flex: 1, minWidth: 0 },
+        iconRowStyle: { marginBottom: 4 },
         titleTextStyle: {
           width: "100%",
           marginLeft: 0,
