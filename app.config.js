@@ -15,11 +15,5 @@ module.exports = {
   ...base,
   ios: { ...base.ios, ...(configured ? { googleServicesFile: plist } : {}) },
   extra: { ...base.extra, firebaseConfigured: configured },
-  plugins: [
-    ...base.plugins,
-    ...(configured
-      ? ["@react-native-firebase/app", "@react-native-firebase/crashlytics"]
-      : []),
-    "./plugins/with-firebase-privacy",
-  ],
+  plugins: [...base.plugins, "./plugins/with-firebase-privacy"],
 };

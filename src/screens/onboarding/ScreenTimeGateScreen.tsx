@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { AppState, Linking, View } from "react-native";
+import { AppState, Linking, Platform, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import {
   Button,
@@ -25,6 +25,7 @@ export function ScreenTimeGateScreen({
   onBack?: () => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
+  const android = Platform.OS === "android";
   const styles = useThemedStyles(createStyles);
   const { theme } = useTheme();
   const dispatch = useAppDispatch();
@@ -86,20 +87,28 @@ export function ScreenTimeGateScreen({
               accessible={false}
             />
           </View>
-          <Text type="H1">{t("screenTimeTitle")}</Text>
-          <Text style={styles.secondary}>{t("onboardingScreenTimeIntro")}</Text>
+          <Text type="H1">
+            {t(android ? "androidBlockingTitle" : "screenTimeTitle")}
+          </Text>
+          <Text style={styles.secondary}>
+            {t(android ? "androidBlockingIntro" : "onboardingScreenTimeIntro")}
+          </Text>
         </View>
         <View style={styles.card}>
           <Text weight="SemiBold">{t("onboardingSelectedTitle")}</Text>
-          <Text type="Small">{t("screenTimeBody")}</Text>
+          <Text type="Small">
+            {t(android ? "androidBlockingDisclosure" : "screenTimeBody")}
+          </Text>
         </View>
         {(status === "denied" || notice) && (
           <Text accessibilityRole="alert" style={styles.notice}>
-            {status === "denied"
-              ? t("onboardingPermissionDenied")
-              : notice === "failed"
-                ? t("onboardingPermissionFailed")
-                : t("onboardingPermissionDismissed")}
+            {android
+              ? t("androidBlockingUnavailable")
+              : status === "denied"
+                ? t("onboardingPermissionDenied")
+                : notice === "failed"
+                  ? t("onboardingPermissionFailed")
+                  : t("onboardingPermissionDismissed")}
           </Text>
         )}
         <View style={styles.actions}>
@@ -107,7 +116,11 @@ export function ScreenTimeGateScreen({
             text={
               status === "approved"
                 ? t("continue")
-                : t("onboardingAllowScreenTime")
+                : t(
+                    android
+                      ? "androidBlockingAllow"
+                      : "onboardingAllowScreenTime",
+                  )
             }
             loading={busy}
             disabled={busy}
@@ -115,12 +128,14 @@ export function ScreenTimeGateScreen({
               status === "approved" ? onApproved() : void request()
             }
           />
-          <Button
-            text={t("openSettings")}
-            variant="ghost"
-            disabled={busy}
-            onPress={() => void openSettings()}
-          />
+          {!android && (
+            <Button
+              text={t("openSettings")}
+              variant="ghost"
+              disabled={busy}
+              onPress={() => void openSettings()}
+            />
+          )}
         </View>
       </View>
     </OnboardingFrame>

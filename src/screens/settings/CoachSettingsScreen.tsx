@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Linking, View } from "react-native";
+import { Linking, Platform, View } from "react-native";
 import {
   Button,
   Icon,
@@ -32,6 +32,7 @@ const tones: { value: CoachTone; title: string; description: string }[] = [
 ];
 export function CoachSettingsScreen(): React.JSX.Element {
   const { t } = useTranslation();
+  const android = Platform.OS === "android";
   const state = useAppSelector((state) => state.settings);
   const dispatch = useAppDispatch();
   const [key, setKey] = useState("");
@@ -68,7 +69,10 @@ export function CoachSettingsScreen(): React.JSX.Element {
           />
         ))}
       </SettingsSection>
-      <SettingsSection title={t("apiKeyHeading")} footer={t("apiKeyFooter")}>
+      <SettingsSection
+        title={t("apiKeyHeading")}
+        footer={t(android ? "androidApiKeyFooter" : "apiKeyFooter")}
+      >
         <View style={styles.card}>
           <Text weight="SemiBold">
             {state.keyConfigured ? t("keyConfigured") : t("keyMissing")}
@@ -127,7 +131,11 @@ export function CoachSettingsScreen(): React.JSX.Element {
         />
         <SettingsRow
           title={t("notificationSettings")}
-          description={t("notificationSettingsDesc")}
+          description={t(
+            android
+              ? "androidNotificationSettingsDesc"
+              : "notificationSettingsDesc",
+          )}
           onPress={() => perform(() => Linking.openSettings())}
         />
       </SettingsSection>

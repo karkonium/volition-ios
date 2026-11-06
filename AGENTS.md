@@ -1,6 +1,6 @@
 # Volition — agent guide
 
-Volition is a conversation-first Expo React Native iOS Screen Time app.
+Volition is a conversation-first Expo React Native app for iOS and Android.
 `App.tsx` starts the shipping app; its generated workspace and scheme are `Volition`.
 Expo prebuild owns the generated `ios/Volition.xcworkspace`; the retired native
 project, compatibility harness and native test folders were removed at the user’s request. Users save individual apps with a name and intention;
@@ -13,8 +13,9 @@ broken deal adds 60 seconds, capped at 1,800. Longer delays require agreement.
 App removal asks why, offers a normal temporary-access request, and records private
 high-frustration feedback. Users always control removal.
 Legacy enforced waits remain readable and cannot be bypassed.
-The product has Chat, Apps, Insights, Focus and Settings. iPhone uses tabs; iPad uses a sidebar.
-Minimum deployment target: iOS 18. Runtime checks currently use iOS 27; the iOS
+The product has Chat, Apps, Insights, Focus and Settings, with tabs on phones and a
+sidebar on wide layouts. Minimum deployment targets are iOS 18 and Android 8 (API 26).
+iOS runtime checks currently use iOS 27; the iOS
 18.5 simulator was unavailable from Xcode's download catalog. Older-device
 enforcement and notification acceptance remain pending.
 
@@ -41,6 +42,7 @@ enforcement and notification acceptance remain pending.
 | `modules/volition-screen-time/ios/LegacyModels/` | Frozen SwiftData V1–V5 schemas and migrations |
 | `modules/volition-screen-time/ios/Shared/` | Authoritative cross-process stores, enforcement, Focus, diagnostics, copy and platform IDs |
 | `modules/volition-screen-time/ios/ActivityShared/` | ActivityKit attributes |
+| `modules/volition-screen-time/android/` | Kotlin bridge, Accessibility Service overlay, native access and Focus state, Quick Settings tile, Keystore and notifications |
 | `targets/shield-config/`, `targets/shield-action/` | Shield presentation and lightweight Request access routing |
 | `targets/activity-monitor/`, `targets/activity-report/`, `targets/live-activity/` | Background expiry, compatibility callbacks/report and native countdown |
 | `Scripts/link-native-sources.py`, `Scripts/patch-expo-headers.cjs` | Source-link maintenance and reproducible SDK header corrections |
@@ -119,8 +121,13 @@ native test suites. New regression coverage belongs to the Expo test setup.
   Clear Chat retains this log; clearing it retains coaching/enforcement history.
 - Approval requires a registered timer, durable state, matching configuration and
   no configured blocker. Failed activation must not publish a success response.
-- All grant mutations and shield writes use the coordinated App Group transaction.
+- iOS grant mutations and shield writes use the coordinated App Group transaction.
   Stale expiry callbacks must never end a replacement or another app’s grant.
+- On Android, the Expo bridge and Accessibility Service share one process and
+  serialize enforcement on its main looper. The service reads window package
+  changes only and must not inspect screen contents. Android users can disable
+  the service. Service timers enforce grants and Focus independently of JavaScript
+  and notification delivery. Persist decisions before publishing access.
 - Shield requests open Volition directly on iOS 26.5+ and use notification/manual
   routing below that version. The earlier direct path had reported system UI hangs;
   preserve the lightweight request store. Repeated direct opening, correct selection
@@ -148,6 +155,11 @@ generated workspace with:
 xcodebuild -workspace ios/Volition.xcworkspace -scheme Volition \
   -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
 ```
+
+Build and test Android from the generated project with
+`cd android && ./gradlew :volition-screen-time:testDebugUnitTest :app:assembleDebug`.
+Use `npm run android` for development. Verify the service on real Android devices
+as well as an emulator, including reblocking while the target stays open.
 
 The local module enables complete concurrency checking and Swift warnings as
 errors in its podspec. Native dependencies retain their upstream diagnostics.
@@ -210,8 +222,9 @@ it cannot prove real enforcement and is disabled in production builds.
 
 ## Credentials
 
-Expo stores user-entered OpenAI keys in native Keychain; never persist them in Redux,
-App Group state or technical logs. No personal-key file is bundled in the Expo application. Never print/copy real
+Expo stores user-entered OpenAI keys in iOS Keychain or in local ciphertext
+protected by Android Keystore. Never persist keys in Redux, enforcement state or
+technical logs. No personal-key file is bundled in the Expo application. Never print/copy real
 keys into docs, logs, tests or commits. Never distribute a personal-key build.
 Verify production builds do not bundle personal configuration.
 Old local archival branches may contain keys: never push historical branches

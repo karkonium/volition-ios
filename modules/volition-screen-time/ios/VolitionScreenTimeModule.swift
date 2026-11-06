@@ -1,3 +1,4 @@
+import ActivityKit
 import ExpoModulesCore
 import FamilyControls
 import ManagedSettings
@@ -16,7 +17,7 @@ struct SavedAppRecord: Record {
 /// The existing coordinated store remains authoritative. JavaScript receives a
 /// grant only after timer registration, durable publication and shield readback.
 public final class VolitionScreenTimeModule: Module {
-    private static var enforcement: ConversationEnforcement {
+    fileprivate static var enforcement: ConversationEnforcement {
         ConversationEnforcement(store: ConversationGrantStore(), shields: ManagedSettingsShieldController())
     }
     private static func failure(_ message: String) -> NSError {
@@ -38,7 +39,7 @@ public final class VolitionScreenTimeModule: Module {
             "expiresAt": ISO8601DateFormatter().string(from: grant.effectiveExpiry),
         ]
     }
-    private static func authorizationStatus() -> String {
+    fileprivate static func authorizationStatus() -> String {
         switch AuthorizationCenter.shared.authorizationStatus {
         case .approved, .approvedWithDataAccess: return "approved"
         case .denied: return "denied"
@@ -258,4 +259,66 @@ public final class VolitionScreenTimeModule: Module {
 private struct FocusBridgeError: CodedError {
     let code: String
     var description: String { code }
+}
+
+private nonisolated struct FocusSnapshot: Encodable {
+    let revision: Int
+    let observedAt: String
+    let periods: [FocusPeriod]
+    let session: FocusSession?
+    let preferences: QuickFocusPreferences?
+    let active: [FocusOccurrence]
+    let upcoming: [FocusOccurrence]
+    let nextRefreshAt: Date?
+
+    init(_ focus: FocusProtectionState, apps: Set<UUID>, now: Date) {
+        revision = focus.revision ?? 0
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        observedAt = formatter.string(from: now)
+        periods = focus.periods
+        session = focus.session.flatMap { $0.isActive(at: now) ? $0 : nil }
+        preferences = focus.preferences
+        let occurrences = focus.occurrences(at: now, apps: apps)
+        active = occurrences.active
+        upcoming = occurrences.upcoming
+        nextRefreshAt = [active.first?.endsAt, upcoming.first?.startsAt].compactMap { $0 }.min()
+    }
+}
+
+/// The intent host uses the same native command path as the Expo bridge.
+public nonisolated enum FocusSystemActions {
+    public enum Failure: Error {
+        case permission, configure, unavailable
+    }
+
+    public static func start() async throws -> Date {
+        guard VolitionScreenTimeModule.authorizationStatus() == "approved" else { throw Failure.permission }
+        let enforcement = VolitionScreenTimeModule.enforcement
+        do {
+            try enforcement.mutateFocus(FocusCommand(kind: .startSession))
+            guard let end = try enforcement.store.transaction({ $0.focus?.session?.expiresAt }) else {
+                throw Failure.unavailable
+            }
+            await endRevokedActivities(store: enforcement.store)
+            return end
+        } catch ConversationAccessError.focusNeedsApps { throw Failure.configure } catch { throw Failure.unavailable }
+    }
+
+    public static func end() async throws {
+        guard VolitionScreenTimeModule.authorizationStatus() == "approved" else { throw Failure.permission }
+        do {
+            let enforcement = VolitionScreenTimeModule.enforcement
+            try enforcement.mutateFocus(FocusCommand(kind: .endSession))
+            await endRevokedActivities(store: enforcement.store)
+        } catch { throw Failure.unavailable }
+    }
+
+    private static func endRevokedActivities(store: ConversationGrantStore) async {
+        guard let ids = try? store.transaction({ Set($0.activeGrants.map(\.plan.grantID)) }) else { return }
+        for activity in Activity<ConversationUnlockActivityAttributes>.activities
+        where !ids.contains(activity.attributes.grantID) {
+            await activity.end(nil, dismissalPolicy: .immediate)
+        }
+    }
 }

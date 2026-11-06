@@ -1,0 +1,18 @@
+<resources>
+    <string name="volition_blocked_title">需要先进行对话</string>
+    <string name="volition_pending_title">在 Volition 中继续</string>
+    <string name="volition_blocked_instructions">轻点“请求访问”以在 Volition 中打开对话。如果未能打开，请直接打开 Volition。</string>
+    <string name="volition_request_access">请求访问</string>
+    <string name="volition_close">好</string>
+    <string name="volition_quick_focus">快速专注</string>
+    <string name="volition_focus_until">专注保护持续至 %1$s。</string>
+    <string name="volition_focus_overlap">此保护于 %1$s 结束。还有其他专注保护生效。</string>
+    <string name="volition_review_focus">查看专注</string>
+    <string name="volition_block_service">Volition 应用拦截</string>
+    <string name="volition_block_description">识别当前应用，为你选择的应用显示 Volition 拦截页面。</string>
+    <string name="volition_choose_app">选择一个应用</string>
+    <string name="volition_access_timers">Volition 访问计时器</string>
+    <string name="volition_access_reminders">Volition 访问提醒</string>
+    <string name="volition_unlocked">%1$s 已解锁</string>
+    <string name="volition_seconds_remaining">剩余 %1$s 秒</string>
+</resources>
