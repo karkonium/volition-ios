@@ -1,14 +1,16 @@
 import {
   createPeriodDraft,
-  formatSchedule,
-  parseTime,
-  validatePeriodDraft,
+  focusDateTime,
+  formatClock,
+  hasApps,
+  isValidPeriod,
 } from "./focusPresentation";
 
-test("period drafts copy selections and preserve paused state", () => {
+test("editing a routine preserves scope and never turns a cleared selection into all apps", () => {
   const period = {
     id: "p",
     name: "Evening",
+    allApps: false,
     appIDs: ["a"],
     weekdays: [2],
     startMinutes: 1380,
@@ -16,24 +18,30 @@ test("period drafts copy selections and preserve paused state", () => {
     isEnabled: false,
   };
   const draft = createPeriodDraft(period);
-  draft.appIDs.push("b");
+  draft.appIDs.pop();
   draft.weekdays.push(3);
   expect(period.appIDs).toEqual(["a"]);
   expect(period.weekdays).toEqual([2]);
-  expect(validatePeriodDraft(draft, "new").isEnabled).toBe(false);
-  expect(formatSchedule(period)).toBe("Mon · 23:00–01:00 · next day");
+  expect(draft.isEnabled).toBe(false);
+  expect(hasApps(draft, [{ id: "a" }])).toBe(false);
+  expect(hasApps({ ...draft, allApps: true }, [{ id: "a" }])).toBe(true);
+  expect(hasApps(createPeriodDraft(), [{ id: "a" }])).toBe(false);
 });
 
-test("time and period validation retain minimum and overnight semantics", () => {
-  expect(parseTime("9:05")).toBe(545);
-  expect(() => parseTime("24:00")).toThrow();
-  const draft = createPeriodDraft();
-  expect(() =>
-    validatePeriodDraft({ ...draft, start: "09:00", end: "09:14" }, "id"),
-  ).toThrow();
-  expect(
-    validatePeriodDraft({ ...draft, start: "23:55", end: "00:10" }, "id")
-      .endMinutes,
-  ).toBe(10);
-  expect(() => validatePeriodDraft({ ...draft, weekdays: [] }, "id")).toThrow();
+test("routine editor allows the 15-minute overnight boundary", () => {
+  const draft = {
+    ...createPeriodDraft(),
+    name: "Evening",
+    startMinutes: 1435,
+    endMinutes: 10,
+  };
+  expect(isValidPeriod(draft)).toBe(true);
+  expect(isValidPeriod({ ...draft, endMinutes: 9 })).toBe(false);
+  expect(isValidPeriod({ ...draft, weekdays: [] })).toBe(false);
+});
+
+test("time and weekday copy use the language selected in Volition", () => {
+  expect(formatClock(13 * 60 + 15, "en")).toMatch(/PM/i);
+  expect(formatClock(13 * 60 + 15, "es")).toBe("13:15");
+  expect(focusDateTime("2026-11-05T16:00:00Z", "zh")).toMatch(/周[四五]/);
 });

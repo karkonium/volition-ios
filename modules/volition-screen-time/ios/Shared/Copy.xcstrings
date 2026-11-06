@@ -4443,10 +4443,98 @@
         }
       }
     },
-    "shield.focusOverlap": {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Multiple Focus protections are active."}}, "es": {"stringUnit": {"state": "translated", "value": "Hay varias protecciones de Concentración activas."}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "有多项专注保护正在生效。"}}}},
-    "shield.focusUntil": {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Focus protection until %@."}}, "es": {"stringUnit": {"state": "translated", "value": "Protección de Concentración hasta las %@."}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "专注保护持续至 %@。"}}}},
-    "shield.quickFocusTitle": {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Quick Focus"}}, "es": {"stringUnit": {"state": "translated", "value": "Concentración rápida"}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "快速专注"}}}},
-    "shield.reviewFocus": {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Review Focus"}}, "es": {"stringUnit": {"state": "translated", "value": "Revisar Concentración"}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "查看专注"}}}},
+    "shield.focusOverlap": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This protection ends at %@. More Focus protections apply."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta protección termina a las %@. Hay otras protecciones activas."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此保护于 %@ 结束。还有其他专注保护生效。"
+          }
+        }
+      }
+    },
+    "shield.focusUntil": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Focus protection until %@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protección de Concentración hasta las %@."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专注保护持续至 %@。"
+          }
+        }
+      }
+    },
+    "shield.quickFocusTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quick Focus"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concentración rápida"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速专注"
+          }
+        }
+      }
+    },
+    "shield.reviewFocus": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review Focus"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar Concentración"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看专注"
+          }
+        }
+      }
+    },
     "shield.primaryButtonLabel": {
       "extractionState": "manual",
       "localizations": {

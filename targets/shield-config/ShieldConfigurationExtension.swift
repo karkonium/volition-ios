@@ -99,12 +99,13 @@ final class ShieldConfigurationExtension: ShieldConfigurationDataSource {
 
     private func focusConfiguration(_ reason: FocusOccurrence, count: Int) -> ShieldConfiguration {
         let title = reason.name ?? CopyKey.shieldQuickFocusTitle.string
-        let time = reason.endsAt.formatted(date: .omitted, time: .shortened)
+        let time = reason.endsAt.formatted(
+            .dateTime.hour().minute().locale(CopyKey.shieldFocusUntil.resource.locale))
         return ShieldConfiguration(
             backgroundBlurStyle: .systemMaterial,
             title: .init(text: title, color: .label),
             subtitle: .init(
-                text: count > 1 ? CopyKey.shieldFocusOverlap.string : CopyKey.shieldFocusUntil.string(time),
+                text: count > 1 ? CopyKey.shieldFocusOverlap.string(time) : CopyKey.shieldFocusUntil.string(time),
                 color: .secondaryLabel),
             primaryButtonLabel: .init(text: CopyKey.shieldPrimaryButtonLabel.string, color: .white),
             primaryButtonBackgroundColor: .systemBlue,

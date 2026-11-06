@@ -158,7 +158,7 @@ export function MainTabNavigator(): React.JSX.Element {
 const createStyles = (theme: Theme) => ({
   preview: { backgroundColor: theme.colors.secondary },
   previewText: {
-    textAlign: "center",
+    textAlign: "center" as const,
     color: theme.colors.textSecondary,
     paddingVertical: theme.spacing.xxs,
   },

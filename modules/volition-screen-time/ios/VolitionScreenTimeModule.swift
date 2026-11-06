@@ -252,6 +252,7 @@ public final class VolitionScreenTimeModule: Module {
         View(FocusTimePickerView.self) {
             Events("onTimeChange")
             Prop("minutes") { (view: FocusTimePickerView, minutes: Int) in view.setMinutes(minutes) }
+            Prop("locale") { (view: FocusTimePickerView, language: String) in view.setLocale(language) }
             Prop("label") { (view: FocusTimePickerView, label: String) in view.setLabel(label) }
         }
         View(VolitionAppIconView.self) {

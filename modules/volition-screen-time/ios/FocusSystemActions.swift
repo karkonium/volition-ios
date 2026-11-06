@@ -9,8 +9,7 @@ public nonisolated enum FocusSystemActions {
     }
 
     public static func start() async throws -> Date {
-        let status = AuthorizationCenter.shared.authorizationStatus
-        guard status == .approved || status == .approvedWithDataAccess else { throw Failure.permission }
+        guard isAuthorized else { throw Failure.permission }
         let enforcement = service
         do {
             try enforcement.mutateFocus(FocusCommand(kind: .startSession))
@@ -22,10 +21,19 @@ public nonisolated enum FocusSystemActions {
         } catch ConversationAccessError.focusNeedsApps { throw Failure.configure } catch { throw Failure.unavailable }
     }
 
-    public static func end() throws {
+    public static func end() async throws {
+        guard isAuthorized else { throw Failure.permission }
+        do {
+            let enforcement = service
+            try enforcement.mutateFocus(FocusCommand(kind: .endSession))
+            await endRevokedActivities(store: enforcement.store)
+        } catch { throw Failure.unavailable }
+    }
+
+    private static var isAuthorized: Bool {
         let status = AuthorizationCenter.shared.authorizationStatus
-        guard status == .approved || status == .approvedWithDataAccess else { throw Failure.permission }
-        do { try service.mutateFocus(FocusCommand(kind: .endSession)) } catch { throw Failure.unavailable }
+        if #available(iOS 26.4, *), status == .approvedWithDataAccess { return true }
+        return status == .approved
     }
 
     private static var service: ConversationEnforcement {

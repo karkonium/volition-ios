@@ -42,7 +42,7 @@ export function focusReasons(
   appId: string,
   now: number,
 ): FocusOccurrence[] {
-  return focus.active.filter(
+  return [...focus.active, ...focus.upcoming].filter(
     (item) =>
       item.appIDs.includes(appId) &&
       !item.exceptedAppIDs.includes(appId) &&

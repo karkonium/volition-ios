@@ -15,6 +15,7 @@ import { perform } from "../../components/Screen";
 import { layout } from "../../layout/layout";
 import type { Intervention } from "../../redux/grantsSlice";
 import { coordinator } from "../../services/runtime";
+import { FocusTimingNote } from "./FocusTimingNote";
 import { InterventionCard } from "./components/InterventionCard";
 
 export function InterventionChoiceCard({
@@ -45,6 +46,29 @@ export function InterventionChoiceCard({
   const deal = () => perform(() => coordinator.activate(appId, "deal"));
   const decline = () => perform(() => coordinator.keepLocked(appId));
 
+  const timing = offer.focusLimitedUntil ? (
+    <FocusTimingNote until={offer.focusLimitedUntil} />
+  ) : null;
+  if (["approve", "urgent", "frustration"].includes(decision.decision)) {
+    return (
+      <InterventionCard label={appName} title={t("focusShorterAccess")}>
+        {timing}
+        <Flex wrap="wrap" gap="xs">
+          <Button
+            layout="inline"
+            text={t("unlockMinutes", { count: access })}
+            onPress={() => perform(() => coordinator.activate(appId, "open"))}
+          />
+          <Button
+            layout="inline"
+            variant="outline"
+            text={t("keepLocked")}
+            onPress={decline}
+          />
+        </Flex>
+      </InterventionCard>
+    );
+  }
   if (decision.decision === "choice") {
     const options = [
       {
@@ -69,6 +93,7 @@ export function InterventionChoiceCard({
     ];
     return (
       <InterventionCard label={appName} title={t("chooseWhatHelps")}>
+        {timing}
         <Text type="Small">{t("chatChoiceAccess", { count: access })}</Text>
         <Flex vertical gap="xxs">
           {options.map((option) => (
@@ -108,6 +133,7 @@ export function InterventionChoiceCard({
       label={appName}
       title={t(dealOffered ? "chatDeal" : "pauseBefore")}
     >
+      {timing}
       {dealOffered && (
         <Flex vertical style={styles.terms}>
           <Text weight="SemiBold">

@@ -65,7 +65,7 @@ export function ChatComposer({
       )}
       <Flex gap="xs" alignItems="flex-end">
         <TextField
-          placeholderLabel={t("composerPlaceholder")}
+          placeholderLabel={t("messageCoach")}
           accessibilityLabel={t("messageCoach")}
           value={draft}
           onChange={onChange}

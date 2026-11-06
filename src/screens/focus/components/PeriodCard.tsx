@@ -10,21 +10,25 @@ import {
 } from "@itsRares/ahhzo-elements";
 import { VolitionCard } from "../../../components/VolitionCard";
 import type { FocusPeriod } from "../../../redux/focusSlice";
-import { appSummary, formatSchedule } from "../focusPresentation";
+import { days, formatClock } from "../focusPresentation";
 export function PeriodCard({
   period,
   apps,
   onEdit,
   onToggle,
   onDelete,
+  busy,
 }: {
   period: FocusPeriod;
   apps: { id: string; name: string }[];
   onEdit: () => void;
   onToggle: () => void;
   onDelete: () => void;
+  busy: boolean;
 }): React.JSX.Element {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = i18n.resolvedLanguage;
+  const selected = apps.filter(({ id }) => period.appIDs.includes(id));
   const styles = useThemedStyles(createStyles);
   return (
     <VolitionCard>
@@ -46,29 +50,48 @@ export function PeriodCard({
             {period.isEnabled ? t("enabled") : t("paused")}
           </Text>
         </Flex>
-        <Text>{formatSchedule(period)}</Text>
+        <Text>
+          {days
+            .filter((_, index) => period.weekdays.includes(index + 1))
+            .map((day) => t(day))
+            .join(", ")}
+        </Text>
         <Text type="Small">
-          {t("protects", {
-            apps: period.appIDs.length
-              ? appSummary(period.appIDs, apps)
-              : t("allApps"),
+          {t("focusHours", {
+            start: formatClock(period.startMinutes, locale),
+            end: formatClock(period.endMinutes, locale),
           })}
+          {period.endMinutes < period.startMinutes
+            ? ` · ${t("focusNextDay")}`
+            : ""}
+        </Text>
+        <Text type="Small">
+          {period.allApps
+            ? t("protects", { apps: t("focusAllSavedApps") })
+            : selected.length
+              ? t("protects", {
+                  apps: selected.map(({ name }) => name).join(", "),
+                })
+              : t("focusChooseApps")}
         </Text>
         <Flex wrap="wrap" gap="xs">
           <Button
             layout="inline"
+            disabled={busy}
             text={t("edit")}
             variant="outline"
             onPress={onEdit}
           />
           <Button
             layout="inline"
+            disabled={busy}
             text={period.isEnabled ? t("pause") : t("enable")}
             variant="ghost"
             onPress={onToggle}
           />
           <Button
             layout="inline"
+            disabled={busy}
             text={t("delete")}
             variant="ghost"
             tone="danger"

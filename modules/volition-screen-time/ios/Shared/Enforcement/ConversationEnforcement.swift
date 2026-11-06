@@ -32,10 +32,16 @@ nonisolated struct ConversationEnforcement {
                     guard state.focus == previous, state.focusAppIDs == apps else {
                         throw ConversationAccessError.staleRequest
                     }
+                    let commitTime = currentTime()
+                    if command.kind == .exceptApp {
+                        // The occurrence may end while the monitors are being checked.
+                        var validated = previous
+                        try command.apply(to: &validated, apps: apps, now: commitTime)
+                    }
                     // An edit or exception after a cutoff cannot restore the old grant.
-                    state.activeGrants.removeAll { $0.hasExpired(at: now) }
+                    state.activeGrants.removeAll { $0.hasExpired(at: commitTime) }
                     state.focus = next
-                    refreshFocusGrants(&state, now: currentTime())
+                    refreshFocusGrants(&state, now: commitTime)
                 }
             } catch {
                 monitor.keepOnly(previous.activityNames(at: now))
@@ -98,7 +104,9 @@ nonisolated struct ConversationEnforcement {
         guard let focus = state.focus else { throw ConversationAccessError.storageUnavailable }
         let ids = ConversationGrantStore.applicable(to: token, in: state.snapshots).map(\.id)
         let occurrences = focus.occurrences(at: now, apps: Set(ids))
-        if !occurrences.active.isEmpty { throw ConversationAccessError.focusProtected }
+        if occurrences.active.contains(where: { reason in ids.contains(where: reason.protects) }) {
+            throw ConversationAccessError.focusProtected
+        }
         if let next = occurrences.upcoming.first, next.startsAt < end {
             throw ConversationAccessError.focusBoundary
         }

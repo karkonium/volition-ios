@@ -1,60 +1,84 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Button,
-  Flex,
-  Text,
-  TextField,
-  useThemedStyles,
-  type ResponsiveStyle,
-  type Theme,
-} from "@itsRares/ahhzo-elements";
+import { Button, Flex, Modal, Text, TextField } from "@itsRares/ahhzo-elements";
 import { FocusChoice } from "./FocusChoice";
-import { VolitionCard } from "../../../components/VolitionCard";
-import { AppSelection } from "./AppSelection";
+import { AppSelection, type DraftScope } from "./AppSelection";
+import { hasApps } from "../focusPresentation";
+import type { QuickFocusPreferences } from "../../../redux/focusSlice";
+import { perform } from "../../../components/Screen";
 
 export function SessionSection({
-  activeMinutes,
-  duration,
-  setDuration,
+  preferences,
+  isRunning,
   apps,
-  selected,
-  setSelected,
+  busy,
+  onSave,
   onStart,
   onEnd,
 }: {
-  activeMinutes: number | null;
-  duration: string;
-  setDuration: (value: string) => void;
+  preferences: QuickFocusPreferences | null;
+  isRunning: boolean;
   apps: { id: string; name: string }[];
-  selected: string[];
-  setSelected: (ids: string[]) => void;
+  busy: boolean;
+  onSave: (preferences: QuickFocusPreferences) => Promise<void>;
   onStart: () => void;
   onEnd: () => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
-  const styles = useThemedStyles(createStyles);
-  if (activeMinutes !== null)
-    return (
-      <VolitionCard accent>
-        <Flex vertical gap="md">
-          <Text type="Small" weight="SemiBold" style={styles.accent}>
-            {t("focusInProgress")}
-          </Text>
-          <Text type="H1">{t("minutesLeft", { count: activeMinutes })}</Text>
-          <Text type="Small">{t("focusActiveHelp")}</Text>
-          <Button text={t("endFocus")} variant="outline" onPress={onEnd} />
-        </Flex>
-      </VolitionCard>
-    );
+  const [editing, setEditing] = useState(false);
+  const [duration, setDuration] = useState("25");
+  const [scope, setScope] = useState<DraftScope>({ allApps: null, appIDs: [] });
+  const valid = preferences && hasApps(preferences, apps);
+  const open = () => {
+    setDuration(String(preferences?.minutes ?? 25));
+    setScope(preferences ?? { allApps: null, appIDs: [] });
+    setEditing(true);
+  };
   return (
-    <VolitionCard>
-      <Flex vertical gap="md">
-        <Flex vertical gap="xs">
-          <Flex vertical gap="xxs">
-            <Text type="H2">{t("startSession")}</Text>
-            <Text type="Small">{t("startSessionHelp")}</Text>
-          </Flex>
+    <>
+      <Flex vertical gap="xs">
+        {valid && !isRunning && (
+          <Text type="Small">
+            {t("quickFocusSummary", {
+              count: preferences.minutes,
+              apps: preferences.allApps
+                ? t("focusAllSavedApps")
+                : apps
+                    .filter(({ id }) => preferences.appIDs.includes(id))
+                    .map(({ name }) => name)
+                    .join(", "),
+            })}
+          </Text>
+        )}
+        <Flex wrap="wrap" gap="xs">
+          <Button
+            layout="inline"
+            text={t(
+              isRunning ? "endFocus" : valid ? "startFocus" : "focusSetUpQuick",
+            )}
+            variant={isRunning ? "outline" : "filled"}
+            disabled={busy}
+            onPress={isRunning ? onEnd : valid ? onStart : open}
+          />
+          {(valid || isRunning) && (
+            <Button
+              layout="inline"
+              text={t("focusQuickSettings")}
+              variant="ghost"
+              disabled={busy}
+              onPress={open}
+            />
+          )}
+        </Flex>
+      </Flex>
+      <Modal
+        title={t("focusQuickSettings")}
+        isVisible={editing}
+        onClose={() => setEditing(false)}
+        scrollable
+      >
+        <Flex vertical gap="md">
+          <Text type="Small">{t("quickFocusHelp")}</Text>
           <Flex wrap="wrap" gap="xs">
             {[15, 25, 50].map((minutes) => (
               <FocusChoice
@@ -72,15 +96,24 @@ export function SessionSection({
             onChange={setDuration}
             keyboardType="number-pad"
           />
+          <AppSelection apps={apps} scope={scope} onChange={setScope} />
+          <Button
+            text={t("focusSaveSettings")}
+            disabled={busy}
+            onPress={() =>
+              perform(async () => {
+                const minutes = Number(duration);
+                if (!Number.isInteger(minutes) || minutes < 15 || minutes > 180)
+                  throw new Error(t("focusDurationError"));
+                if (!hasApps(scope, apps))
+                  throw new Error(t("focusChooseApps"));
+                await onSave({ ...scope, minutes });
+                setEditing(false);
+              })
+            }
+          />
         </Flex>
-        <AppSelection apps={apps} selected={selected} onChange={setSelected} />
-        <Button text={t("startFocus")} onPress={onStart} />
-      </Flex>
-    </VolitionCard>
+      </Modal>
+    </>
   );
 }
-const createStyles = (theme: Theme) =>
-  ({ accent: { color: theme.colors.textLink } }) satisfies Record<
-    string,
-    ResponsiveStyle
-  >;

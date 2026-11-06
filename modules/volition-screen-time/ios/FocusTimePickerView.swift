@@ -26,6 +26,10 @@ final class FocusTimePickerView: ExpoView {
         picker.setDate(Date(timeIntervalSince1970: Double(minutes * 60)), animated: false)
     }
 
+    func setLocale(_ language: String) {
+        picker.locale = Locale(identifier: language)
+    }
+
     func setLabel(_ label: String) { picker.accessibilityLabel = label }
 
     @objc private func timeChanged() {

@@ -10,12 +10,13 @@ import { useAppSelector, useAppDispatch } from "../../redux/store";
 import type { VolitionSavedApp } from "../../redux/appsSlice";
 import { chatActions } from "../../redux/chatSlice";
 import { removeApp, recordRemoval } from "../../services/runtime";
-import { focusProtects } from "../../services/policy";
+import { focusReasons, nextFocusStart } from "../../services/focusStatus";
+import { focusDateTime, focusName } from "../focus/focusPresentation";
 import type { AppsStack, MainTabs } from "../../navigation/types";
 import type { CompositeNavigationProp } from "@react-navigation/native";
 import type { StackNavigationProp } from "@react-navigation/stack";
 export function AppsScreen(): React.JSX.Element {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const state = useAppSelector((state) => state);
   const dispatch = useAppDispatch();
   const navigation =
@@ -41,7 +42,7 @@ export function AppsScreen(): React.JSX.Element {
       )}
       {state.apps.items.map((app) => {
         const grant = state.grants.activeGrants.find(
-          (item) => item.appId === app.id,
+          (item) => item.appId === app.id && Date.parse(item.expiresAt) > now,
         );
         const deal = state.grants.commitments.find(
           (item) =>
@@ -49,7 +50,9 @@ export function AppsScreen(): React.JSX.Element {
             !item.overriddenAt &&
             Date.parse(item.blockedUntil) > now,
         );
-        const status = focusProtects(state.focus, app.id, now)
+        const reasons = focusReasons(state.focus, app.id, now);
+        const next = nextFocusStart(state.focus, app.id, now);
+        const status = reasons.length
           ? t("focusProtected")
           : grant
             ? t("temporarilyOpen", {
@@ -70,6 +73,26 @@ export function AppsScreen(): React.JSX.Element {
             key={app.id}
             app={app}
             status={status}
+            focusLinks={(reasons.length ? reasons : next ? [next] : []).map(
+              (reason) => ({
+                id: reason.id,
+                label: t(
+                  reasons.length ? "focusReason" : "focusUpcomingReason",
+                  {
+                    name: focusName(reason, t("quickFocus")),
+                    time: focusDateTime(
+                      reasons.length ? reason.endsAt : reason.startsAt,
+                      i18n.resolvedLanguage,
+                    ),
+                  },
+                ),
+                open: () =>
+                  navigation.navigate("Focus", {
+                    sourceId: reason.sourceId,
+                    visit: Date.now(),
+                  }),
+              }),
+            )}
             onEdit={() => {
               navigation.navigate("AppEditor", { appId: app.id });
             }}

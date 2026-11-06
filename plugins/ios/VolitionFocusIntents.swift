@@ -1,6 +1,6 @@
 import AppIntents
 import Foundation
-import VolitionScreenTime
+internal import VolitionScreenTime
 
 enum FocusIntentError: Error, CustomLocalizedStringResourceConvertible {
     case permission, configure, unavailable
@@ -40,7 +40,7 @@ struct EndVolitionFocusIntent: AppIntent {
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         do {
-            try FocusSystemActions.end()
+            try await FocusSystemActions.end()
             return .result(dialog: "Volition Quick Focus has ended.")
         } catch let failure as FocusSystemActions.Failure { throw FocusIntentError(failure) }
     }

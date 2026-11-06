@@ -14,12 +14,14 @@ import {
   type ResponsiveStyle,
   type Theme,
 } from "@itsRares/ahhzo-elements";
-import { ActiveGrantBanner } from "../../components/ActiveGrantBanner";
+import { ActiveGrantBanner, useNow } from "../../components/ActiveGrantBanner";
 import { perform } from "../../components/Screen";
 import { layout } from "../../layout/layout";
 import { chatActions } from "../../redux/chatSlice";
 import { store, useAppDispatch, useAppSelector } from "../../redux/store";
 import { coordinator, endGrant } from "../../services/runtime";
+import { focusReasons } from "../../services/focusStatus";
+import { FocusReviewCard } from "./FocusReviewCard";
 import { AppPickerModal } from "./AppPickerModal";
 import { DelayCountdownCard } from "./DelayCountdownCard";
 import { EmotionCheckInSheet } from "./EmotionCheckInSheet";
@@ -45,7 +47,14 @@ export function ChatScreen(): React.JSX.Element {
   const dispatch = useAppDispatch();
   const chat = useAppSelector((state) => state.chat);
   const apps = useAppSelector((state) => state.apps.items);
-  const activeGrants = useAppSelector((state) => state.grants.activeGrants);
+  const nativeGrants = useAppSelector((state) => state.grants.activeGrants);
+  const focus = useAppSelector((state) => state.focus);
+  const now = useNow();
+  const activeGrants = nativeGrants.filter(
+    (grant) =>
+      Date.parse(grant.expiresAt) > now &&
+      !focusReasons(focus, grant.appId, now).length,
+  );
   const offer = useAppSelector((state) =>
     chat.selectedAppId ? state.grants.offers[chat.selectedAppId] : undefined,
   );
@@ -58,6 +67,7 @@ export function ChatScreen(): React.JSX.Element {
   const app = apps.find(
     (item) => item.id === chat.selectedAppId && item.isEnabled,
   );
+  const reasons = app ? focusReasons(focus, app.id, now) : [];
   const pending = Boolean(chat.pendingRequestId);
   const [picker, setPicker] = useState(false);
   const [cancelled, setCancelled] = useState(false);
@@ -137,7 +147,11 @@ export function ChatScreen(): React.JSX.Element {
                 : undefined
             }
           >
+            {app && reasons.length > 0 && (
+              <FocusReviewCard key={app.id} app={app} reasons={reasons} />
+            )}
             {app &&
+              reasons.length === 0 &&
               offer &&
               (offer.status === "checkIn" ? (
                 <EmotionCheckInSheet key={offer.id} appId={offer.appId} />

@@ -447,3 +447,22 @@ when activation adds no visible transcript message.
 Validation for this revision: 25 synthetic live GPT-5.4 mini cases passed,
 covering routine/urgent distinction, sequential interventions, explicit choices,
 user-proposed terms, and immediate urgency/frustration relief during a deal.
+
+## Focus routines and Quick Focus
+
+Focus shows current protection and the next routine. The coordinated App Group
+store owns routine settings, Quick Focus, and per-app exceptions. It imports
+legacy Focus settings once. All saved apps includes future profiles, while an
+empty selected scope protects none. Recurring windows follow device local time,
+and overnight windows belong to their starting day. Quick Focus uses an absolute
+session deadline and the same saved scope and duration from the app or Shortcuts.
+
+Chat and the shield explain the active protection. A deliberate exception applies
+to one app and one occurrence. It returns the app to the normal access flow,
+including any accepted break or enforced legacy wait. Upcoming routine boundaries
+cap new grants to whole minutes. If terms get shorter, the user confirms the
+new terms. A new routine can cut off an existing grant at its start, without
+changing the grant’s original deadline for the purposes of its accepted break.
+Monitor callbacks recompute current state. iOS callback delivery depends on
+device use, so background timing and visible shield changes require signed
+physical-device verification.

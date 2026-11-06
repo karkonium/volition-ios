@@ -47,6 +47,7 @@ export const coordinator = new ConversationCoordinator({
   now: Date.now,
   id: Crypto.randomUUID,
   random: Math.random,
+  focusMessage: (key) => i18n.t(key),
 });
 let syncQueue: Promise<void> = Promise.resolve();
 export function syncNative(): Promise<void> {

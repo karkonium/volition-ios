@@ -14,6 +14,9 @@ import {
   type ResponsiveStyle,
   type Theme,
 } from "@itsRares/ahhzo-elements";
+import { focusReasons } from "../../services/focusStatus";
+import { focusName } from "../focus/focusPresentation";
+import { useNow } from "../../components/ActiveGrantBanner";
 import { VolitionAppIcon } from "../../components/VolitionAppIcon";
 import { layout } from "../../layout/layout";
 import { chatActions } from "../../redux/chatSlice";
@@ -29,9 +32,12 @@ export function AppPickerModal({
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
+  const compact = width < 768;
   const styles = useThemedStyles(createStyles);
   const [search, setSearch] = useState("");
   const apps = useAppSelector((state) => state.apps.items);
+  const focus = useAppSelector((state) => state.focus);
+  const now = useNow();
   const selectedId = useAppSelector((state) => state.chat.selectedAppId);
   const dispatch = useAppDispatch();
   const enabled = apps.filter((app) => app.isEnabled);
@@ -51,9 +57,15 @@ export function AppPickerModal({
       title={t("chooseApp")}
       isVisible={visible}
       onClose={close}
-      presentation={width >= 768 ? "centered" : "bottom"}
+      presentation={compact ? "bottom" : "centered"}
       avoidKeyboard
-      contentContainerStyle={styles.sheet}
+      keyboardBehavior="avoid"
+      scrollable
+      backdropOpacity={0.32}
+      animationIn={compact ? "slideInUp" : "fadeIn"}
+      animationOut={compact ? "slideOutDown" : "fadeOut"}
+      modalStyle={compact ? styles.bottomPresentation : undefined}
+      contentContainerStyle={[styles.sheet, compact && styles.bottomSheet]}
       titleTextStyle={styles.title}
       iconContainerStyle={styles.close}
     >
@@ -71,13 +83,18 @@ export function AppPickerModal({
         <Flex vertical style={styles.list}>
           {matching.map((app) => {
             const selected = selectedId === app.id;
+            const reason = focusReasons(focus, app.id, now)[0];
             return (
               <Touchable
                 key={app.id}
                 type="opacity"
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
-                accessibilityLabel={app.name}
+                accessibilityLabel={
+                  reason
+                    ? `${app.name}, ${focusName(reason, t("quickFocus"))}`
+                    : app.name
+                }
                 style={[styles.row, selected && styles.selected]}
                 testID="conversationAppOption"
                 onPress={() => {
@@ -91,7 +108,7 @@ export function AppPickerModal({
                     {app.name}
                   </Text>
                   <Text type="Small" numberOfLines={2}>
-                    {app.goal}
+                    {reason ? focusName(reason, t("quickFocus")) : app.goal}
                   </Text>
                 </Flex>
                 <Icon
@@ -119,7 +136,19 @@ export function AppPickerModal({
 
 const createStyles = (theme: Theme) =>
   ({
-    sheet: { maxWidth: 460, padding: theme.spacing.md },
+    sheet: {
+      maxWidth: 460,
+      paddingTop: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+    },
+    bottomPresentation: { marginBottom: 0, marginLeft: 0, marginRight: 0 },
+    bottomSheet: {
+      maxWidth: "100%",
+      borderTopLeftRadius: theme.radii.lg,
+      borderTopRightRadius: theme.radii.lg,
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
+    },
     title: { fontSize: theme.typography.sizes.xxxl },
     close: { backgroundColor: theme.colors.secondary },
     list: { gap: theme.spacing.xxs },

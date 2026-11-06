@@ -71,7 +71,7 @@ nonisolated struct FocusCommand: Decodable, Sendable {
 
 nonisolated struct FocusSnapshot: Encodable {
     let revision: Int
-    let observedAt: Date
+    let observedAt: String
     let periods: [FocusPeriod]
     let session: FocusSession?
     let preferences: QuickFocusPreferences?
@@ -81,7 +81,9 @@ nonisolated struct FocusSnapshot: Encodable {
 
     init(_ focus: FocusProtectionState, apps: Set<UUID>, now: Date) {
         revision = focus.revision ?? 0
-        observedAt = now
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        observedAt = formatter.string(from: now)
         periods = focus.periods
         session = focus.session.flatMap { $0.isActive(at: now) ? $0 : nil }
         preferences = focus.preferences

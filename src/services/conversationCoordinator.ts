@@ -17,6 +17,13 @@ import { checkInDue, recommendedPauseSeconds, validateEmotion } from "./policy";
 import type { CoachDecisionResponse } from "./decision";
 import type { DecisionRequest } from "./openaiClient";
 import { diagnostic } from "./diagnostics";
+const focusMessages = {
+  focusAccessBlocked:
+    "Focus is active for this app. Use Review Focus for your options.",
+  focusNoRoom: "There’s less than a minute before Focus starts.",
+};
+type FocusMessage = keyof typeof focusMessages;
+
 export interface CoordinatorDependencies {
   getState: () => RootState;
   dispatch: AppDispatch;
@@ -27,6 +34,7 @@ export interface CoordinatorDependencies {
   now: () => number;
   id: () => string;
   random: () => number;
+  focusMessage?: (message: FocusMessage) => string;
 }
 /// Model decisions remain offers until an explicit foreground action passes
 /// consent, configuration, Focus, wait and native transaction validation.
@@ -53,6 +61,12 @@ export class ConversationCoordinator {
         }),
       );
     }
+  }
+
+  private focusError(message: FocusMessage) {
+    return new Error(
+      this.deps.focusMessage?.(message) ?? focusMessages[message],
+    );
   }
 
   private async readFocus() {
@@ -119,10 +133,9 @@ export class ConversationCoordinator {
       Date.parse(offer.expiresAt) <= this.deps.now()
     )
       throw new Error("This offer has expired. Send a new request.");
-    if (
-      focusReasons(state.focus, offer.appId, this.deps.now()).length > 0 ||
-      Date.parse(state.grants.hardWaits[offer.appId] ?? "") > this.deps.now()
-    )
+    if (focusReasons(state.focus, offer.appId, this.deps.now()).length > 0)
+      throw this.focusError("focusAccessBlocked");
+    if (Date.parse(state.grants.hardWaits[offer.appId] ?? "") > this.deps.now())
       throw new Error(
         "This app is still protected. You can continue chatting.",
       );
@@ -315,6 +328,10 @@ export class ConversationCoordinator {
         if (controller.signal.aborted || this.pending !== controller)
           throw new Error("Request cancelled.");
         if (!fitted) {
+          if (!focusReasons(this.state.focus, app.id, this.deps.now()).length)
+            this.deps.dispatch(
+              chatActions.failed(this.focusError("focusNoRoom").message),
+            );
           this.deps.dispatch(
             activityLogActions.outcomeRecorded({
               id: logId,
@@ -489,7 +506,7 @@ export class ConversationCoordinator {
       this.assertCurrent(offer);
       const fitted = await this.fitFocus(offer);
       this.assertCurrent(offer);
-      if (!fitted) throw new Error("Focus starts before an unlock can fit.");
+      if (!fitted) throw this.focusError("focusNoRoom");
       if (fitted !== offer) {
         await this.reviseFocusOffer(fitted, mode);
         return false;
@@ -549,6 +566,8 @@ export class ConversationCoordinator {
         }),
       );
       diagnostic("grant.failed");
+      if (code === "FOCUS_ACTIVE") throw this.focusError("focusAccessBlocked");
+      if (code === "FOCUS_BOUNDARY") throw this.focusError("focusNoRoom");
       throw error;
     }
   }

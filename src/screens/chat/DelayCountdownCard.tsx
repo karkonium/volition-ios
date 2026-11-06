@@ -13,6 +13,7 @@ import { perform } from "../../components/Screen";
 import { layout } from "../../layout/layout";
 import type { Intervention } from "../../redux/grantsSlice";
 import { coordinator } from "../../services/runtime";
+import { FocusTimingNote } from "./FocusTimingNote";
 import { InterventionCard } from "./components/InterventionCard";
 
 export function DelayCountdownCard({
@@ -61,6 +62,9 @@ export function DelayCountdownCard({
         </Flex>
       ) : (
         <>
+          {offer.focusLimitedUntil && (
+            <FocusTimingNote until={offer.focusLimitedUntil} />
+          )}
           <Text type="Small" testID="reflectionCountdown">
             {t("chatPauseStillLocked", { app: appName })}
           </Text>
